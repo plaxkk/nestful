@@ -44,5 +44,6 @@ This repository is the initial MVP workspace. The first milestone is to produce 
 - [MVP Plan](docs/mvp-plan.md)
 - [Product Requirements](docs/product-requirements.md)
 - [Architecture](docs/architecture.md)
+- [API Contract](docs/api-contract.md)
 - [Roadmap](docs/roadmap.md)
 - [Decision Log](docs/decision-log.md)

@@ -46,6 +46,19 @@ export interface FamilyMember {
   birthdayCalendar?: "solar" | "lunar";
   location?: string;
   emergencyContact?: string;
+  joinedAt?: string;
+}
+
+export interface FamilyInvitation {
+  id: string;
+  familyId: string;
+  code: string;
+  role: FamilyRole;
+  createdByMemberId: string;
+  createdAt: string;
+  expiresAt?: string;
+  acceptedAt?: string;
+  acceptedByMemberId?: string;
 }
 
 export interface Reminder {
