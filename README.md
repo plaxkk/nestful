@@ -57,6 +57,14 @@ npm run acceptance:smoke
 
 The backend must be running first with `npm run dev:api`.
 
+For WeChat DevTools on this Mac, the mini-program currently calls the local API through:
+
+```text
+http://172.16.2.66:3100
+```
+
+This avoids simulator timeouts seen with `127.0.0.1`.
+
 ## Docs
 
 - [MVP Plan](docs/mvp-plan.md)

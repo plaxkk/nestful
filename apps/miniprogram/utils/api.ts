@@ -1,4 +1,4 @@
-const apiBaseUrl = "http://127.0.0.1:3100";
+const apiBaseUrl = "http://172.16.2.66:3100";
 
 export interface ApiResponse<T> {
   data: T;

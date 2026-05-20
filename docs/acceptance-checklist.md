@@ -23,6 +23,14 @@ acceptance smoke passed
 
 ## Mini Program Manual Checks
 
+The current local API address for WeChat DevTools is:
+
+```text
+http://172.16.2.66:3100
+```
+
+If the Mac network address changes, update `apps/miniprogram/utils/api.js` and `apps/miniprogram/utils/api.ts`.
+
 Open WeChat DevTools with:
 
 ```text
