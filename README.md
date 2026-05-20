@@ -49,6 +49,14 @@ Open this repository root in WeChat DevTools:
 
 The root `project.config.json` points DevTools to `apps/miniprogram/`.
 
+Run backend smoke acceptance:
+
+```bash
+npm run acceptance:smoke
+```
+
+The backend must be running first with `npm run dev:api`.
+
 ## Docs
 
 - [MVP Plan](docs/mvp-plan.md)
@@ -57,5 +65,6 @@ The root `project.config.json` points DevTools to `apps/miniprogram/`.
 - [API Contract](docs/api-contract.md)
 - [WeChat Login and Invite Plan](docs/wechat-login-invite-plan.md)
 - [WeChat Embedded Experience Plan](docs/wechat-embedded-experience-plan.md)
+- [Acceptance Checklist](docs/acceptance-checklist.md)
 - [Roadmap](docs/roadmap.md)
 - [Decision Log](docs/decision-log.md)

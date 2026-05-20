@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev:api": "corepack pnpm --filter @family-housekeeper/api dev",
+    "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
     "typecheck": "corepack pnpm -r typecheck",
     "lint": "corepack pnpm -r lint",
     "test": "corepack pnpm -r test"
