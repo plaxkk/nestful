@@ -46,5 +46,6 @@ This repository is the initial MVP workspace. The first milestone is to produce 
 - [Architecture](docs/architecture.md)
 - [API Contract](docs/api-contract.md)
 - [WeChat Login and Invite Plan](docs/wechat-login-invite-plan.md)
+- [Monetization Validation](docs/monetization-validation.md)
 - [Roadmap](docs/roadmap.md)
 - [Decision Log](docs/decision-log.md)
