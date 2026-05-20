@@ -10,6 +10,9 @@
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f7f7f2"
   },
+  "networkTimeout": {
+    "request": 10000
+  },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

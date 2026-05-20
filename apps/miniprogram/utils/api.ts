@@ -1,4 +1,4 @@
-const apiBaseUrl = "http://localhost:3100";
+const apiBaseUrl = "http://127.0.0.1:3100";
 
 export interface ApiResponse<T> {
   data: T;

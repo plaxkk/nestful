@@ -2,7 +2,7 @@
   "appid": "touristappid",
   "projectname": "family-housekeeper",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "es6": true,
     "enhance": true,
     "postcss": true,
