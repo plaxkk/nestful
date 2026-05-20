@@ -69,3 +69,13 @@ Shared TypeScript models and enums.
 - Tencent Cloud COS for file storage.
 - Tencent Cloud TRTC / CallKit for mini-program audio and video calls.
 - WeChat Pay for family membership and optional collection flows.
+
+## WeChat Identity Direction
+
+Phase 1 should use WeChat login as the source of identity:
+- Mini-program calls `wx.login`.
+- Backend exchanges code through WeChat `code2Session`.
+- Backend stores `openid` against internal `User`.
+- Client receives only an app session token, never `openid` or `session_key`.
+
+See [WeChat Login and Invite Plan](wechat-login-invite-plan.md).

@@ -8,6 +8,34 @@ This document captures the phase 1 API baseline. The current implementation is i
 
 Returns service liveness.
 
+## Authentication
+
+`POST /v1/auth/wechat-login`
+
+Planned phase 1 endpoint. The mini-program sends a `wx.login` code to backend; backend exchanges it through WeChat `code2Session`, binds the `openid` to an internal user, and returns an app session token.
+
+```json
+{
+  "code": "wx-login-code"
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "token": "app-session-token",
+    "user": {
+      "id": "internal-user-id",
+      "nickname": "微信用户"
+    }
+  }
+}
+```
+
+Do not expose `openid` or `session_key` to the mini-program.
+
 ## Families
 
 `GET /v1/families`
@@ -17,6 +45,8 @@ Lists known family spaces.
 `POST /v1/families`
 
 Creates a family space and its owner member.
+
+Current in-memory implementation still accepts `ownerUserId`. After WeChat auth lands, backend should derive the owner from the app session token.
 
 ```json
 {
