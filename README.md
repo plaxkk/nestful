@@ -39,6 +39,16 @@ docs/               Product, architecture, roadmap, and decision docs
 
 This repository is the initial MVP workspace. The first milestone is to produce clickable mini-program flows and API contracts for family space, reminders, activities, memory wall, health reminders, and ledger.
 
+## Mini Program Preview
+
+Open this repository root in WeChat DevTools:
+
+```text
+/Users/kk/repos/family-housekeeper
+```
+
+The root `project.config.json` points DevTools to `apps/miniprogram/`.
+
 ## Docs
 
 - [MVP Plan](docs/mvp-plan.md)
