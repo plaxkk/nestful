@@ -1,0 +1,26 @@
+<view class="page home">
+  <view class="hero">
+    <text class="eyebrow">Family Housekeeper</text>
+    <text class="title">家庭管家</text>
+    <text class="subtitle">把提醒、活动、健康、记忆和账本放进一个家庭空间。</text>
+    <button class="primary-action" bindtap="onCreateFamily">创建家庭空间</button>
+  </view>
+
+  <view class="section">
+    <text class="section-title">今日待办</text>
+    <view class="todo-list">
+      <view class="todo-item" wx:for="{{todayItems}}" wx:key="*this">
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">MVP 模块</text>
+    <view class="module-grid">
+      <view class="module-card" wx:for="{{modules}}" wx:key="*this">
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+</view>

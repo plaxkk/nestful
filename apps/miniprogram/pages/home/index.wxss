@@ -1,0 +1,76 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 32rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  border: 1rpx solid #d8e5df;
+}
+
+.eyebrow {
+  color: #22745f;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.title {
+  color: #1f2a24;
+  font-size: 48rpx;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: #5d6b63;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.primary-action {
+  width: 100%;
+  margin-top: 8rpx;
+  background: #22745f;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.section-title {
+  color: #1f2a24;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.todo-item,
+.module-card {
+  padding: 24rpx;
+  border-radius: 12rpx;
+  background: #ffffff;
+  border: 1rpx solid #d8e5df;
+  color: #33413a;
+  font-size: 28rpx;
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+}

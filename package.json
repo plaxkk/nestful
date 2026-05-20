@@ -1,0 +1,21 @@
+{
+  "name": "family-housekeeper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "WeChat-first family management MVP.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev:api": "corepack pnpm --filter @family-housekeeper/api dev",
+    "typecheck": "corepack pnpm -r typecheck",
+    "lint": "corepack pnpm -r lint",
+    "test": "corepack pnpm -r test"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/home/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "家庭管家",
+    "navigationBarBackgroundColor": "#22745f",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f7f7f2"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
