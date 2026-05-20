@@ -1,6 +1,12 @@
 import { api, type FamilyMember } from "../../utils/api";
 import { session } from "../../utils/session";
 
+const withAvatarText = (member: FamilyMember) => ({
+  ...member,
+  avatarText: member.displayName ? member.displayName.slice(0, 1) : "?",
+  roleLabel: member.role === "admin" ? "管理员" : "家人"
+});
+
 Page({
   data: {
     familyName: "",
@@ -30,7 +36,7 @@ Page({
     try {
       const response = await api.listMembers(family.id);
       this.setData({
-        members: response.data,
+        members: response.data.map(withAvatarText),
         loading: false
       });
     } catch (error) {

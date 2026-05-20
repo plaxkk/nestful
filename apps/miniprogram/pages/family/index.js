@@ -4,6 +4,7 @@ const { session } = require("../../utils/session");
 const withAvatarText = (member) => ({
   ...member,
   avatarText: member.displayName ? member.displayName.slice(0, 1) : "?",
+  roleLabel: member.role === "admin" ? "管理员" : "家人",
 });
 
 Page({

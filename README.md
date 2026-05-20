@@ -74,5 +74,6 @@ This avoids simulator timeouts seen with `127.0.0.1`.
 - [WeChat Login and Invite Plan](docs/wechat-login-invite-plan.md)
 - [WeChat Embedded Experience Plan](docs/wechat-embedded-experience-plan.md)
 - [Acceptance Checklist](docs/acceptance-checklist.md)
+- [Elder-Friendly UX](docs/elder-friendly-ux.md)
 - [Roadmap](docs/roadmap.md)
 - [Decision Log](docs/decision-log.md)

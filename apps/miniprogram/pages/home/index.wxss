@@ -1,7 +1,7 @@
 .home {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 28rpx;
 }
 
 .hero {
@@ -14,28 +14,28 @@
   border: 1rpx solid #d8e5df;
 }
 
-.eyebrow {
-  color: #22745f;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
 .title {
   color: #1f2a24;
-  font-size: 48rpx;
+  font-size: 56rpx;
   font-weight: 700;
 }
 
 .subtitle {
   color: #5d6b63;
-  font-size: 28rpx;
+  font-size: 34rpx;
   line-height: 1.6;
 }
 
 .form-panel {
   display: flex;
   flex-direction: column;
-  gap: 22rpx;
+  gap: 26rpx;
+}
+
+.step-title {
+  color: #1f2a24;
+  font-size: 38rpx;
+  font-weight: 700;
 }
 
 .section {
@@ -46,28 +46,22 @@
 
 .section-title {
   color: #1f2a24;
-  font-size: 32rpx;
+  font-size: 38rpx;
   font-weight: 700;
 }
 
-.todo-list {
+.action-list {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 14rpx;
 }
 
-.todo-item,
-.module-card {
-  padding: 24rpx;
-  border-radius: 12rpx;
+.action-item {
+  padding: 30rpx;
+  border-radius: 8rpx;
   background: #ffffff;
-  border: 1rpx solid #d8e5df;
+  border: 2rpx solid #d8e5df;
   color: #33413a;
-  font-size: 28rpx;
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12rpx;
+  font-size: 34rpx;
+  font-weight: 600;
 }

@@ -1,8 +1,7 @@
 <view class="page join-page">
   <view class="panel">
-    <text class="eyebrow">加入家庭</text>
-    <text class="title">接受家人邀请</text>
-    <text class="subtitle">确认邀请后填写你的家庭称呼，加入同一个家庭空间。</text>
+    <text class="title">加入家庭</text>
+    <text class="subtitle">家人邀请你进来。写上你的称呼，就可以加入。</text>
   </view>
 
   <view class="panel form-panel">
@@ -14,6 +13,6 @@
       <text class="label">你的称呼</text>
       <input class="input" value="{{displayName}}" bindinput="onDisplayNameInput" placeholder="例如：妈妈、哥哥、外婆" />
     </view>
-    <button class="primary-action" bindtap="onJoinFamily">加入家庭</button>
+    <button class="primary-action" bindtap="onJoinFamily">确认加入</button>
   </view>
 </view>

@@ -1,36 +1,27 @@
 <view class="page home">
   <view class="hero">
-    <text class="eyebrow">Family Housekeeper</text>
     <text class="title">家庭管家</text>
-    <text class="subtitle">把提醒、活动、健康、记忆和账本放进一个家庭空间。</text>
+    <text class="subtitle">给家里人用的提醒本。先建一个家庭，再邀请家人进来。</text>
   </view>
 
   <view class="panel form-panel">
+    <text class="step-title">第 1 步：创建家庭</text>
     <view class="field">
       <text class="label">家庭名称</text>
-      <input class="input" value="{{familyNameInput}}" bindinput="onFamilyNameInput" placeholder="例如：王家" />
+      <input class="input" value="{{familyNameInput}}" bindinput="onFamilyNameInput" placeholder="例如：我的家庭" />
     </view>
     <view class="field">
       <text class="label">你的称呼</text>
-      <input class="input" value="{{ownerNameInput}}" bindinput="onOwnerNameInput" placeholder="例如：爸爸、姐姐、King" />
+      <input class="input" value="{{ownerNameInput}}" bindinput="onOwnerNameInput" placeholder="例如：爸爸、妈妈、我" />
     </view>
     <button class="primary-action" bindtap="onCreateFamily">创建家庭空间</button>
     <button class="secondary-action" bindtap="onOpenFamily">打开当前家庭</button>
   </view>
 
   <view class="section">
-    <text class="section-title">今日待办</text>
-    <view class="todo-list">
-      <view class="todo-item" wx:for="{{todayItems}}" wx:key="*this">
-        <text>{{item}}</text>
-      </view>
-    </view>
-  </view>
-
-  <view class="section">
-    <text class="section-title">MVP 模块</text>
-    <view class="module-grid">
-      <view class="module-card" wx:for="{{modules}}" wx:key="*this">
+    <text class="section-title">以后可以做这些事</text>
+    <view class="action-list">
+      <view class="action-item" wx:for="{{quickActions}}" wx:key="*this">
         <text>{{item}}</text>
       </view>
     </view>

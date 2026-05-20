@@ -6,8 +6,7 @@ Page({
     familyNameInput: "我的家庭",
     ownerNameInput: "我",
     familyName: "我的家庭",
-    todayItems: ["添加家庭成员", "创建第一个生日提醒", "发起一次家庭活动"],
-    modules: ["生日提醒", "家庭活动", "家庭会议", "记忆墙", "健康提醒", "家庭账本"],
+    quickActions: ["提醒爸妈吃药", "记住家人生日", "发起家庭聚会"],
   },
 
   onFamilyNameInput(event) {

@@ -6,14 +6,14 @@ page {
 
 .page {
   min-height: 100vh;
-  padding: 24rpx;
+  padding: 30rpx;
   box-sizing: border-box;
 }
 
 .panel {
-  padding: 28rpx;
-  border: 1rpx solid #d8e5df;
-  border-radius: 12rpx;
+  padding: 34rpx;
+  border: 2rpx solid #d8e5df;
+  border-radius: 8rpx;
   background: #ffffff;
 }
 
@@ -24,35 +24,40 @@ page {
 }
 
 .label {
-  color: #5d6b63;
-  font-size: 24rpx;
+  color: #415048;
+  font-size: 30rpx;
+  font-weight: 600;
 }
 
 .input {
-  height: 84rpx;
-  padding: 0 20rpx;
-  border: 1rpx solid #c9d8d1;
-  border-radius: 10rpx;
+  height: 104rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #c9d8d1;
+  border-radius: 8rpx;
   background: #ffffff;
   color: #1f2a24;
-  font-size: 30rpx;
+  font-size: 36rpx;
 }
 
 .primary-action {
   width: 100%;
+  min-height: 108rpx;
   margin: 0;
   background: #22745f;
   color: #ffffff;
-  border-radius: 12rpx;
-  font-size: 30rpx;
+  border-radius: 8rpx;
+  font-size: 36rpx;
+  font-weight: 700;
 }
 
 .secondary-action {
   width: 100%;
+  min-height: 98rpx;
   margin: 0;
   background: #eef5f1;
   color: #22745f;
-  border: 1rpx solid #b8d1c7;
-  border-radius: 12rpx;
-  font-size: 30rpx;
+  border: 2rpx solid #b8d1c7;
+  border-radius: 8rpx;
+  font-size: 34rpx;
+  font-weight: 700;
 }
