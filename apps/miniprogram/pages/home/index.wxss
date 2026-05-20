@@ -32,13 +32,10 @@
   line-height: 1.6;
 }
 
-.primary-action {
-  width: 100%;
-  margin-top: 8rpx;
-  background: #22745f;
-  color: #ffffff;
-  border-radius: 12rpx;
-  font-size: 30rpx;
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
 }
 
 .section {

@@ -1,0 +1,46 @@
+.join-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.eyebrow {
+  color: #22745f;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.title {
+  color: #1f2a24;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: #5d6b63;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.form-panel {
+  gap: 24rpx;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.status {
+  color: #22745f;
+  font-size: 28rpx;
+  font-weight: 700;
+}

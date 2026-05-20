@@ -3,7 +3,19 @@
     <text class="eyebrow">Family Housekeeper</text>
     <text class="title">家庭管家</text>
     <text class="subtitle">把提醒、活动、健康、记忆和账本放进一个家庭空间。</text>
+  </view>
+
+  <view class="panel form-panel">
+    <view class="field">
+      <text class="label">家庭名称</text>
+      <input class="input" value="{{familyNameInput}}" bindinput="onFamilyNameInput" placeholder="例如：王家" />
+    </view>
+    <view class="field">
+      <text class="label">你的称呼</text>
+      <input class="input" value="{{ownerNameInput}}" bindinput="onOwnerNameInput" placeholder="例如：爸爸、姐姐、King" />
+    </view>
     <button class="primary-action" bindtap="onCreateFamily">创建家庭空间</button>
+    <button class="secondary-action" bindtap="onOpenFamily">打开当前家庭</button>
   </view>
 
   <view class="section">

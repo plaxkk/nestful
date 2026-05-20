@@ -1,6 +1,8 @@
 {
   "pages": [
-    "pages/home/index"
+    "pages/home/index",
+    "pages/family/index",
+    "pages/join/index"
   ],
   "window": {
     "navigationBarTitleText": "家庭管家",

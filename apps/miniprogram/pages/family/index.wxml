@@ -1,0 +1,28 @@
+<view class="page family-page">
+  <view class="panel family-header">
+    <text class="eyebrow">家庭空间</text>
+    <text class="title">{{familyName}}</text>
+    <text class="subtitle">管理成员、邀请家人，并为生日、活动、健康和账本建立共同空间。</text>
+    <button class="primary-action" bindtap="onCreateInvitation">生成成员邀请</button>
+  </view>
+
+  <view class="panel invite-panel" wx:if="{{inviteCode}}">
+    <text class="section-title">邀请已生成</text>
+    <text class="invite-code">{{inviteCode}}</text>
+    <text class="hint">分享路径：{{joinPath}}</text>
+    <button class="secondary-action" open-type="share">发送给家人</button>
+  </view>
+
+  <view class="section">
+    <text class="section-title">家庭成员</text>
+    <view class="member-list">
+      <view class="member-row" wx:for="{{members}}" wx:key="id">
+        <view class="avatar">{{item.displayName.slice(0, 1)}}</view>
+        <view class="member-main">
+          <text class="member-name">{{item.displayName}}</text>
+          <text class="member-meta">{{item.role}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

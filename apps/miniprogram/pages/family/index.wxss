@@ -1,0 +1,100 @@
+.family-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.family-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.eyebrow {
+  color: #22745f;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.title {
+  color: #1f2a24;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.subtitle,
+.hint {
+  color: #5d6b63;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.section-title {
+  color: #1f2a24;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.invite-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.invite-code {
+  color: #22745f;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 22rpx;
+  border: 1rpx solid #d8e5df;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #e0eee7;
+  color: #22745f;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.member-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.member-name {
+  color: #1f2a24;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.member-meta {
+  color: #5d6b63;
+  font-size: 24rpx;
+}

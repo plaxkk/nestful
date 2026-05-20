@@ -9,3 +9,50 @@ page {
   padding: 24rpx;
   box-sizing: border-box;
 }
+
+.panel {
+  padding: 28rpx;
+  border: 1rpx solid #d8e5df;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.label {
+  color: #5d6b63;
+  font-size: 24rpx;
+}
+
+.input {
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #c9d8d1;
+  border-radius: 10rpx;
+  background: #ffffff;
+  color: #1f2a24;
+  font-size: 30rpx;
+}
+
+.primary-action {
+  width: 100%;
+  margin: 0;
+  background: #22745f;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+}
+
+.secondary-action {
+  width: 100%;
+  margin: 0;
+  background: #eef5f1;
+  color: #22745f;
+  border: 1rpx solid #b8d1c7;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+}
