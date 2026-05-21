@@ -5,6 +5,7 @@ const request = (options) =>
     wx.request({
       ...options,
       url: `${apiBaseUrl}${options.url}`,
+      timeout: 8000,
       success: (response) => {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(response.data);

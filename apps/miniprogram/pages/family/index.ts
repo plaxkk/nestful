@@ -41,8 +41,17 @@ Page({
       });
     } catch (error) {
       this.setData({ loading: false });
+      if (error instanceof Error && error.message.includes("status 404")) {
+        session.clear();
+        wx.showToast({
+          title: "家庭记录已失效，请重新创建",
+          icon: "none"
+        });
+        wx.redirectTo({ url: "/pages/home/index" });
+        return;
+      }
       wx.showToast({
-        title: "成员加载失败",
+        title: "成员加载失败，请确认 API 已启动",
         icon: "none"
       });
     }
