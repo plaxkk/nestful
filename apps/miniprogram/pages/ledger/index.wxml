@@ -1,11 +1,33 @@
 <view class="page ledger-page">
-  <view class="panel header">
+  <view class="header">
+    <text class="eyebrow">家庭的钱，慢慢记清楚</text>
     <text class="title">家庭账本</text>
-    <text class="subtitle">先简单记一笔收入或支出，家里人可以一起看清楚钱花在哪里。</text>
+    <text class="subtitle">像写家庭小账本一样记录，不算复杂账，只帮家里人看清每一笔。</text>
+  </view>
+
+  <view class="summary-grid">
+    <view class="summary-card primary">
+      <text class="summary-label">结余</text>
+      <text class="summary-value">{{summary.balanceText}}</text>
+      <text class="summary-helper">收入减去支出</text>
+    </view>
+    <view class="summary-card">
+      <text class="summary-label">支出</text>
+      <text class="summary-value expense">{{summary.expenseText}}</text>
+      <text class="summary-helper">已记录 {{summary.recordCountText}}</text>
+    </view>
+    <view class="summary-card">
+      <text class="summary-label">收入</text>
+      <text class="summary-value income">{{summary.incomeText}}</text>
+      <text class="summary-helper">家庭内部可见</text>
+    </view>
   </view>
 
   <view class="panel form-panel">
-    <text class="section-title">记一笔</text>
+    <view class="section-heading">
+      <text class="section-title">记一笔</text>
+      <text class="section-note">先记大概，之后还能改进分类。</text>
+    </view>
     <view class="field">
       <text class="label">类型</text>
       <picker mode="selector" range="{{entryTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
@@ -34,10 +56,14 @@
   </view>
 
   <view class="section">
-    <text class="section-title">最近记录</text>
+    <view class="section-heading">
+      <text class="section-title">最近记录</text>
+      <text class="section-note">每一笔都给家里留个交代。</text>
+    </view>
     <text class="empty-text" wx:if="{{!loading && ledgerEntries.length === 0}}">还没有记录。先记一笔家庭支出或收入。</text>
     <view class="ledger-list">
       <view class="ledger-row" wx:for="{{ledgerEntries}}" wx:key="id">
+        <view class="ledger-mark {{item.isIncome ? 'income' : 'expense'}}">{{item.typeLabel}}</view>
         <view class="ledger-main">
           <text class="ledger-title">{{item.title}}</text>
           <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>

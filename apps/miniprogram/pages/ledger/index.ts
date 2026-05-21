@@ -47,6 +47,22 @@ const withLedgerText = (entry: LedgerEntry) => ({
   isIncome: entry.type === "income"
 });
 
+const summarizeLedger = (entries: LedgerEntry[]) => {
+  const incomeCents = entries
+    .filter((entry) => entry.type === "income")
+    .reduce((total, entry) => total + entry.amountCents, 0);
+  const expenseCents = entries
+    .filter((entry) => entry.type === "expense")
+    .reduce((total, entry) => total + entry.amountCents, 0);
+
+  return {
+    incomeText: `${(incomeCents / 100).toFixed(2)} 元`,
+    expenseText: `${(expenseCents / 100).toFixed(2)} 元`,
+    balanceText: `${((incomeCents - expenseCents) / 100).toFixed(2)} 元`,
+    recordCountText: `${entries.length} 笔`
+  };
+};
+
 Page({
   data: {
     entryTypes,
@@ -65,6 +81,7 @@ Page({
         isIncome: boolean;
       }
     >,
+    summary: summarizeLedger([]),
     loading: false
   },
 
@@ -120,6 +137,7 @@ Page({
 
       this.setData({
         ledgerEntries: response.data.map(withLedgerText),
+        summary: summarizeLedger(response.data),
         loading: false
       });
     } catch (error) {
