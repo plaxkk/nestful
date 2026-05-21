@@ -77,6 +77,35 @@ Expected family-task flow:
 9. Create one activity, then confirm it appears in "已经发起的活动".
 10. Tap "复制群里说明" and confirm a family-group friendly description is copied.
 
+## WeChat Experience Version Checks
+
+Do not use the WeChat DevTools preview QR code for multi-person family invitation testing. The preview/development QR code is temporary, tied to the current DevTools build, and can show "开发版小程序已过期，请在开发者工具重新扫码" after it expires or after the project is recompiled.
+
+Use this rule:
+
+| Situation | Use |
+| --- | --- |
+| Developer checks on the same machine | DevTools preview QR code |
+| Multiple people testing invite/join | WeChat experience version |
+| Real family use | Submitted and released official version |
+
+Experience-version setup:
+
+1. In WeChat DevTools, click "上传" after local checks pass.
+2. Open the WeChat mini program admin console.
+3. Add every tester's WeChat account as an "体验成员".
+4. Select the uploaded build as the experience version.
+5. Send the experience-version QR code to testers.
+
+Experience-version invite validation:
+
+1. Tester A opens the experience version and creates a family.
+2. Tester A generates an invitation code and shares/copies it.
+3. Tester B opens the same experience version.
+4. Tester B enters the invitation code on "输入邀请码加入".
+5. Tester B taps "检查邀请码", enters a display name, and joins.
+6. Tester A returns to the family overview and confirms Tester B appears in "家里人".
+
 ## Elder-Friendly Manual Checks
 
 Use these checks on the home, family, join, and any new Phase 2 pages before handoff:
@@ -103,5 +132,6 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 - Digital space has an MVP create/list flow for document notes, account notes, and memory items. Real file upload, media upload, password storage, and fine-grained visibility are not implemented yet.
 - Family activity day has an MVP create/list/copy-share-text flow. Complex RSVP, calendar sync, payments, and group automation are not implemented yet.
 - Group embedded automation is not implemented yet.
+- DevTools preview QR codes are temporary and unsuitable for multi-person invite testing. Use an experience version with added experience members for stable internal testing.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.
 - `webapi_getwxaasyncsecinfo:fail` is a WeChat DevTools/AppID SDK warning seen during local debugging. The project does not call this API. Treat it as non-blocking if the family, invitation, and reminder flows still work.
