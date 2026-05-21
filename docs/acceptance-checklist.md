@@ -83,3 +83,4 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 - Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.
 - Ledger, memory wall, and group embedded experience are not implemented yet.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.
+- `webapi_getwxaasyncsecinfo:fail` is a WeChat DevTools/AppID SDK warning seen during local debugging. The project does not call this API. Treat it as non-blocking if the family, invitation, and reminder flows still work.
