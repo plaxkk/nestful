@@ -56,6 +56,29 @@ const api = {
       data: body,
     });
   },
+
+  listReminders(familyId) {
+    return request({
+      method: "GET",
+      url: `/v1/families/${familyId}/reminders`,
+    });
+  },
+
+  createReminder(familyId, body) {
+    return request({
+      method: "POST",
+      url: `/v1/families/${familyId}/reminders`,
+      data: body,
+    });
+  },
+
+  completeReminder(reminderId, body) {
+    return request({
+      method: "POST",
+      url: `/v1/reminders/${reminderId}/complete`,
+      data: body,
+    });
+  },
 };
 
 module.exports = {

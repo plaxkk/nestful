@@ -1,6 +1,6 @@
 # API Contract
 
-This document captures the phase 1 API baseline. The current implementation is in-memory and intended to stabilize frontend integration before the database schema lands.
+This document captures the current API baseline. The MVP implementation uses a local JSON store to stabilize frontend integration before a production database lands.
 
 ## Health
 
@@ -126,9 +126,39 @@ Accepts an invitation and creates a member.
 }
 ```
 
-## Placeholder Phase 1 Reads
+## Reminders
 
 `GET /v1/families/:familyId/reminders`
+
+Lists birthday and health reminders for the family.
+
+`POST /v1/families/:familyId/reminders`
+
+Creates a reminder. The creator and optional assignee must be members of the same family.
+
+```json
+{
+  "type": "medicine",
+  "title": "提醒妈妈吃药",
+  "dueAt": "2026-05-22T00:00:00.000Z",
+  "createdByMemberId": "member-id",
+  "assigneeMemberId": "member-id"
+}
+```
+
+Supported MVP types: `birthday`, `medicine`, `exercise`.
+
+`POST /v1/reminders/:reminderId/complete`
+
+Marks a reminder as completed and records `completedAt`.
+
+```json
+{
+  "actorMemberId": "member-id"
+}
+```
+
+## Placeholder Phase 2 Reads
 
 `GET /v1/families/:familyId/activities`
 

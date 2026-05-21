@@ -9,6 +9,7 @@ import type {
   FamilyMember,
   FamilyRole,
   Reminder,
+  ReminderType,
 } from "@family-housekeeper/shared";
 
 export interface CreateFamilyInput {
@@ -31,6 +32,14 @@ export interface CreateInvitationInput {
   createdByMemberId: string;
   role?: FamilyRole;
   expiresAt?: string;
+}
+
+export interface CreateReminderInput {
+  type: ReminderType;
+  title: string;
+  dueAt: string;
+  createdByMemberId: string;
+  assigneeMemberId?: string;
 }
 
 interface StoreState {
@@ -241,6 +250,55 @@ export const familyStore = {
 
   listReminders(familyId: string) {
     return state.reminders.filter((reminder) => reminder.familyId === familyId);
+  },
+
+  getReminder(reminderId: string) {
+    return state.reminders.find((reminder) => reminder.id === reminderId);
+  },
+
+  createReminder(familyId: string, input: CreateReminderInput) {
+    const reminder: Reminder = {
+      id: randomUUID(),
+      familyId,
+      type: input.type,
+      title: input.title,
+      dueAt: input.dueAt,
+      assigneeMemberId: input.assigneeMemberId,
+      createdByMemberId: input.createdByMemberId,
+      enabled: true,
+    };
+
+    state.reminders.push(reminder);
+    audit({
+      familyId,
+      actorMemberId: input.createdByMemberId,
+      action: "reminder.created",
+      resourceType: "reminder",
+      resourceId: reminder.id,
+    });
+    persist();
+
+    return reminder;
+  },
+
+  completeReminder(reminderId: string, actorMemberId: string) {
+    const reminder = this.getReminder(reminderId);
+
+    if (!reminder) {
+      return undefined;
+    }
+
+    reminder.completedAt = now();
+    audit({
+      familyId: reminder.familyId,
+      actorMemberId,
+      action: "reminder.completed",
+      resourceType: "reminder",
+      resourceId: reminder.id,
+    });
+    persist();
+
+    return reminder;
   },
 
   listActivities(familyId: string) {

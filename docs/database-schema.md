@@ -109,12 +109,13 @@ create table family_invitations (
 create table reminders (
   id text primary key,
   family_id text not null references families(id),
-  type text not null,
+  type text not null check (type in ('birthday', 'medicine', 'exercise', 'anniversary', 'bill', 'activity')),
   title text not null,
   due_at timestamptz not null,
   assignee_member_id text references family_members(id),
   created_by_member_id text not null references family_members(id),
-  enabled boolean not null default true
+  enabled boolean not null default true,
+  completed_at timestamptz
 );
 ```
 
@@ -169,7 +170,7 @@ Implemented in `services/api/src/privacy.ts`:
 Implemented in `services/api/src/store.ts`:
 
 - local file persistence
-- audit event creation for family, member, invitation creation and invitation acceptance
+- audit event creation for family, member, invitation, reminder creation, reminder completion, and invitation acceptance
 - duplicate membership check on invitation acceptance
 
 Implemented in `services/api/src/routes.ts`:
@@ -177,3 +178,4 @@ Implemented in `services/api/src/routes.ts`:
 - invitation creator must be an admin member of the same family
 - direct member creation requires an admin actor
 - member lists return redacted member data
+- reminder creator/completer and optional assignee must be members of the same family

@@ -1,0 +1,39 @@
+<view class="page reminders-page">
+  <view class="panel header">
+    <text class="title">生日和健康提醒</text>
+    <text class="subtitle">把家人的生日、吃药、运动记在这里。完成后点一下，家里人都能看到。</text>
+  </view>
+
+  <view class="panel form-panel">
+    <text class="section-title">新增一个提醒</text>
+    <view class="field">
+      <text class="label">提醒类型</text>
+      <picker mode="selector" range="{{reminderTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="picker-value">{{reminderTypes[typeIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">提醒内容</text>
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：提醒妈妈吃药" />
+    </view>
+    <view class="field">
+      <text class="label">提醒时间</text>
+      <input class="input" value="{{dueAtInput}}" bindinput="onDueAtInput" placeholder="例如：2026-05-22 08:00" />
+    </view>
+    <button class="primary-action" bindtap="onCreateReminder">保存提醒</button>
+  </view>
+
+  <view class="section">
+    <text class="section-title">家里的提醒</text>
+    <text class="empty-text" wx:if="{{!loading && reminders.length === 0}}">还没有提醒。先新增一个生日、吃药或运动提醒。</text>
+    <view class="reminder-list">
+      <view class="reminder-row {{item.isCompleted ? 'completed' : ''}}" wx:for="{{reminders}}" wx:key="id">
+        <view class="reminder-main">
+          <text class="reminder-title">{{item.title}}</text>
+          <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}} · {{item.statusLabel}}</text>
+        </view>
+        <button wx:if="{{!item.isCompleted}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">完成</button>
+      </view>
+    </view>
+  </view>
+</view>

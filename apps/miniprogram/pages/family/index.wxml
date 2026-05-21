@@ -3,6 +3,7 @@
     <text class="title">{{familyName}}</text>
     <text class="subtitle">这里是家里的小本子。先把家人邀请进来。</text>
     <button class="primary-action" bindtap="onCreateInvitation">第 2 步：邀请家人</button>
+    <button class="secondary-action" bindtap="onOpenReminders">查看生日和健康提醒</button>
   </view>
 
   <view class="panel invite-panel" wx:if="{{inviteCode}}">

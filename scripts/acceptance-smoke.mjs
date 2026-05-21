@@ -120,6 +120,32 @@ assert(auditActions.includes("family.created"), "family creation audit event mis
 assert(auditActions.includes("invitation.created"), "invitation creation audit event missing");
 assert(auditActions.includes("invitation.accepted"), "invitation acceptance audit event missing");
 
+const reminderResponse = await request(`/v1/families/${family.id}/reminders`, {
+  method: "POST",
+  body: JSON.stringify({
+    type: "medicine",
+    title: "提醒吃药",
+    dueAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    createdByMemberId: ownerMember.id,
+    assigneeMemberId: ownerMember.id,
+  }),
+});
+
+assert(reminderResponse.data.id, "reminder id missing");
+assert(reminderResponse.data.completedAt === undefined, "new reminder should not be completed");
+
+const remindersResponse = await request(`/v1/families/${family.id}/reminders`);
+assert(remindersResponse.data.some((reminder) => reminder.id === reminderResponse.data.id), "reminder list missing new reminder");
+
+const completeReminderResponse = await request(`/v1/reminders/${reminderResponse.data.id}/complete`, {
+  method: "POST",
+  body: JSON.stringify({
+    actorMemberId: ownerMember.id,
+  }),
+});
+
+assert(completeReminderResponse.data.completedAt, "completed reminder missing completedAt");
+
 console.log("acceptance smoke passed");
 console.log(
   JSON.stringify(
@@ -128,6 +154,7 @@ console.log(
       invitationCode: invitation.code,
       members: finalMembersResponse.data.length,
       auditEvents: auditResponse.data.length,
+      reminderId: reminderResponse.data.id,
     },
     null,
     2,

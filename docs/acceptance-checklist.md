@@ -26,6 +26,7 @@ The smoke script now also verifies:
 - cross-family invitation creation is rejected
 - member list responses redact emergency contacts
 - family/invitation mutations create audit events
+- birthday/health reminder creation, listing, and completion work
 
 ## Mini Program Manual Checks
 
@@ -55,6 +56,9 @@ Expected flow:
 8. Tap "发给家人" and confirm the share card path points to `/pages/join/index?code=...`.
 9. Open the join path in DevTools, fill a display name, and tap "确认加入家庭".
 10. App navigates back to the family page and the member list includes the new family member.
+11. Tap "查看生日和健康提醒".
+12. Create a reminder with type "吃药", then confirm it appears as "待提醒".
+13. Tap "完成" and confirm the reminder status changes to "已完成".
 
 ## Elder-Friendly Manual Checks
 
@@ -69,12 +73,13 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 | Error prompts | Toasts say what to do next, e.g. restart API, create family first, ask family to resend invite. |
 | Empty states | Missing invitation code shows "缺少邀请码" instead of "待验证". |
 | Future features | Unfinished features are shown as previews and are not tappable cards. |
-| DevTools path | Home -> create family -> family -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
+| DevTools path | Home -> create family -> family -> reminders -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
 
 ## Known MVP Boundaries
 
 - Data persists to a local JSON file at `.data/family-housekeeper.json`; this is still an MVP stand-in for the target SQL database.
 - WeChat login is documented but not implemented.
 - Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
-- Birthday, health, ledger, memory wall, and group embedded experience are not implemented yet.
+- Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.
+- Ledger, memory wall, and group embedded experience are not implemented yet.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.

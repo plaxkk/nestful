@@ -1,0 +1,108 @@
+.reminders-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.header,
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.title {
+  color: #1f2a24;
+  font-size: 52rpx;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: #5d6b63;
+  font-size: 34rpx;
+  line-height: 1.6;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.section-title {
+  color: #1f2a24;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.picker-value {
+  min-height: 104rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #c9d8d1;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #1f2a24;
+  font-size: 36rpx;
+  line-height: 104rpx;
+}
+
+.empty-text {
+  padding: 30rpx;
+  border: 2rpx solid #d8e5df;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #5d6b63;
+  font-size: 32rpx;
+  line-height: 1.6;
+}
+
+.reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 30rpx;
+  border: 2rpx solid #d8e5df;
+  border-radius: 8rpx;
+  background: #ffffff;
+}
+
+.reminder-row.completed {
+  background: #f4f7f5;
+}
+
+.reminder-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.reminder-title {
+  color: #1f2a24;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.reminder-meta {
+  color: #5d6b63;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
+.complete-button {
+  width: 144rpx;
+  min-height: 88rpx;
+  margin: 0;
+  border-radius: 8rpx;
+  background: #eef5f1;
+  color: #22745f;
+  border: 2rpx solid #b8d1c7;
+  font-size: 32rpx;
+  font-weight: 700;
+}

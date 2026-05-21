@@ -36,6 +36,20 @@ export interface FamilyInvitation {
   acceptedByMemberId?: string;
 }
 
+export type ReminderType = "birthday" | "medicine" | "exercise";
+
+export interface Reminder {
+  id: string;
+  familyId: string;
+  type: ReminderType;
+  title: string;
+  dueAt: string;
+  assigneeMemberId?: string;
+  createdByMemberId: string;
+  enabled: boolean;
+  completedAt?: string;
+}
+
 const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
     wx.request({
@@ -89,6 +103,32 @@ export const api = {
     return request<ApiResponse<{ invitation: FamilyInvitation; member: FamilyMember }>>({
       method: "POST",
       url: `/v1/invitations/${code}/accept`,
+      data: body,
+    });
+  },
+
+  listReminders(familyId: string) {
+    return request<ApiResponse<Reminder[]>>({
+      method: "GET",
+      url: `/v1/families/${familyId}/reminders`,
+    });
+  },
+
+  createReminder(
+    familyId: string,
+    body: { type: ReminderType; title: string; dueAt: string; createdByMemberId: string; assigneeMemberId?: string },
+  ) {
+    return request<ApiResponse<Reminder>>({
+      method: "POST",
+      url: `/v1/families/${familyId}/reminders`,
+      data: body,
+    });
+  },
+
+  completeReminder(reminderId: string, body: { actorMemberId: string }) {
+    return request<ApiResponse<Reminder>>({
+      method: "POST",
+      url: `/v1/reminders/${reminderId}/complete`,
       data: body,
     });
   },

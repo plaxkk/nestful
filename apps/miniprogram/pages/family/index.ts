@@ -91,6 +91,10 @@ Page({
     }
   },
 
+  onOpenReminders() {
+    wx.navigateTo({ url: "/pages/reminders/index" });
+  },
+
   onShareAppMessage() {
     return {
       title: `加入${this.data.familyName}`,

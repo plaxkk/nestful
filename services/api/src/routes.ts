@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import type { FamilyRole } from "@family-housekeeper/shared";
+import type { FamilyRole, ReminderType } from "@family-housekeeper/shared";
 import { familyStore } from "./store.js";
-import { canAddMemberDirectly, canCreateInvitation, redactMemberForList } from "./privacy.js";
+import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -23,6 +23,13 @@ const optionalRole = (body: Record<string, unknown>, key: string): FamilyRole | 
   const roles: FamilyRole[] = ["admin", "member", "elder", "child", "guest"];
 
   return typeof value === "string" && roles.includes(value as FamilyRole) ? (value as FamilyRole) : undefined;
+};
+
+const optionalReminderType = (body: Record<string, unknown>, key: string): ReminderType | undefined => {
+  const value = body[key];
+  const types: ReminderType[] = ["birthday", "medicine", "exercise"];
+
+  return typeof value === "string" && types.includes(value as ReminderType) ? (value as ReminderType) : undefined;
 };
 
 export async function registerRoutes(server: FastifyInstance) {
@@ -215,6 +222,76 @@ export async function registerRoutes(server: FastifyInstance) {
     return {
       data: familyStore.listReminders(familyId),
     };
+  });
+
+  server.post("/v1/families/:familyId/reminders", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const type = optionalReminderType(request.body, "type");
+    const title = requiredString(request.body, "title");
+    const dueAt = requiredString(request.body, "dueAt");
+    const createdByMemberId = requiredString(request.body, "createdByMemberId");
+    const assigneeMemberId = optionalString(request.body, "assigneeMemberId");
+    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+    const assignee = assigneeMemberId ? familyStore.getMember(assigneeMemberId) : undefined;
+
+    if (!type || !title || !dueAt || !createdByMemberId) {
+      return reply.code(400).send({ error: "missing_required_fields" });
+    }
+
+    if (Number.isNaN(Date.parse(dueAt))) {
+      return reply.code(400).send({ error: "invalid_due_at" });
+    }
+
+    if (!isFamilyMember(creator, familyId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    if (assigneeMemberId && !isFamilyMember(assignee, familyId)) {
+      return reply.code(400).send({ error: "invalid_assignee_member" });
+    }
+
+    const reminder = familyStore.createReminder(familyId, {
+      type,
+      title,
+      dueAt,
+      createdByMemberId,
+      assigneeMemberId,
+    });
+
+    return reply.code(201).send({ data: reminder });
+  });
+
+  server.post("/v1/reminders/:reminderId/complete", async (request, reply) => {
+    const { reminderId } = request.params as { reminderId: string };
+    const reminder = familyStore.getReminder(reminderId);
+
+    if (!reminder) {
+      return reply.code(404).send({ error: "reminder_not_found" });
+    }
+
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const actorMemberId = requiredString(request.body, "actorMemberId");
+    const actor = actorMemberId ? familyStore.getMember(actorMemberId) : undefined;
+
+    if (!actorMemberId || !isFamilyMember(actor, reminder.familyId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    return reply.code(200).send({
+      data: familyStore.completeReminder(reminderId, actorMemberId),
+    });
   });
 
   server.get("/v1/families/:familyId/activities", async (request, reply) => {

@@ -80,6 +80,7 @@ export interface Reminder {
   assigneeMemberId?: string;
   createdByMemberId: string;
   enabled: boolean;
+  completedAt?: string;
 }
 
 export interface Activity {
