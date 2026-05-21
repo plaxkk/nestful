@@ -22,6 +22,12 @@
   line-height: 1.6;
 }
 
+.helper-text {
+  color: #66756d;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
 .form-panel {
   gap: 24rpx;
 }

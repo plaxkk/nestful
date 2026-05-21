@@ -15,6 +15,10 @@ Page({
 
     if (code) {
       this.loadInvitation(code);
+    } else {
+      this.setData({
+        invitationStatus: "缺少邀请码",
+      });
     }
   },
 
@@ -40,7 +44,15 @@ Page({
   async onJoinFamily() {
     const displayName = this.data.displayName.trim();
 
-    if (!this.data.code || !displayName) {
+    if (!this.data.code) {
+      wx.showToast({
+        title: "邀请链接不完整，请让家人重新发送",
+        icon: "none",
+      });
+      return;
+    }
+
+    if (!displayName) {
       wx.showToast({
         title: "请填写称呼",
         icon: "none",
@@ -69,7 +81,7 @@ Page({
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: "加入失败，请检查邀请",
+        title: "加入失败，请让家人重新发送邀请",
         icon: "none",
       });
     }

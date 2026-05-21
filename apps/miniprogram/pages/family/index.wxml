@@ -8,7 +8,7 @@
   <view class="panel invite-panel" wx:if="{{inviteCode}}">
     <text class="section-title">邀请已准备好</text>
     <text class="invite-code">{{inviteCode}}</text>
-    <text class="hint">点下面按钮，发给家人。</text>
+    <text class="hint">点下面按钮，发给家人。家人打开后填写称呼就能加入。</text>
     <button class="secondary-action" open-type="share">发给家人</button>
   </view>
 

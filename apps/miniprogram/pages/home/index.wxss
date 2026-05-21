@@ -26,6 +26,12 @@
   line-height: 1.6;
 }
 
+.helper-text {
+  color: #66756d;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
 .form-panel {
   display: flex;
   flex-direction: column;
@@ -59,9 +65,9 @@
 .action-item {
   padding: 30rpx;
   border-radius: 8rpx;
-  background: #ffffff;
+  background: #f9fbf8;
   border: 2rpx solid #d8e5df;
-  color: #33413a;
+  color: #4d5d54;
   font-size: 34rpx;
   font-weight: 600;
 }

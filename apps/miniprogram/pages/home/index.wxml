@@ -15,11 +15,13 @@
       <input class="input" value="{{ownerNameInput}}" bindinput="onOwnerNameInput" placeholder="例如：爸爸、妈妈、我" />
     </view>
     <button class="primary-action" bindtap="onCreateFamily">创建家庭空间</button>
-    <button class="secondary-action" bindtap="onOpenFamily">打开当前家庭</button>
+    <text class="helper-text">已经创建过的话，不用重新填写。</text>
+    <button class="secondary-action" bindtap="onOpenFamily">我已经建过，直接打开</button>
   </view>
 
   <view class="section">
-    <text class="section-title">以后可以做这些事</text>
+    <text class="section-title">接下来会陆续支持</text>
+    <text class="helper-text">这些只是功能预告，现在不用操作。</text>
     <view class="action-list">
       <view class="action-item" wx:for="{{quickActions}}" wx:key="*this">
         <text>{{item}}</text>
