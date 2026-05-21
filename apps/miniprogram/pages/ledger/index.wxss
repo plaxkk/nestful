@@ -1,0 +1,107 @@
+.ledger-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.header,
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.title {
+  color: #1f2a24;
+  font-size: 52rpx;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: #5d6b63;
+  font-size: 34rpx;
+  line-height: 1.6;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.section-title {
+  color: #1f2a24;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.picker-value {
+  min-height: 104rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #c9d8d1;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #1f2a24;
+  font-size: 36rpx;
+  line-height: 104rpx;
+}
+
+.empty-text {
+  padding: 30rpx;
+  border: 2rpx solid #d8e5df;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #5d6b63;
+  font-size: 32rpx;
+  line-height: 1.6;
+}
+
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.ledger-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 30rpx;
+  border: 2rpx solid #d8e5df;
+  border-radius: 8rpx;
+  background: #ffffff;
+}
+
+.ledger-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.ledger-title {
+  color: #1f2a24;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.ledger-meta {
+  color: #5d6b63;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
+.ledger-amount {
+  min-width: 170rpx;
+  text-align: right;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.ledger-amount.income {
+  color: #22745f;
+}
+
+.ledger-amount.expense {
+  color: #9a4b2f;
+}

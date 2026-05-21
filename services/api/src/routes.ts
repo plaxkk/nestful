@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { FamilyRole, ReminderType } from "@family-housekeeper/shared";
+import type { FamilyRole, LedgerCategory, LedgerEntryType, ReminderType } from "@family-housekeeper/shared";
 import { familyStore } from "./store.js";
 import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
 
@@ -30,6 +30,26 @@ const optionalReminderType = (body: Record<string, unknown>, key: string): Remin
   const types: ReminderType[] = ["birthday", "medicine", "exercise"];
 
   return typeof value === "string" && types.includes(value as ReminderType) ? (value as ReminderType) : undefined;
+};
+
+const optionalLedgerEntryType = (body: Record<string, unknown>, key: string): LedgerEntryType | undefined => {
+  const value = body[key];
+  const types: LedgerEntryType[] = ["expense", "income"];
+
+  return typeof value === "string" && types.includes(value as LedgerEntryType) ? (value as LedgerEntryType) : undefined;
+};
+
+const optionalLedgerCategory = (body: Record<string, unknown>, key: string): LedgerCategory | undefined => {
+  const value = body[key];
+  const categories: LedgerCategory[] = ["daily", "education", "health", "travel", "housing", "subscription", "other"];
+
+  return typeof value === "string" && categories.includes(value as LedgerCategory) ? (value as LedgerCategory) : undefined;
+};
+
+const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
 };
 
 export async function registerRoutes(server: FastifyInstance) {
@@ -304,6 +324,61 @@ export async function registerRoutes(server: FastifyInstance) {
     return {
       data: familyStore.listActivities(familyId),
     };
+  });
+
+  server.get("/v1/families/:familyId/ledger-entries", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    return {
+      data: familyStore.listLedgerEntries(familyId),
+    };
+  });
+
+  server.post("/v1/families/:familyId/ledger-entries", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const type = optionalLedgerEntryType(request.body, "type");
+    const category = optionalLedgerCategory(request.body, "category");
+    const title = requiredString(request.body, "title");
+    const amountCents = optionalPositiveInteger(request.body, "amountCents");
+    const paidByMemberId = requiredString(request.body, "paidByMemberId");
+    const occurredAt = requiredString(request.body, "occurredAt");
+    const paidByMember = paidByMemberId ? familyStore.getMember(paidByMemberId) : undefined;
+
+    if (!type || !category || !title || !amountCents || !paidByMemberId || !occurredAt) {
+      return reply.code(400).send({ error: "missing_required_fields" });
+    }
+
+    if (Number.isNaN(Date.parse(occurredAt))) {
+      return reply.code(400).send({ error: "invalid_occurred_at" });
+    }
+
+    if (!isFamilyMember(paidByMember, familyId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    return reply.code(201).send({
+      data: familyStore.createLedgerEntry(familyId, {
+        type,
+        category,
+        title,
+        amountCents,
+        paidByMemberId,
+        occurredAt,
+      }),
+    });
   });
 
   server.get("/v1/families/:familyId/audit-events", async (request, reply) => {

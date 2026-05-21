@@ -27,6 +27,7 @@ The smoke script now also verifies:
 - member list responses redact emergency contacts
 - family/invitation mutations create audit events
 - birthday/health reminder creation, listing, and completion work
+- household ledger entry creation and listing work
 
 ## Mini Program Manual Checks
 
@@ -59,6 +60,8 @@ Expected flow:
 11. Tap "查看生日和健康提醒".
 12. Create a reminder with type "吃药", then confirm it appears as "待提醒".
 13. Tap "完成" and confirm the reminder status changes to "已完成".
+14. Return to the family page and tap "打开家庭账本".
+15. Create one ledger entry, then confirm it appears in "最近记录".
 
 ## Elder-Friendly Manual Checks
 
@@ -73,7 +76,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 | Error prompts | Toasts say what to do next, e.g. restart API, create family first, ask family to resend invite. |
 | Empty states | Missing invitation code shows "缺少邀请码" instead of "待验证". |
 | Future features | Unfinished features are shown as previews and are not tappable cards. |
-| DevTools path | Home -> create family -> family -> reminders -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
+| DevTools path | Home -> create family -> family -> reminders / ledger -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
 
 ## Known MVP Boundaries
 
@@ -81,6 +84,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 - WeChat login is documented but not implemented.
 - Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
 - Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.
-- Ledger, memory wall, and group embedded experience are not implemented yet.
+- Ledger has an MVP create/list flow with family-wide visibility; fine-grained finance visibility and export are not implemented yet.
+- Memory wall and group embedded experience are not implemented yet.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.
 - `webapi_getwxaasyncsecinfo:fail` is a WeChat DevTools/AppID SDK warning seen during local debugging. The project does not call this API. Treat it as non-blocking if the family, invitation, and reminder flows still work.

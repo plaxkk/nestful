@@ -21,6 +21,8 @@ export type LedgerCategory =
   | "subscription"
   | "other";
 
+export type LedgerEntryType = "expense" | "income";
+
 export interface User {
   id: string;
   wechatOpenId?: string;
@@ -125,6 +127,7 @@ export interface HealthPlan {
 export interface LedgerEntry {
   id: string;
   familyId: string;
+  type: LedgerEntryType;
   category: LedgerCategory;
   title: string;
   amountCents: number;

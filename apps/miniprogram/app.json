@@ -3,6 +3,7 @@
     "pages/home/index",
     "pages/family/index",
     "pages/reminders/index",
+    "pages/ledger/index",
     "pages/join/index"
   ],
   "window": {

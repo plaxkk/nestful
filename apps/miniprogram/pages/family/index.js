@@ -95,6 +95,10 @@ Page({
     wx.navigateTo({ url: "/pages/reminders/index" });
   },
 
+  onOpenLedger() {
+    wx.navigateTo({ url: "/pages/ledger/index" });
+  },
+
   onShareAppMessage() {
     return {
       title: `加入${this.data.familyName}`,

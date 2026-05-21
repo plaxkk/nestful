@@ -50,6 +50,21 @@ export interface Reminder {
   completedAt?: string;
 }
 
+export type LedgerEntryType = "expense" | "income";
+export type LedgerCategory = "daily" | "education" | "health" | "travel" | "housing" | "subscription" | "other";
+
+export interface LedgerEntry {
+  id: string;
+  familyId: string;
+  type: LedgerEntryType;
+  category: LedgerCategory;
+  title: string;
+  amountCents: number;
+  paidByMemberId: string;
+  splitMemberIds: string[];
+  occurredAt: string;
+}
+
 const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
     wx.request({
@@ -129,6 +144,31 @@ export const api = {
     return request<ApiResponse<Reminder>>({
       method: "POST",
       url: `/v1/reminders/${reminderId}/complete`,
+      data: body,
+    });
+  },
+
+  listLedgerEntries(familyId: string) {
+    return request<ApiResponse<LedgerEntry[]>>({
+      method: "GET",
+      url: `/v1/families/${familyId}/ledger-entries`,
+    });
+  },
+
+  createLedgerEntry(
+    familyId: string,
+    body: {
+      type: LedgerEntryType;
+      category: LedgerCategory;
+      title: string;
+      amountCents: number;
+      paidByMemberId: string;
+      occurredAt: string;
+    },
+  ) {
+    return request<ApiResponse<LedgerEntry>>({
+      method: "POST",
+      url: `/v1/families/${familyId}/ledger-entries`,
       data: body,
     });
   },

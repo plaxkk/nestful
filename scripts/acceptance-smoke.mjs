@@ -146,6 +146,27 @@ const completeReminderResponse = await request(`/v1/reminders/${reminderResponse
 
 assert(completeReminderResponse.data.completedAt, "completed reminder missing completedAt");
 
+const ledgerEntryResponse = await request(`/v1/families/${family.id}/ledger-entries`, {
+  method: "POST",
+  body: JSON.stringify({
+    type: "expense",
+    category: "daily",
+    title: "家庭日常支出",
+    amountCents: 2000,
+    paidByMemberId: ownerMember.id,
+    occurredAt: new Date().toISOString(),
+  }),
+});
+
+assert(ledgerEntryResponse.data.id, "ledger entry id missing");
+assert(ledgerEntryResponse.data.amountCents === 2000, "ledger entry amount mismatch");
+
+const ledgerEntriesResponse = await request(`/v1/families/${family.id}/ledger-entries`);
+assert(
+  ledgerEntriesResponse.data.some((entry) => entry.id === ledgerEntryResponse.data.id),
+  "ledger list missing new entry",
+);
+
 console.log("acceptance smoke passed");
 console.log(
   JSON.stringify(
@@ -155,6 +176,7 @@ console.log(
       members: finalMembersResponse.data.length,
       auditEvents: auditResponse.data.length,
       reminderId: reminderResponse.data.id,
+      ledgerEntryId: ledgerEntryResponse.data.id,
     },
     null,
     2,

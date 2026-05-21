@@ -1,0 +1,49 @@
+<view class="page ledger-page">
+  <view class="panel header">
+    <text class="title">家庭账本</text>
+    <text class="subtitle">先简单记一笔收入或支出，家里人可以一起看清楚钱花在哪里。</text>
+  </view>
+
+  <view class="panel form-panel">
+    <text class="section-title">记一笔</text>
+    <view class="field">
+      <text class="label">类型</text>
+      <picker mode="selector" range="{{entryTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="picker-value">{{entryTypes[typeIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">分类</text>
+      <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categories[categoryIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">标题</text>
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：买菜、药费、会员费" />
+    </view>
+    <view class="field">
+      <text class="label">金额（元）</text>
+      <input class="input" type="digit" value="{{amountInput}}" bindinput="onAmountInput" placeholder="例如：20" />
+    </view>
+    <view class="field">
+      <text class="label">日期</text>
+      <input class="input" value="{{occurredAtInput}}" bindinput="onOccurredAtInput" placeholder="例如：2026-05-21" />
+    </view>
+    <button class="primary-action" bindtap="onCreateLedgerEntry">保存这一笔</button>
+  </view>
+
+  <view class="section">
+    <text class="section-title">最近记录</text>
+    <text class="empty-text" wx:if="{{!loading && ledgerEntries.length === 0}}">还没有记录。先记一笔家庭支出或收入。</text>
+    <view class="ledger-list">
+      <view class="ledger-row" wx:for="{{ledgerEntries}}" wx:key="id">
+        <view class="ledger-main">
+          <text class="ledger-title">{{item.title}}</text>
+          <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>
+        </view>
+        <text class="ledger-amount {{item.isIncome ? 'income' : 'expense'}}">{{item.amountText}}</text>
+      </view>
+    </view>
+  </view>
+</view>

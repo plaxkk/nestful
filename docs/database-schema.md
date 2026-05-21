@@ -148,13 +148,29 @@ create table audit_events (
 );
 ```
 
+### ledger_entries
+
+```sql
+create table ledger_entries (
+  id text primary key,
+  family_id text not null references families(id),
+  type text not null check (type in ('expense', 'income')),
+  category text not null check (category in ('daily', 'education', 'health', 'travel', 'housing', 'subscription', 'other')),
+  title text not null,
+  amount_cents integer not null check (amount_cents > 0),
+  paid_by_member_id text not null references family_members(id),
+  split_member_ids text[] not null,
+  occurred_at timestamptz not null
+);
+```
+
 ## Privacy Rules
 
 1. Every record with family data is scoped by `family_id`.
 2. A member can only act inside their own family.
 3. Only `admin` can create invitations and directly add members.
 4. Public member lists redact sensitive fields such as `emergencyContact`.
-5. Health, finance, documents, and account registry data must use explicit visibility scopes when implemented.
+5. Health, documents, and account registry data must use explicit visibility scopes when implemented. Finance is family-visible in the MVP and needs finer scopes before storing sensitive records.
 6. Sensitive mutations should produce audit events.
 7. The client must never be trusted to provide arbitrary `familyId` / `memberId` without server validation.
 
@@ -170,7 +186,7 @@ Implemented in `services/api/src/privacy.ts`:
 Implemented in `services/api/src/store.ts`:
 
 - local file persistence
-- audit event creation for family, member, invitation, reminder creation, reminder completion, and invitation acceptance
+- audit event creation for family, member, invitation, reminder, ledger entry creation, reminder completion, and invitation acceptance
 - duplicate membership check on invitation acceptance
 
 Implemented in `services/api/src/routes.ts`:
@@ -179,3 +195,4 @@ Implemented in `services/api/src/routes.ts`:
 - direct member creation requires an admin actor
 - member lists return redacted member data
 - reminder creator/completer and optional assignee must be members of the same family
+- ledger entry payer must be a member of the same family

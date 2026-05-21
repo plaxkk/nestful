@@ -8,6 +8,9 @@ import type {
   FamilyInvitation,
   FamilyMember,
   FamilyRole,
+  LedgerCategory,
+  LedgerEntry,
+  LedgerEntryType,
   Reminder,
   ReminderType,
 } from "@family-housekeeper/shared";
@@ -42,12 +45,23 @@ export interface CreateReminderInput {
   assigneeMemberId?: string;
 }
 
+export interface CreateLedgerEntryInput {
+  type: LedgerEntryType;
+  category: LedgerCategory;
+  title: string;
+  amountCents: number;
+  paidByMemberId: string;
+  splitMemberIds?: string[];
+  occurredAt: string;
+}
+
 interface StoreState {
   families: Family[];
   members: FamilyMember[];
   invitations: FamilyInvitation[];
   reminders: Reminder[];
   activities: Activity[];
+  ledgerEntries: LedgerEntry[];
   auditEvents: AuditEvent[];
 }
 
@@ -57,6 +71,7 @@ const defaultState = (): StoreState => ({
   invitations: [],
   reminders: [],
   activities: [],
+  ledgerEntries: [],
   auditEvents: [],
 });
 
@@ -78,6 +93,7 @@ const readState = (): StoreState => {
       invitations: parsed.invitations ?? [],
       reminders: parsed.reminders ?? [],
       activities: parsed.activities ?? [],
+      ledgerEntries: parsed.ledgerEntries ?? [],
       auditEvents: parsed.auditEvents ?? [],
     };
   } catch (error) {
@@ -303,6 +319,36 @@ export const familyStore = {
 
   listActivities(familyId: string) {
     return state.activities.filter((activity) => activity.familyId === familyId);
+  },
+
+  listLedgerEntries(familyId: string) {
+    return state.ledgerEntries.filter((entry) => entry.familyId === familyId);
+  },
+
+  createLedgerEntry(familyId: string, input: CreateLedgerEntryInput) {
+    const entry: LedgerEntry = {
+      id: randomUUID(),
+      familyId,
+      type: input.type,
+      category: input.category,
+      title: input.title,
+      amountCents: input.amountCents,
+      paidByMemberId: input.paidByMemberId,
+      splitMemberIds: input.splitMemberIds ?? [input.paidByMemberId],
+      occurredAt: input.occurredAt,
+    };
+
+    state.ledgerEntries.push(entry);
+    audit({
+      familyId,
+      actorMemberId: input.paidByMemberId,
+      action: "ledger_entry.created",
+      resourceType: "ledger_entry",
+      resourceId: entry.id,
+    });
+    persist();
+
+    return entry;
   },
 
   listAuditEvents(familyId: string) {

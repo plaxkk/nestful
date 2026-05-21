@@ -162,6 +162,31 @@ Marks a reminder as completed and records `completedAt`.
 
 `GET /v1/families/:familyId/activities`
 
+## Ledger
+
+`GET /v1/families/:familyId/ledger-entries`
+
+Lists MVP household ledger entries. Entries are visible to the family in this MVP.
+
+`POST /v1/families/:familyId/ledger-entries`
+
+Creates one household ledger entry. The payer must be a member of the same family.
+
+```json
+{
+  "type": "expense",
+  "category": "daily",
+  "title": "买菜",
+  "amountCents": 2000,
+  "paidByMemberId": "member-id",
+  "occurredAt": "2026-05-21T00:00:00.000Z"
+}
+```
+
+Supported `type`: `expense`, `income`.
+
+Supported `category`: `daily`, `education`, `health`, `travel`, `housing`, `subscription`, `other`.
+
 ## Audit
 
 `GET /v1/families/:familyId/audit-events`

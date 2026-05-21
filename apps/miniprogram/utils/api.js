@@ -79,6 +79,21 @@ const api = {
       data: body,
     });
   },
+
+  listLedgerEntries(familyId) {
+    return request({
+      method: "GET",
+      url: `/v1/families/${familyId}/ledger-entries`,
+    });
+  },
+
+  createLedgerEntry(familyId, body) {
+    return request({
+      method: "POST",
+      url: `/v1/families/${familyId}/ledger-entries`,
+      data: body,
+    });
+  },
 };
 
 module.exports = {
