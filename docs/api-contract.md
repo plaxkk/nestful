@@ -66,12 +66,15 @@ Returns one family.
 
 Lists family members.
 
+Sensitive fields such as `emergencyContact` are redacted in list responses.
+
 `POST /v1/families/:familyId/members`
 
 Adds a member directly. This is useful for admins and test data; normal WeChat onboarding should use invitations.
 
 ```json
 {
+  "createdByMemberId": "admin-member-id",
   "displayName": "妈妈",
   "role": "elder",
   "birthday": "1965-03-12",
@@ -86,6 +89,8 @@ Adds a member directly. This is useful for admins and test data; normal WeChat o
 `POST /v1/families/:familyId/invitations`
 
 Creates an invitation for a family share card.
+
+The creator must be an admin member in the same family.
 
 ```json
 {
@@ -126,3 +131,9 @@ Accepts an invitation and creates a member.
 `GET /v1/families/:familyId/reminders`
 
 `GET /v1/families/:familyId/activities`
+
+## Audit
+
+`GET /v1/families/:familyId/audit-events`
+
+Lists MVP audit events for family-scoped mutations.

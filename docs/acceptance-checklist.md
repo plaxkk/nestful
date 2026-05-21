@@ -21,6 +21,12 @@ Expected smoke output:
 acceptance smoke passed
 ```
 
+The smoke script now also verifies:
+
+- cross-family invitation creation is rejected
+- member list responses redact emergency contacts
+- family/invitation mutations create audit events
+
 ## Mini Program Manual Checks
 
 The current local API address for WeChat DevTools is:
@@ -49,8 +55,8 @@ Expected flow:
 
 ## Known MVP Boundaries
 
-- Data is in memory. Restarting the API clears families, members, and invitations.
+- Data persists to a local JSON file at `.data/family-housekeeper.json`; this is still an MVP stand-in for the target SQL database.
 - WeChat login is documented but not implemented.
-- Database schema and privacy permissions are the next implementation task.
+- Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
 - Birthday, health, ledger, memory wall, and group embedded experience are not implemented yet.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.

@@ -71,6 +71,7 @@ This avoids simulator timeouts seen with `127.0.0.1`.
 - [Product Requirements](docs/product-requirements.md)
 - [Architecture](docs/architecture.md)
 - [API Contract](docs/api-contract.md)
+- [Database Schema and Privacy Permissions](docs/database-schema.md)
 - [WeChat Login and Invite Plan](docs/wechat-login-invite-plan.md)
 - [WeChat Embedded Experience Plan](docs/wechat-embedded-experience-plan.md)
 - [Acceptance Checklist](docs/acceptance-checklist.md)

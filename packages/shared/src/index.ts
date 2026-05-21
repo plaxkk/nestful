@@ -61,6 +61,16 @@ export interface FamilyInvitation {
   acceptedByMemberId?: string;
 }
 
+export interface AuditEvent {
+  id: string;
+  familyId: string;
+  actorMemberId?: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  createdAt: string;
+}
+
 export interface Reminder {
   id: string;
   familyId: string;

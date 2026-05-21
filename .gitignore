@@ -6,6 +6,7 @@ coverage/
 .env
 .env.*
 !.env.example
+.data/
 miniprogram_npm/
 project.private.config.json
 *.log

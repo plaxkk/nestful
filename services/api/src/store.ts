@@ -1,5 +1,15 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Activity, Family, FamilyInvitation, FamilyMember, FamilyRole, Reminder } from "@family-housekeeper/shared";
+import type {
+  Activity,
+  AuditEvent,
+  Family,
+  FamilyInvitation,
+  FamilyMember,
+  FamilyRole,
+  Reminder,
+} from "@family-housekeeper/shared";
 
 export interface CreateFamilyInput {
   name: string;
@@ -23,23 +33,74 @@ export interface CreateInvitationInput {
   expiresAt?: string;
 }
 
-const families: Family[] = [];
-const members: FamilyMember[] = [];
-const invitations: FamilyInvitation[] = [];
-const reminders: Reminder[] = [];
-const activities: Activity[] = [];
+interface StoreState {
+  families: Family[];
+  members: FamilyMember[];
+  invitations: FamilyInvitation[];
+  reminders: Reminder[];
+  activities: Activity[];
+  auditEvents: AuditEvent[];
+}
+
+const defaultState = (): StoreState => ({
+  families: [],
+  members: [],
+  invitations: [],
+  reminders: [],
+  activities: [],
+  auditEvents: [],
+});
+
+const dataFile = resolve(process.env.DATA_FILE ?? ".data/family-housekeeper.json");
 
 const now = () => new Date().toISOString();
 
 const createCode = () => randomUUID().replaceAll("-", "").slice(0, 10);
 
+const readState = (): StoreState => {
+  try {
+    const parsed = JSON.parse(readFileSync(dataFile, "utf8")) as Partial<StoreState>;
+
+    return {
+      ...defaultState(),
+      ...parsed,
+      families: parsed.families ?? [],
+      members: parsed.members ?? [],
+      invitations: parsed.invitations ?? [],
+      reminders: parsed.reminders ?? [],
+      activities: parsed.activities ?? [],
+      auditEvents: parsed.auditEvents ?? [],
+    };
+  } catch (error) {
+    return defaultState();
+  }
+};
+
+let state = readState();
+
+const persist = () => {
+  mkdirSync(dirname(dataFile), { recursive: true });
+  const tempFile = `${dataFile}.${process.pid}.tmp`;
+
+  writeFileSync(tempFile, `${JSON.stringify(state, null, 2)}\n`);
+  renameSync(tempFile, dataFile);
+};
+
+const audit = (event: Omit<AuditEvent, "id" | "createdAt">) => {
+  state.auditEvents.push({
+    id: randomUUID(),
+    createdAt: now(),
+    ...event,
+  });
+};
+
 export const familyStore = {
   listFamilies() {
-    return families;
+    return state.families;
   },
 
   getFamily(familyId: string) {
-    return families.find((family) => family.id === familyId);
+    return state.families.find((family) => family.id === familyId);
   },
 
   createFamily(input: CreateFamilyInput) {
@@ -59,21 +120,29 @@ export const familyStore = {
       joinedAt: createdAt,
     };
 
-    families.push(family);
-    members.push(ownerMember);
+    state.families.push(family);
+    state.members.push(ownerMember);
+    audit({
+      familyId: family.id,
+      actorMemberId: ownerMember.id,
+      action: "family.created",
+      resourceType: "family",
+      resourceId: family.id,
+    });
+    persist();
 
     return { family, ownerMember };
   },
 
   listMembers(familyId: string) {
-    return members.filter((member) => member.familyId === familyId);
+    return state.members.filter((member) => member.familyId === familyId);
   },
 
   getMember(memberId: string) {
-    return members.find((member) => member.id === memberId);
+    return state.members.find((member) => member.id === memberId);
   },
 
-  createMember(familyId: string, input: CreateMemberInput) {
+  createMember(familyId: string, input: CreateMemberInput, actorMemberId?: string) {
     const member: FamilyMember = {
       id: randomUUID(),
       familyId,
@@ -87,7 +156,15 @@ export const familyStore = {
       joinedAt: now(),
     };
 
-    members.push(member);
+    state.members.push(member);
+    audit({
+      familyId,
+      actorMemberId,
+      action: "member.created",
+      resourceType: "member",
+      resourceId: member.id,
+    });
+    persist();
 
     return member;
   },
@@ -103,13 +180,21 @@ export const familyStore = {
       expiresAt: input.expiresAt,
     };
 
-    invitations.push(invitation);
+    state.invitations.push(invitation);
+    audit({
+      familyId,
+      actorMemberId: input.createdByMemberId,
+      action: "invitation.created",
+      resourceType: "invitation",
+      resourceId: invitation.id,
+    });
+    persist();
 
     return invitation;
   },
 
   getInvitationByCode(code: string) {
-    return invitations.find((invitation) => invitation.code === code);
+    return state.invitations.find((invitation) => invitation.code === code);
   },
 
   acceptInvitation(code: string, input: CreateMemberInput) {
@@ -123,22 +208,51 @@ export const familyStore = {
       return undefined;
     }
 
-    const member = this.createMember(invitation.familyId, {
-      ...input,
-      role: invitation.role,
-    });
+    const alreadyMember = input.userId
+      ? state.members.some((member) => member.familyId === invitation.familyId && member.userId === input.userId)
+      : false;
+
+    if (alreadyMember) {
+      return undefined;
+    }
+
+    const member = this.createMember(
+      invitation.familyId,
+      {
+        ...input,
+        role: invitation.role,
+      },
+      invitation.createdByMemberId,
+    );
 
     invitation.acceptedAt = now();
     invitation.acceptedByMemberId = member.id;
+    audit({
+      familyId: invitation.familyId,
+      actorMemberId: member.id,
+      action: "invitation.accepted",
+      resourceType: "invitation",
+      resourceId: invitation.id,
+    });
+    persist();
 
     return { invitation, member };
   },
 
   listReminders(familyId: string) {
-    return reminders.filter((reminder) => reminder.familyId === familyId);
+    return state.reminders.filter((reminder) => reminder.familyId === familyId);
   },
 
   listActivities(familyId: string) {
-    return activities.filter((activity) => activity.familyId === familyId);
+    return state.activities.filter((activity) => activity.familyId === familyId);
+  },
+
+  listAuditEvents(familyId: string) {
+    return state.auditEvents.filter((event) => event.familyId === familyId);
+  },
+
+  resetForTests() {
+    state = defaultState();
+    persist();
   },
 };
