@@ -4,6 +4,7 @@ import { session } from "../../utils/session";
 Page({
   data: {
     code: "",
+    codeInput: "",
     displayName: "",
     invitationStatus: "待验证"
   },
@@ -11,7 +12,7 @@ Page({
   onLoad(query: Record<string, string | undefined>) {
     const code = query.code ?? "";
 
-    this.setData({ code });
+    this.setData({ code, codeInput: code });
 
     if (code) {
       void this.loadInvitation(code);
@@ -26,6 +27,28 @@ Page({
     this.setData({
       displayName: event.detail.value
     });
+  },
+
+  onCodeInput(event: WechatMiniprogram.Input) {
+    this.setData({
+      codeInput: event.detail.value,
+      code: event.detail.value.trim(),
+      invitationStatus: event.detail.value.trim() ? "待验证" : "缺少邀请码"
+    });
+  },
+
+  onCheckInvitation() {
+    const code = this.data.codeInput.trim();
+
+    if (!code) {
+      this.setData({
+        invitationStatus: "缺少邀请码"
+      });
+      return;
+    }
+
+    this.setData({ code });
+    void this.loadInvitation(code);
   },
 
   async loadInvitation(code: string) {
@@ -44,9 +67,11 @@ Page({
   async onJoinFamily() {
     const displayName = this.data.displayName.trim();
 
-    if (!this.data.code) {
+    const code = this.data.codeInput.trim() || this.data.code;
+
+    if (!code) {
       wx.showToast({
-        title: "邀请链接不完整，请让家人重新发送",
+        title: "请先输入邀请码",
         icon: "none"
       });
       return;
@@ -63,7 +88,7 @@ Page({
     wx.showLoading({ title: "加入中" });
 
     try {
-      const response = await api.acceptInvitation(this.data.code, {
+      const response = await api.acceptInvitation(code, {
         displayName,
         userId: `local-${Date.now()}`
       });

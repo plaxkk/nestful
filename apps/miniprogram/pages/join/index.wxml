@@ -1,7 +1,8 @@
 <view class="page join-page">
-  <view class="panel">
-    <text class="title">加入家庭</text>
-    <text class="subtitle">家人邀请你进来。先看邀请是否有效，再写上你的称呼。</text>
+  <view class="join-hero">
+    <view class="invite-icon">家</view>
+    <text class="page-title">加入家庭</text>
+    <text class="page-subtitle">家人邀请你进来。先看邀请是否有效，再写上你的称呼。</text>
   </view>
 
   <view class="panel form-panel">
@@ -9,6 +10,11 @@
       <text class="label">邀请状态</text>
       <text class="status">{{invitationStatus}}</text>
     </view>
+    <view class="field">
+      <text class="label">邀请码</text>
+      <input class="input" value="{{codeInput}}" bindinput="onCodeInput" placeholder="请输入家人发来的数字" />
+    </view>
+    <button class="secondary-action" bindtap="onCheckInvitation">检查邀请码</button>
     <view class="field">
       <text class="label">你的称呼</text>
       <input class="input" value="{{displayName}}" bindinput="onDisplayNameInput" placeholder="例如：妈妈、哥哥、外婆" />

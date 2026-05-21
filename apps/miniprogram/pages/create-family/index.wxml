@@ -1,0 +1,20 @@
+<view class="page create-page">
+  <view class="create-main">
+    <view class="copy-block">
+      <text class="page-title">创建家庭</text>
+      <text class="page-subtitle">建立家里人一起用的小本子，先给它起个名字。</text>
+    </view>
+
+    <view class="form-panel">
+      <view class="field">
+        <text class="label">给家庭起个名字</text>
+        <input class="input" value="{{familyNameInput}}" bindinput="onFamilyNameInput" placeholder="例如：幸福的一家" />
+        <text class="helper-text">随时可以在设置中修改。</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <button class="primary-action" bindtap="onCreateFamily">完成创建</button>
+  </view>
+</view>

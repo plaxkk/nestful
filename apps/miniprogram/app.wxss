@@ -1,63 +1,139 @@
 page {
-  background: #f7f7f2;
-  color: #1f2a24;
+  background: #fff8f6;
+  color: #2b1611;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
 .page {
   min-height: 100vh;
-  padding: 30rpx;
+  padding: 36rpx 44rpx 48rpx;
   box-sizing: border-box;
+}
+
+.paper-pattern {
+  background-color: #fff8f6;
+  background-image: radial-gradient(#ffdad2 2rpx, transparent 2rpx);
+  background-size: 44rpx 44rpx;
 }
 
 .panel {
   padding: 34rpx;
-  border: 2rpx solid #d8e5df;
-  border-radius: 8rpx;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
   background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(78, 52, 46, 0.05);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 14rpx;
 }
 
 .label {
-  color: #415048;
+  color: #2b1611;
   font-size: 30rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .input {
   height: 104rpx;
   padding: 0 24rpx;
-  border: 2rpx solid #c9d8d1;
-  border-radius: 8rpx;
+  border: 3rpx solid #c4c6cd;
+  border-radius: 16rpx;
   background: #ffffff;
-  color: #1f2a24;
+  color: #2b1611;
   font-size: 36rpx;
 }
 
 .primary-action {
   width: 100%;
-  min-height: 108rpx;
+  min-height: 112rpx;
   margin: 0;
-  background: #22745f;
+  background: #041627;
   color: #ffffff;
-  border-radius: 8rpx;
+  border-radius: 24rpx;
   font-size: 36rpx;
   font-weight: 700;
+  box-shadow: 0 8rpx 18rpx rgba(4, 22, 39, 0.16);
 }
 
 .secondary-action {
   width: 100%;
   min-height: 98rpx;
   margin: 0;
-  background: #eef5f1;
-  color: #22745f;
-  border: 2rpx solid #b8d1c7;
-  border-radius: 8rpx;
+  background: transparent;
+  color: #041627;
+  border: 3rpx solid #041627;
+  border-radius: 24rpx;
   font-size: 34rpx;
+  font-weight: 700;
+}
+
+.page-title {
+  color: #041627;
+  font-size: 58rpx;
+  font-weight: 800;
+  line-height: 1.18;
+}
+
+.page-subtitle {
+  color: #44474c;
+  font-size: 34rpx;
+  line-height: 1.6;
+}
+
+.section-title {
+  color: #2b1611;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.section-note,
+.helper-text,
+.empty-text {
+  color: #63635f;
+  font-size: 30rpx;
+  line-height: 1.55;
+}
+
+.empty-text {
+  padding: 30rpx;
+  border: 2rpx solid #ffe2db;
+  border-radius: 20rpx;
+  background: #ffffff;
+}
+
+.picker-value {
+  min-height: 104rpx;
+  padding: 0 24rpx;
+  border: 3rpx solid #c4c6cd;
+  border-radius: 16rpx;
+  background: #ffffff;
+  color: #2b1611;
+  font-size: 36rpx;
+  line-height: 104rpx;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64rpx;
+  color: #041627;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.back-button {
+  position: absolute;
+  left: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  color: #041627;
+  font-size: 48rpx;
   font-weight: 700;
 }

@@ -47,28 +47,35 @@ Open WeChat DevTools with:
 /Users/kk/repos/family-housekeeper
 ```
 
-Expected flow:
+Expected setup flow:
 
-1. Home page renders "家庭管家".
-2. Fill or keep default family name and display name.
-3. Tap "创建家庭空间".
-4. App navigates to "家庭空间".
-5. Member list includes the current user.
-6. Tap "第 2 步：邀请家人".
-7. Invite code and join path are displayed.
-8. Tap "发给家人" and confirm the share card path points to `/pages/join/index?code=...`.
-9. Open the join path in DevTools, fill a display name, and tap "确认加入家庭".
-10. App navigates back to the family page and the member list includes the new family member.
-11. Tap "查看生日和健康提醒".
-12. Create a reminder with type "吃药", then confirm it appears as "待提醒".
-13. Tap "完成" and confirm the reminder status changes to "已完成".
-14. Return to the family page and tap "打开家庭账本".
-15. Create one ledger entry, then confirm it appears in "最近记录".
-16. Return to the family page and tap "打开家庭数字空间".
-17. Create one document/account/memory item, then confirm it appears in "已经放好的东西".
-18. Return to the family page and tap "发起家庭活动".
-19. Create one activity, then confirm it appears in "已经发起的活动".
-20. Tap "复制群里说明" and confirm a family-group friendly description is copied.
+1. Home page renders "家庭助手" with only two large choices: "创建我的家庭" and "输入邀请码加入".
+2. Tap "创建我的家庭".
+3. Create Family page renders one input: "给家庭起个名字".
+4. Tap "完成创建".
+5. App navigates to the family overview.
+6. Family overview shows the family name, member count, and a clear next step: "生成家人邀请码".
+7. Tap "生成家人邀请码".
+8. Large invitation digits are displayed.
+9. Tap "微信发送邀请" and confirm the share card path points to `/pages/join/index?code=...`.
+10. Tap "复制邀请码" and confirm the code is copied.
+11. Open the join path in DevTools, or tap "输入邀请码加入" on the home page and type the code.
+12. Join page shows invitation status, code input, display-name input, and "确认加入家庭".
+13. Fill a display name and tap "确认加入家庭".
+14. App navigates back to the family page and the member list includes the new family member.
+
+Expected family-task flow:
+
+1. In family overview, "今天要处理" contains entries for birthday/health, activity, memory wall, and ledger.
+2. Tap "生日和健康"; create a reminder with type "吃药", then confirm it appears as "待提醒".
+3. Tap "完成" and confirm the reminder status changes to "已完成".
+4. Return to the family page and tap "家庭账本".
+5. Create one ledger entry, then confirm it appears in "最近记录".
+6. Return to the family page and tap "记忆墙".
+7. Create one document/account/memory item, then confirm it appears in "已经放好的东西".
+8. Return to the family page and tap "家庭活动".
+9. Create one activity, then confirm it appears in "已经发起的活动".
+10. Tap "复制群里说明" and confirm a family-group friendly description is copied.
 
 ## Elder-Friendly Manual Checks
 
@@ -82,8 +89,9 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 | Plain language | No visible terms like MVP, module, dashboard, workspace, schema, or role. |
 | Error prompts | Toasts say what to do next, e.g. restart API, create family first, ask family to resend invite. |
 | Empty states | Missing invitation code shows "缺少邀请码" instead of "待验证". |
-| Future features | Unfinished features are shown as previews and are not tappable cards. |
-| DevTools path | Home -> create family -> family -> reminders / ledger / digital space / activities -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
+| First screen | Home has only two choices: create a family or join by invitation code. |
+| Overview | Family overview leads with invite/setup status and "今天要处理", not a dense feature grid. |
+| DevTools path | Home -> create family -> family -> invite -> join -> reminders / ledger / digital space / activities can be completed in WeChat DevTools without guessing the next step. |
 
 ## Known MVP Boundaries
 

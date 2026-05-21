@@ -1,0 +1,30 @@
+.create-page {
+  display: flex;
+  flex-direction: column;
+  gap: 56rpx;
+  background: #fff8f6;
+}
+
+.create-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 80rpx;
+  padding-top: 64rpx;
+}
+
+.copy-block {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.bottom-action {
+  padding-bottom: 28rpx;
+}

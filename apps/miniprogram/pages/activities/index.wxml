@@ -1,8 +1,8 @@
 <view class="page activities-page">
   <view class="header">
     <text class="eyebrow">把家人重新约到一起</text>
-    <text class="title">家庭活动日</text>
-    <text class="subtitle">发起一次吃饭、散步、视频聊天或家庭小会，让家人知道什么时候一起出现。</text>
+    <text class="page-title">家庭活动日</text>
+    <text class="page-subtitle">发起一次吃饭、散步、视频聊天或家庭小会，让家人知道什么时候一起出现。</text>
   </view>
 
   <view class="panel form-panel">

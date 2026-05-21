@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 30rpx;
-  background: #f6f1ea;
+  background: #fff8f6;
 }
 
 .header {
@@ -13,29 +13,17 @@
 }
 
 .eyebrow {
-  color: #8d5b3e;
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.title {
-  color: #251f1a;
-  font-size: 58rpx;
-  font-weight: 700;
-}
-
-.subtitle {
-  color: #6d6258;
-  font-size: 34rpx;
-  line-height: 1.6;
+  color: #9a4b2f;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .form-panel {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
-  border-color: #ded3c3;
-  background: #fffdfa;
+  border-color: #ffe2db;
+  background: #ffffff;
 }
 
 .section {
@@ -51,13 +39,13 @@
 }
 
 .section-title {
-  color: #251f1a;
+  color: #2b1611;
   font-size: 38rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .section-note {
-  color: #6d6258;
+  color: #44474c;
   font-size: 30rpx;
   line-height: 1.5;
 }
@@ -65,20 +53,20 @@
 .picker-value {
   min-height: 104rpx;
   padding: 0 24rpx;
-  border: 2rpx solid #d6cabb;
-  border-radius: 8rpx;
-  background: #fffdfa;
-  color: #251f1a;
+  border: 2rpx solid #c4c6cd;
+  border-radius: 24rpx;
+  background: #ffffff;
+  color: #2b1611;
   font-size: 36rpx;
   line-height: 104rpx;
 }
 
 .empty-text {
   padding: 30rpx;
-  border: 2rpx solid #e2d7c8;
-  border-radius: 8rpx;
-  background: #fffdfa;
-  color: #6d6258;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
+  color: #44474c;
   font-size: 32rpx;
   line-height: 1.6;
 }
@@ -94,9 +82,9 @@
   align-items: flex-start;
   gap: 18rpx;
   padding: 30rpx;
-  border: 2rpx solid #e2d7c8;
-  border-radius: 16rpx;
-  background: #fffdfa;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
 }
 
 .item-mark {
@@ -106,10 +94,10 @@
   width: 92rpx;
   height: 92rpx;
   border-radius: 50%;
-  background: #e9f1ec;
-  color: #22745f;
-  font-size: 28rpx;
-  font-weight: 700;
+  background: #ffe9e4;
+  color: #041627;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .item-main {
@@ -120,9 +108,9 @@
 }
 
 .item-title {
-  color: #251f1a;
+  color: #2b1611;
   font-size: 36rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .item-summary {
@@ -132,7 +120,7 @@
 }
 
 .item-meta {
-  color: #6d6258;
+  color: #44474c;
   font-size: 30rpx;
   line-height: 1.5;
 }

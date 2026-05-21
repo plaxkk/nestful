@@ -1,8 +1,8 @@
 <view class="page ledger-page">
   <view class="header">
     <text class="eyebrow">家庭的钱，慢慢记清楚</text>
-    <text class="title">家庭账本</text>
-    <text class="subtitle">像写家庭小账本一样记录，不算复杂账，只帮家里人看清每一笔。</text>
+    <text class="page-title">家庭账本</text>
+    <text class="page-subtitle">像写家庭小账本一样记录，不算复杂账，只帮家里人看清每一笔。</text>
   </view>
 
   <view class="summary-grid">

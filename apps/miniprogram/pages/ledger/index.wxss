@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 30rpx;
-  background: #f6f1ea;
+  background: #fff8f6;
 }
 
 .header {
@@ -16,26 +16,14 @@
   display: flex;
   flex-direction: column;
   gap: 24rpx;
-  border-color: #ded3c3;
-  background: #fffdfa;
-}
-
-.title {
-  color: #251f1a;
-  font-size: 58rpx;
-  font-weight: 700;
+  border-color: #ffe2db;
+  background: #ffffff;
 }
 
 .eyebrow {
-  color: #8d5b3e;
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.subtitle {
-  color: #6d6258;
-  font-size: 34rpx;
-  line-height: 1.6;
+  color: #9a4b2f;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .summary-grid {
@@ -52,31 +40,31 @@
   min-width: 280rpx;
   min-height: 160rpx;
   padding: 26rpx;
-  border: 2rpx solid #e2d7c8;
-  border-radius: 16rpx;
-  background: #fffdfa;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
 }
 
 .summary-card.primary {
   flex-basis: 100%;
-  background: #e9f1ec;
-  border-color: #b9d3c8;
+  background: #ffe9e4;
+  border-color: #ffdad2;
 }
 
 .summary-label {
-  color: #6d6258;
-  font-size: 28rpx;
-  font-weight: 700;
+  color: #44474c;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .summary-value {
-  color: #251f1a;
+  color: #2b1611;
   font-size: 46rpx;
   font-weight: 800;
 }
 
 .summary-value.income {
-  color: #22745f;
+  color: #041627;
 }
 
 .summary-value.expense {
@@ -84,8 +72,8 @@
 }
 
 .summary-helper {
-  color: #6d6258;
-  font-size: 28rpx;
+  color: #44474c;
+  font-size: 30rpx;
 }
 
 .section {
@@ -101,13 +89,13 @@
 }
 
 .section-title {
-  color: #251f1a;
+  color: #2b1611;
   font-size: 38rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .section-note {
-  color: #6d6258;
+  color: #44474c;
   font-size: 30rpx;
   line-height: 1.5;
 }
@@ -115,20 +103,20 @@
 .picker-value {
   min-height: 104rpx;
   padding: 0 24rpx;
-  border: 2rpx solid #d6cabb;
-  border-radius: 8rpx;
-  background: #fffdfa;
-  color: #251f1a;
+  border: 2rpx solid #c4c6cd;
+  border-radius: 24rpx;
+  background: #ffffff;
+  color: #2b1611;
   font-size: 36rpx;
   line-height: 104rpx;
 }
 
 .empty-text {
   padding: 30rpx;
-  border: 2rpx solid #e2d7c8;
-  border-radius: 8rpx;
-  background: #fffdfa;
-  color: #6d6258;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
+  color: #44474c;
   font-size: 32rpx;
   line-height: 1.6;
 }
@@ -144,9 +132,9 @@
   align-items: center;
   gap: 18rpx;
   padding: 30rpx;
-  border: 2rpx solid #e2d7c8;
-  border-radius: 16rpx;
-  background: #fffdfa;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
 }
 
 .ledger-mark {
@@ -156,17 +144,17 @@
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
-  font-size: 28rpx;
-  font-weight: 700;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .ledger-mark.income {
-  background: #e0eee7;
-  color: #22745f;
+  background: #ffe9e4;
+  color: #041627;
 }
 
 .ledger-mark.expense {
-  background: #f5e4da;
+  background: #ffe2db;
   color: #9a4b2f;
 }
 
@@ -178,13 +166,13 @@
 }
 
 .ledger-title {
-  color: #251f1a;
+  color: #2b1611;
   font-size: 36rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .ledger-meta {
-  color: #6d6258;
+  color: #44474c;
   font-size: 30rpx;
   line-height: 1.5;
 }
@@ -193,11 +181,11 @@
   min-width: 170rpx;
   text-align: right;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .ledger-amount.income {
-  color: #22745f;
+  color: #041627;
 }
 
 .ledger-amount.expense {

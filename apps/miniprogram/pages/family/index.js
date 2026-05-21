@@ -11,9 +11,17 @@ Page({
   data: {
     familyName: "",
     members: [],
+    memberCountText: "0 位家人",
     inviteCode: "",
+    inviteDigits: [],
     joinPath: "",
     loading: false,
+    nextActions: [
+      { title: "生日和健康", desc: "生日、吃药、运动都放这里", page: "reminders" },
+      { title: "家庭活动", desc: "约吃饭、散步或视频聊天", page: "activities" },
+      { title: "记忆墙", desc: "资料、账号说明和家庭记忆", page: "digital-space" },
+      { title: "家庭账本", desc: "把家里的钱慢慢记清楚", page: "ledger" },
+    ],
   },
 
   onShow() {
@@ -37,6 +45,7 @@ Page({
       const response = await api.listMembers(family.id);
       this.setData({
         members: response.data.map(withAvatarText),
+        memberCountText: `${response.data.length} 位家人`,
         loading: false,
       });
     } catch (error) {
@@ -80,6 +89,7 @@ Page({
       wx.hideLoading();
       this.setData({
         inviteCode: response.data.invitation.code,
+        inviteDigits: response.data.invitation.code.split(""),
         joinPath: response.data.joinPath,
       });
     } catch (error) {
@@ -105,6 +115,40 @@ Page({
 
   onOpenActivities() {
     wx.navigateTo({ url: "/pages/activities/index" });
+  },
+
+  onOpenFeature(event) {
+    const page = event.currentTarget.dataset.page;
+    const routes = {
+      reminders: "/pages/reminders/index",
+      activities: "/pages/activities/index",
+      "digital-space": "/pages/digital-space/index",
+      ledger: "/pages/ledger/index",
+    };
+
+    if (routes[page]) {
+      wx.navigateTo({ url: routes[page] });
+    }
+  },
+
+  onCopyInviteCode() {
+    if (!this.data.inviteCode) {
+      wx.showToast({
+        title: "请先生成邀请码",
+        icon: "none",
+      });
+      return;
+    }
+
+    wx.setClipboardData({
+      data: this.data.inviteCode,
+      success: () => {
+        wx.showToast({
+          title: "邀请码已复制",
+          icon: "success",
+        });
+      },
+    });
   },
 
   onShareAppMessage() {

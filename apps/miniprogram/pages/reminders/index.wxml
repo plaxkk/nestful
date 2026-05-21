@@ -1,7 +1,7 @@
 <view class="page reminders-page">
   <view class="panel header">
-    <text class="title">生日和健康提醒</text>
-    <text class="subtitle">把家人的生日、吃药、运动记在这里。完成后点一下，家里人都能看到。</text>
+    <text class="page-title">生日和健康提醒</text>
+    <text class="page-subtitle">把家人的生日、吃药、运动记在这里。完成后点一下，家里人都能看到。</text>
   </view>
 
   <view class="panel form-panel">

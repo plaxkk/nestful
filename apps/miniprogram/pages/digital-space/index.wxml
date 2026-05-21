@@ -1,8 +1,8 @@
 <view class="page digital-page">
   <view class="header">
     <text class="eyebrow">家里的东西，有地方放</text>
-    <text class="title">家庭数字空间</text>
-    <text class="subtitle">先用文字和链接整理资料、账号说明和记忆。密码和真实文件上传以后再接。</text>
+    <text class="page-title">家庭数字空间</text>
+    <text class="page-subtitle">先用文字和链接整理资料、账号说明和记忆。密码和真实文件上传以后再接。</text>
   </view>
 
   <view class="panel form-panel">

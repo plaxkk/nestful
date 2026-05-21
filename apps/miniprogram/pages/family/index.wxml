@@ -1,22 +1,46 @@
 <view class="page family-page">
-  <view class="panel family-header">
-    <text class="title">{{familyName}}</text>
-    <text class="subtitle">这里是家里的小本子。先把家人邀请进来。</text>
-    <button class="primary-action" bindtap="onCreateInvitation">第 2 步：邀请家人</button>
-    <button class="secondary-action" bindtap="onOpenReminders">查看生日和健康提醒</button>
-    <button class="secondary-action" bindtap="onOpenLedger">打开家庭账本</button>
-    <button class="secondary-action" bindtap="onOpenDigitalSpace">打开家庭数字空间</button>
-    <button class="secondary-action" bindtap="onOpenActivities">发起家庭活动</button>
+  <view class="family-hero">
+    <text class="eyebrow">家里的小本子</text>
+    <text class="page-title">{{familyName}}</text>
+    <text class="page-subtitle">先把家人邀请进来，再慢慢放生日、健康、活动、记忆和账本。</text>
+    <view class="member-pill">{{memberCountText}}</view>
   </view>
 
-  <view class="panel invite-panel" wx:if="{{inviteCode}}">
-    <text class="section-title">邀请已准备好</text>
-    <text class="invite-code">{{inviteCode}}</text>
-    <text class="hint">点下面按钮，发给家人。家人打开后填写称呼就能加入。</text>
-    <button class="secondary-action" open-type="share">发给家人</button>
+  <view class="panel invite-panel" wx:if="{{!inviteCode}}">
+    <text class="section-title">下一步：邀请家人</text>
+    <text class="section-note">生成一个大邀请码，发给家人。家人打开后填写称呼就能加入。</text>
+    <button class="primary-action" bindtap="onCreateInvitation">生成家人邀请码</button>
   </view>
 
-  <view class="section">
+  <view class="panel invite-card" wx:if="{{inviteCode}}">
+    <view class="invite-icon">家</view>
+    <text class="section-title">邀请家人</text>
+    <text class="section-note center">让家人打开家庭助手，输入这个数字即可加入。</text>
+    <view class="code-card">
+      <text class="code-label">家庭专属邀请码</text>
+      <view class="code-row">
+        <view class="code-tile" wx:for="{{inviteDigits}}" wx:key="*this">{{item}}</view>
+      </view>
+      <text class="section-note">24小时内有效</text>
+    </view>
+    <button class="primary-action" open-type="share">微信发送邀请</button>
+    <button class="secondary-action" bindtap="onCopyInviteCode">复制邀请码</button>
+  </view>
+
+  <view class="section today-section">
+    <text class="section-title">今天要处理</text>
+    <view class="feature-list">
+      <view class="feature-row" wx:for="{{nextActions}}" wx:key="page" data-page="{{item.page}}" bindtap="onOpenFeature">
+        <view class="feature-copy">
+          <text class="feature-title">{{item.title}}</text>
+          <text class="feature-desc">{{item.desc}}</text>
+        </view>
+        <text class="feature-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section members-section">
     <text class="section-title">家里人</text>
     <view class="member-list">
       <view class="member-row" wx:for="{{members}}" wx:key="id">
