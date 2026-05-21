@@ -103,6 +103,10 @@ Page({
     wx.navigateTo({ url: "/pages/digital-space/index" });
   },
 
+  onOpenActivities() {
+    wx.navigateTo({ url: "/pages/activities/index" });
+  },
+
   onShareAppMessage() {
     return {
       title: `加入${this.data.familyName}`,

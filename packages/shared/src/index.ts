@@ -94,6 +94,7 @@ export interface Activity {
   status: ActivityStatus;
   startsAt: string;
   location?: string;
+  description?: string;
   budgetCents?: number;
   createdByMemberId: string;
 }

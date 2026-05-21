@@ -109,6 +109,21 @@ const api = {
       data: body,
     });
   },
+
+  listActivities(familyId) {
+    return request({
+      method: "GET",
+      url: `/v1/families/${familyId}/activities`,
+    });
+  },
+
+  createActivity(familyId, body) {
+    return request({
+      method: "POST",
+      url: `/v1/families/${familyId}/activities`,
+      data: body,
+    });
+  },
 };
 
 module.exports = {

@@ -187,6 +187,23 @@ assert(
   "digital space list missing new item",
 );
 
+const activityResponse = await request(`/v1/families/${family.id}/activities`, {
+  method: "POST",
+  body: JSON.stringify({
+    title: "周末家庭聚会",
+    startsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    location: "家里",
+    description: "一起吃饭、聊天、看看近况",
+    createdByMemberId: ownerMember.id,
+  }),
+});
+
+assert(activityResponse.data.id, "activity id missing");
+assert(activityResponse.data.status === "scheduled", "activity should be scheduled");
+
+const activitiesResponse = await request(`/v1/families/${family.id}/activities`);
+assert(activitiesResponse.data.some((activity) => activity.id === activityResponse.data.id), "activity list missing new item");
+
 console.log("acceptance smoke passed");
 console.log(
   JSON.stringify(
@@ -198,6 +215,7 @@ console.log(
       reminderId: reminderResponse.data.id,
       ledgerEntryId: ledgerEntryResponse.data.id,
       digitalSpaceItemId: digitalSpaceItemResponse.data.id,
+      activityId: activityResponse.data.id,
     },
     null,
     2,

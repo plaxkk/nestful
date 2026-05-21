@@ -29,6 +29,7 @@ The smoke script now also verifies:
 - birthday/health reminder creation, listing, and completion work
 - household ledger entry creation and listing work
 - digital-space item creation and listing work
+- family activity creation and listing work
 
 ## Mini Program Manual Checks
 
@@ -65,6 +66,9 @@ Expected flow:
 15. Create one ledger entry, then confirm it appears in "最近记录".
 16. Return to the family page and tap "打开家庭数字空间".
 17. Create one document/account/memory item, then confirm it appears in "已经放好的东西".
+18. Return to the family page and tap "发起家庭活动".
+19. Create one activity, then confirm it appears in "已经发起的活动".
+20. Tap "复制群里说明" and confirm a family-group friendly description is copied.
 
 ## Elder-Friendly Manual Checks
 
@@ -79,7 +83,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 | Error prompts | Toasts say what to do next, e.g. restart API, create family first, ask family to resend invite. |
 | Empty states | Missing invitation code shows "缺少邀请码" instead of "待验证". |
 | Future features | Unfinished features are shown as previews and are not tappable cards. |
-| DevTools path | Home -> create family -> family -> reminders / ledger / digital space -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
+| DevTools path | Home -> create family -> family -> reminders / ledger / digital space / activities -> invite -> join can be completed in WeChat DevTools without guessing the next step. |
 
 ## Known MVP Boundaries
 
@@ -89,6 +93,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 - Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.
 - Ledger has an MVP create/list flow with family-wide visibility; fine-grained finance visibility and export are not implemented yet.
 - Digital space has an MVP create/list flow for document notes, account notes, and memory items. Real file upload, media upload, password storage, and fine-grained visibility are not implemented yet.
-- Group embedded experience is not implemented yet.
+- Family activity day has an MVP create/list/copy-share-text flow. Complex RSVP, calendar sync, payments, and group automation are not implemented yet.
+- Group embedded automation is not implemented yet.
 - Yellow DevTools warnings about base library or deprecated browser APIs can be ignored for this MVP acceptance.
 - `webapi_getwxaasyncsecinfo:fail` is a WeChat DevTools/AppID SDK warning seen during local debugging. The project does not call this API. Treat it as non-blocking if the family, invitation, and reminder flows still work.

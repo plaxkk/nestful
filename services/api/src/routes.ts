@@ -341,6 +341,47 @@ export async function registerRoutes(server: FastifyInstance) {
     };
   });
 
+  server.post("/v1/families/:familyId/activities", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const title = requiredString(request.body, "title");
+    const startsAt = requiredString(request.body, "startsAt");
+    const createdByMemberId = requiredString(request.body, "createdByMemberId");
+    const location = optionalString(request.body, "location");
+    const description = optionalString(request.body, "description");
+    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+
+    if (!title || !startsAt || !createdByMemberId) {
+      return reply.code(400).send({ error: "missing_required_fields" });
+    }
+
+    if (Number.isNaN(Date.parse(startsAt))) {
+      return reply.code(400).send({ error: "invalid_starts_at" });
+    }
+
+    if (!isFamilyMember(creator, familyId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    return reply.code(201).send({
+      data: familyStore.createActivity(familyId, {
+        title,
+        startsAt,
+        createdByMemberId,
+        location,
+        description,
+      }),
+    });
+  });
+
   server.get("/v1/families/:familyId/ledger-entries", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 

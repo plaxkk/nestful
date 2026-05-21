@@ -1,0 +1,50 @@
+<view class="page activities-page">
+  <view class="header">
+    <text class="eyebrow">把家人重新约到一起</text>
+    <text class="title">家庭活动日</text>
+    <text class="subtitle">发起一次吃饭、散步、视频聊天或家庭小会，让家人知道什么时候一起出现。</text>
+  </view>
+
+  <view class="panel form-panel">
+    <view class="section-heading">
+      <text class="section-title">发起活动</text>
+      <text class="section-note">先把时间、地点和一句说明写清楚。</text>
+    </view>
+    <view class="field">
+      <text class="label">活动名称</text>
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：周末家庭聚会" />
+    </view>
+    <view class="field">
+      <text class="label">时间</text>
+      <input class="input" value="{{startsAtInput}}" bindinput="onStartsAtInput" placeholder="例如：2026-05-24 10:00" />
+    </view>
+    <view class="field">
+      <text class="label">地点</text>
+      <input class="input" value="{{locationInput}}" bindinput="onLocationInput" placeholder="例如：家里、小区门口、线上视频" />
+    </view>
+    <view class="field">
+      <text class="label">说明</text>
+      <input class="input" value="{{descriptionInput}}" bindinput="onDescriptionInput" placeholder="例如：一起吃饭、聊聊近况" />
+    </view>
+    <button class="primary-action" bindtap="onCreateActivity">发起家庭活动</button>
+  </view>
+
+  <view class="section">
+    <view class="section-heading">
+      <text class="section-title">已经发起的活动</text>
+      <text class="section-note">复制说明发到家庭群，家人更容易看懂。</text>
+    </view>
+    <text class="empty-text" wx:if="{{!loading && activities.length === 0}}">还没有活动。先发起一次家庭聚会、散步或视频聊天。</text>
+    <view class="activity-list">
+      <view class="activity-row" wx:for="{{activities}}" wx:key="id">
+        <view class="activity-mark">活动</view>
+        <view class="activity-main">
+          <text class="activity-title">{{item.title}}</text>
+          <text class="activity-meta">{{item.startsAtText}} · {{item.locationText}} · {{item.statusLabel}}</text>
+          <text class="activity-desc">{{item.descriptionText}}</text>
+          <button class="secondary-action compact" data-text="{{item.shareText}}" bindtap="onCopyShareText">复制群里说明</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

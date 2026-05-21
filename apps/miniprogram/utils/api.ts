@@ -79,6 +79,18 @@ export interface DigitalSpaceItem {
   createdAt: string;
 }
 
+export interface Activity {
+  id: string;
+  familyId: string;
+  title: string;
+  status: "draft" | "scheduled" | "completed" | "cancelled";
+  startsAt: string;
+  location?: string;
+  description?: string;
+  budgetCents?: number;
+  createdByMemberId: string;
+}
+
 const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
     wx.request({
@@ -208,6 +220,24 @@ export const api = {
     return request<ApiResponse<DigitalSpaceItem>>({
       method: "POST",
       url: `/v1/families/${familyId}/digital-space-items`,
+      data: body,
+    });
+  },
+
+  listActivities(familyId: string) {
+    return request<ApiResponse<Activity[]>>({
+      method: "GET",
+      url: `/v1/families/${familyId}/activities`,
+    });
+  },
+
+  createActivity(
+    familyId: string,
+    body: { title: string; startsAt: string; createdByMemberId: string; location?: string; description?: string },
+  ) {
+    return request<ApiResponse<Activity>>({
+      method: "POST",
+      url: `/v1/families/${familyId}/activities`,
       data: body,
     });
   },

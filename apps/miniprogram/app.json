@@ -5,6 +5,7 @@
     "pages/reminders/index",
     "pages/ledger/index",
     "pages/digital-space/index",
+    "pages/activities/index",
     "pages/join/index"
   ],
   "window": {

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
   Activity,
+  ActivityStatus,
   AuditEvent,
   DigitalSpaceItem,
   DigitalSpaceItemKind,
@@ -65,6 +66,16 @@ export interface CreateDigitalSpaceItemInput {
   url?: string;
   occurredAt?: string;
   taggedMemberIds?: string[];
+}
+
+export interface CreateActivityInput {
+  title: string;
+  startsAt: string;
+  createdByMemberId: string;
+  status?: ActivityStatus;
+  location?: string;
+  description?: string;
+  budgetCents?: number;
 }
 
 interface StoreState {
@@ -334,6 +345,32 @@ export const familyStore = {
 
   listActivities(familyId: string) {
     return state.activities.filter((activity) => activity.familyId === familyId);
+  },
+
+  createActivity(familyId: string, input: CreateActivityInput) {
+    const activity: Activity = {
+      id: randomUUID(),
+      familyId,
+      title: input.title,
+      status: input.status ?? "scheduled",
+      startsAt: input.startsAt,
+      location: input.location,
+      description: input.description,
+      budgetCents: input.budgetCents,
+      createdByMemberId: input.createdByMemberId,
+    };
+
+    state.activities.push(activity);
+    audit({
+      familyId,
+      actorMemberId: input.createdByMemberId,
+      action: "activity.created",
+      resourceType: "activity",
+      resourceId: activity.id,
+    });
+    persist();
+
+    return activity;
   },
 
   listLedgerEntries(familyId: string) {

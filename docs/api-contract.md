@@ -158,9 +158,27 @@ Marks a reminder as completed and records `completedAt`.
 }
 ```
 
-## Placeholder Phase 2 Reads
+## Activities
 
 `GET /v1/families/:familyId/activities`
+
+Lists family activities.
+
+`POST /v1/families/:familyId/activities`
+
+Creates one family activity. The creator must be a member of the same family.
+
+```json
+{
+  "title": "周末家庭聚会",
+  "startsAt": "2026-05-24T02:00:00.000Z",
+  "location": "家里",
+  "description": "一起吃饭、聊天、看看近况",
+  "createdByMemberId": "member-id"
+}
+```
+
+MVP activities default to `scheduled` and can be shared by copying a family-group friendly text from the mini program.
 
 ## Ledger
 

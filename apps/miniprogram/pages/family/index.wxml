@@ -6,6 +6,7 @@
     <button class="secondary-action" bindtap="onOpenReminders">查看生日和健康提醒</button>
     <button class="secondary-action" bindtap="onOpenLedger">打开家庭账本</button>
     <button class="secondary-action" bindtap="onOpenDigitalSpace">打开家庭数字空间</button>
+    <button class="secondary-action" bindtap="onOpenActivities">发起家庭活动</button>
   </view>
 
   <view class="panel invite-panel" wx:if="{{inviteCode}}">

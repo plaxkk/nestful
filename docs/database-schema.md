@@ -129,6 +129,7 @@ create table activities (
   status text not null,
   starts_at timestamptz not null,
   location text,
+  description text,
   budget_cents integer,
   created_by_member_id text not null references family_members(id)
 );
@@ -203,7 +204,7 @@ Implemented in `services/api/src/privacy.ts`:
 Implemented in `services/api/src/store.ts`:
 
 - local file persistence
-- audit event creation for family, member, invitation, reminder, ledger entry, digital-space item creation, reminder completion, and invitation acceptance
+- audit event creation for family, member, invitation, reminder, ledger entry, digital-space item, activity creation, reminder completion, and invitation acceptance
 - duplicate membership check on invitation acceptance
 
 Implemented in `services/api/src/routes.ts`:
@@ -214,3 +215,4 @@ Implemented in `services/api/src/routes.ts`:
 - reminder creator/completer and optional assignee must be members of the same family
 - ledger entry payer must be a member of the same family
 - digital-space item creator must be a member of the same family
+- activity creator must be a member of the same family
