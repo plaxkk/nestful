@@ -1,0 +1,51 @@
+<view class="page digital-page">
+  <view class="header">
+    <text class="eyebrow">家里的东西，有地方放</text>
+    <text class="title">家庭数字空间</text>
+    <text class="subtitle">先用文字和链接整理资料、账号说明和记忆。密码和真实文件上传以后再接。</text>
+  </view>
+
+  <view class="panel form-panel">
+    <view class="section-heading">
+      <text class="section-title">放入一个条目</text>
+      <text class="section-note">先记清楚是什么，家人就能找得到。</text>
+    </view>
+    <view class="field">
+      <text class="label">类型</text>
+      <picker mode="selector" range="{{itemKinds}}" range-key="label" value="{{kindIndex}}" bindchange="onKindChange">
+        <view class="picker-value">{{itemKinds[kindIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">标题</text>
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：医保资料、视频会员、春节照片" />
+    </view>
+    <view class="field">
+      <text class="label">说明</text>
+      <input class="input" value="{{summaryInput}}" bindinput="onSummaryInput" placeholder="写给家人看的说明" />
+    </view>
+    <view class="field">
+      <text class="label">链接（可选）</text>
+      <input class="input" value="{{urlInput}}" bindinput="onUrlInput" placeholder="网盘、相册或资料链接" />
+    </view>
+    <button class="primary-action" bindtap="onCreateItem">放入家庭空间</button>
+  </view>
+
+  <view class="section">
+    <view class="section-heading">
+      <text class="section-title">已经放好的东西</text>
+      <text class="section-note">资料、账号说明和记忆先统一放在这里。</text>
+    </view>
+    <text class="empty-text" wx:if="{{!loading && items.length === 0}}">还没有条目。先放一份家庭资料、账号说明或记忆。</text>
+    <view class="item-list">
+      <view class="item-row" wx:for="{{items}}" wx:key="id">
+        <view class="item-mark">{{item.kindLabel}}</view>
+        <view class="item-main">
+          <text class="item-title">{{item.title}}</text>
+          <text class="item-summary">{{item.summaryText}}</text>
+          <text class="item-meta">{{item.createdAtText}}{{item.url ? ' · 有链接' : ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

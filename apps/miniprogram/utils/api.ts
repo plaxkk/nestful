@@ -52,6 +52,7 @@ export interface Reminder {
 
 export type LedgerEntryType = "expense" | "income";
 export type LedgerCategory = "daily" | "education" | "health" | "travel" | "housing" | "subscription" | "other";
+export type DigitalSpaceItemKind = "document" | "account" | "memory";
 
 export interface LedgerEntry {
   id: string;
@@ -63,6 +64,19 @@ export interface LedgerEntry {
   paidByMemberId: string;
   splitMemberIds: string[];
   occurredAt: string;
+}
+
+export interface DigitalSpaceItem {
+  id: string;
+  familyId: string;
+  kind: DigitalSpaceItemKind;
+  title: string;
+  summary?: string;
+  url?: string;
+  occurredAt?: string;
+  createdByMemberId: string;
+  taggedMemberIds: string[];
+  createdAt: string;
 }
 
 const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
@@ -169,6 +183,31 @@ export const api = {
     return request<ApiResponse<LedgerEntry>>({
       method: "POST",
       url: `/v1/families/${familyId}/ledger-entries`,
+      data: body,
+    });
+  },
+
+  listDigitalSpaceItems(familyId: string) {
+    return request<ApiResponse<DigitalSpaceItem[]>>({
+      method: "GET",
+      url: `/v1/families/${familyId}/digital-space-items`,
+    });
+  },
+
+  createDigitalSpaceItem(
+    familyId: string,
+    body: {
+      kind: DigitalSpaceItemKind;
+      title: string;
+      createdByMemberId: string;
+      summary?: string;
+      url?: string;
+      occurredAt?: string;
+    },
+  ) {
+    return request<ApiResponse<DigitalSpaceItem>>({
+      method: "POST",
+      url: `/v1/families/${familyId}/digital-space-items`,
       data: body,
     });
   },

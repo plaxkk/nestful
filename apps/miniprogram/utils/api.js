@@ -94,6 +94,21 @@ const api = {
       data: body,
     });
   },
+
+  listDigitalSpaceItems(familyId) {
+    return request({
+      method: "GET",
+      url: `/v1/families/${familyId}/digital-space-items`,
+    });
+  },
+
+  createDigitalSpaceItem(familyId, body) {
+    return request({
+      method: "POST",
+      url: `/v1/families/${familyId}/digital-space-items`,
+      data: body,
+    });
+  },
 };
 
 module.exports = {

@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import type {
   Activity,
   AuditEvent,
+  DigitalSpaceItem,
+  DigitalSpaceItemKind,
   Family,
   FamilyInvitation,
   FamilyMember,
@@ -55,6 +57,16 @@ export interface CreateLedgerEntryInput {
   occurredAt: string;
 }
 
+export interface CreateDigitalSpaceItemInput {
+  kind: DigitalSpaceItemKind;
+  title: string;
+  createdByMemberId: string;
+  summary?: string;
+  url?: string;
+  occurredAt?: string;
+  taggedMemberIds?: string[];
+}
+
 interface StoreState {
   families: Family[];
   members: FamilyMember[];
@@ -62,6 +74,7 @@ interface StoreState {
   reminders: Reminder[];
   activities: Activity[];
   ledgerEntries: LedgerEntry[];
+  digitalSpaceItems: DigitalSpaceItem[];
   auditEvents: AuditEvent[];
 }
 
@@ -72,6 +85,7 @@ const defaultState = (): StoreState => ({
   reminders: [],
   activities: [],
   ledgerEntries: [],
+  digitalSpaceItems: [],
   auditEvents: [],
 });
 
@@ -94,6 +108,7 @@ const readState = (): StoreState => {
       reminders: parsed.reminders ?? [],
       activities: parsed.activities ?? [],
       ledgerEntries: parsed.ledgerEntries ?? [],
+      digitalSpaceItems: parsed.digitalSpaceItems ?? [],
       auditEvents: parsed.auditEvents ?? [],
     };
   } catch (error) {
@@ -349,6 +364,37 @@ export const familyStore = {
     persist();
 
     return entry;
+  },
+
+  listDigitalSpaceItems(familyId: string) {
+    return state.digitalSpaceItems.filter((item) => item.familyId === familyId);
+  },
+
+  createDigitalSpaceItem(familyId: string, input: CreateDigitalSpaceItemInput) {
+    const item: DigitalSpaceItem = {
+      id: randomUUID(),
+      familyId,
+      kind: input.kind,
+      title: input.title,
+      summary: input.summary,
+      url: input.url,
+      occurredAt: input.occurredAt,
+      createdByMemberId: input.createdByMemberId,
+      taggedMemberIds: input.taggedMemberIds ?? [],
+      createdAt: now(),
+    };
+
+    state.digitalSpaceItems.push(item);
+    audit({
+      familyId,
+      actorMemberId: input.createdByMemberId,
+      action: "digital_space_item.created",
+      resourceType: "digital_space_item",
+      resourceId: item.id,
+    });
+    persist();
+
+    return item;
   },
 
   listAuditEvents(familyId: string) {

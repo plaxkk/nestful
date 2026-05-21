@@ -99,6 +99,10 @@ Page({
     wx.navigateTo({ url: "/pages/ledger/index" });
   },
 
+  onOpenDigitalSpace() {
+    wx.navigateTo({ url: "/pages/digital-space/index" });
+  },
+
   onShareAppMessage() {
     return {
       title: `加入${this.data.familyName}`,

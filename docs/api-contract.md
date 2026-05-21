@@ -187,6 +187,30 @@ Supported `type`: `expense`, `income`.
 
 Supported `category`: `daily`, `education`, `health`, `travel`, `housing`, `subscription`, `other`.
 
+## Digital Space
+
+`GET /v1/families/:familyId/digital-space-items`
+
+Lists family digital space items. MVP items can be documents, account notes, or memory-wall entries.
+
+`POST /v1/families/:familyId/digital-space-items`
+
+Creates one family digital space item. The creator must be a member of the same family.
+
+```json
+{
+  "kind": "memory",
+  "title": "一次家庭出行",
+  "summary": "周末一起出门散步的记忆",
+  "url": "https://example.com/family-memory",
+  "createdByMemberId": "member-id"
+}
+```
+
+Supported `kind`: `document`, `account`, `memory`.
+
+MVP account items are notes only. Do not store real passwords or secret recovery information.
+
 ## Audit
 
 `GET /v1/families/:familyId/audit-events`

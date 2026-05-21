@@ -167,6 +167,26 @@ assert(
   "ledger list missing new entry",
 );
 
+const digitalSpaceItemResponse = await request(`/v1/families/${family.id}/digital-space-items`, {
+  method: "POST",
+  body: JSON.stringify({
+    kind: "memory",
+    title: "一次家庭出行",
+    summary: "周末一起出门散步的记忆",
+    url: "https://example.com/family-memory",
+    createdByMemberId: ownerMember.id,
+  }),
+});
+
+assert(digitalSpaceItemResponse.data.id, "digital space item id missing");
+assert(digitalSpaceItemResponse.data.kind === "memory", "digital space item kind mismatch");
+
+const digitalSpaceItemsResponse = await request(`/v1/families/${family.id}/digital-space-items`);
+assert(
+  digitalSpaceItemsResponse.data.some((item) => item.id === digitalSpaceItemResponse.data.id),
+  "digital space list missing new item",
+);
+
 console.log("acceptance smoke passed");
 console.log(
   JSON.stringify(
@@ -177,6 +197,7 @@ console.log(
       auditEvents: auditResponse.data.length,
       reminderId: reminderResponse.data.id,
       ledgerEntryId: ledgerEntryResponse.data.id,
+      digitalSpaceItemId: digitalSpaceItemResponse.data.id,
     },
     null,
     2,

@@ -23,6 +23,8 @@ export type LedgerCategory =
 
 export type LedgerEntryType = "expense" | "income";
 
+export type DigitalSpaceItemKind = "document" | "account" | "memory";
+
 export interface User {
   id: string;
   wechatOpenId?: string;
@@ -112,6 +114,19 @@ export interface MemoryItem {
   taggedMemberIds: string[];
   occurredAt?: string;
   place?: string;
+}
+
+export interface DigitalSpaceItem {
+  id: string;
+  familyId: string;
+  kind: DigitalSpaceItemKind;
+  title: string;
+  summary?: string;
+  url?: string;
+  occurredAt?: string;
+  createdByMemberId: string;
+  taggedMemberIds: string[];
+  createdAt: string;
 }
 
 export interface HealthPlan {

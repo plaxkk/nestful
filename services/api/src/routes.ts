@@ -1,5 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import type { FamilyRole, LedgerCategory, LedgerEntryType, ReminderType } from "@family-housekeeper/shared";
+import type {
+  DigitalSpaceItemKind,
+  FamilyRole,
+  LedgerCategory,
+  LedgerEntryType,
+  ReminderType,
+} from "@family-housekeeper/shared";
 import { familyStore } from "./store.js";
 import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
 
@@ -44,6 +50,15 @@ const optionalLedgerCategory = (body: Record<string, unknown>, key: string): Led
   const categories: LedgerCategory[] = ["daily", "education", "health", "travel", "housing", "subscription", "other"];
 
   return typeof value === "string" && categories.includes(value as LedgerCategory) ? (value as LedgerCategory) : undefined;
+};
+
+const optionalDigitalSpaceKind = (body: Record<string, unknown>, key: string): DigitalSpaceItemKind | undefined => {
+  const value = body[key];
+  const kinds: DigitalSpaceItemKind[] = ["document", "account", "memory"];
+
+  return typeof value === "string" && kinds.includes(value as DigitalSpaceItemKind)
+    ? (value as DigitalSpaceItemKind)
+    : undefined;
 };
 
 const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => {
@@ -376,6 +391,61 @@ export async function registerRoutes(server: FastifyInstance) {
         title,
         amountCents,
         paidByMemberId,
+        occurredAt,
+      }),
+    });
+  });
+
+  server.get("/v1/families/:familyId/digital-space-items", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    return {
+      data: familyStore.listDigitalSpaceItems(familyId),
+    };
+  });
+
+  server.post("/v1/families/:familyId/digital-space-items", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+
+    if (!familyStore.getFamily(familyId)) {
+      return reply.code(404).send({ error: "family_not_found" });
+    }
+
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const kind = optionalDigitalSpaceKind(request.body, "kind");
+    const title = requiredString(request.body, "title");
+    const createdByMemberId = requiredString(request.body, "createdByMemberId");
+    const summary = optionalString(request.body, "summary");
+    const url = optionalString(request.body, "url");
+    const occurredAt = optionalString(request.body, "occurredAt");
+    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+
+    if (!kind || !title || !createdByMemberId) {
+      return reply.code(400).send({ error: "missing_required_fields" });
+    }
+
+    if (!isFamilyMember(creator, familyId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    if (occurredAt && Number.isNaN(Date.parse(occurredAt))) {
+      return reply.code(400).send({ error: "invalid_occurred_at" });
+    }
+
+    return reply.code(201).send({
+      data: familyStore.createDigitalSpaceItem(familyId, {
+        kind,
+        title,
+        createdByMemberId,
+        summary,
+        url,
         occurredAt,
       }),
     });
