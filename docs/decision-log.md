@@ -2,7 +2,7 @@
 
 ## 2026-05-20: Create a Dedicated Repository
 
-Decision: Create `~/repos/family-housekeeper` as the product repository.
+Decision: Create `~/repos/nestful` as the product repository.
 
 Reasoning: The product needs independent code, docs, roadmap, and future open-source readiness.
 

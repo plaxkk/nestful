@@ -7,7 +7,7 @@ This document defines the target relational schema and the current MVP persisten
 The API currently persists data into a local JSON file:
 
 ```text
-.data/family-housekeeper.json
+.data/nestful.json
 ```
 
 The file is ignored by git. This keeps local acceptance data across API restarts while avoiding database setup during MVP validation.
@@ -15,7 +15,7 @@ The file is ignored by git. This keeps local acceptance data across API restarts
 Set a custom path with:
 
 ```bash
-DATA_FILE=/path/to/family-housekeeper.json npm run dev:api
+DATA_FILE=/path/to/nestful.json npm run dev:api
 ```
 
 ## Target Tables

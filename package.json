@@ -1,11 +1,11 @@
 {
-  "name": "family-housekeeper",
+  "name": "nestful",
   "private": true,
   "version": "0.1.0",
   "description": "WeChat-first family management MVP.",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev:api": "corepack pnpm --filter @family-housekeeper/api dev",
+    "dev:api": "corepack pnpm --filter @nestful/api dev",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
     "typecheck": "corepack pnpm -r typecheck",
     "lint": "corepack pnpm -r lint",

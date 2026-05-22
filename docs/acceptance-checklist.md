@@ -44,7 +44,7 @@ If the Mac network address changes, update `apps/miniprogram/utils/api.js` and `
 Open WeChat DevTools with:
 
 ```text
-/Users/kk/repos/family-housekeeper
+/Users/kk/repos/nestful
 ```
 
 Expected setup flow:
@@ -124,7 +124,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 
 ## Known MVP Boundaries
 
-- Data persists to a local JSON file at `.data/family-housekeeper.json`; this is still an MVP stand-in for the target SQL database.
+- Data persists to a local JSON file at `.data/nestful.json`; this is still an MVP stand-in for the target SQL database.
 - WeChat login is documented but not implemented.
 - Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
 - Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.

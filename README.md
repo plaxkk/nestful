@@ -1,10 +1,10 @@
-# Family Housekeeper
+# Nestful
 
-家庭管家 MVP，定位为专为家庭而生的微信生态家庭协作与情感连接工具。
+Nestful MVP，定位为专为家庭而生的微信生态家庭协作与情感连接工具。
 
 ## Product Positioning
 
-Family Housekeeper helps a family manage reminders, activities, emotional communication, shared files, memories, health routines, and household finance in one private family space.
+Nestful helps a family manage reminders, activities, emotional communication, shared files, memories, health routines, and household finance in one private family space.
 
 首发平台为微信小程序，围绕家庭成员邀请、家庭活动、生日提醒、健康提醒、记忆碎片墙和家庭账本完成 MVP 验证。
 
@@ -44,7 +44,7 @@ This repository is the initial MVP workspace. The first milestone is to produce 
 Open this repository root in WeChat DevTools:
 
 ```text
-/Users/kk/repos/family-housekeeper
+/Users/kk/repos/nestful
 ```
 
 The root `project.config.json` points DevTools to `apps/miniprogram/`.

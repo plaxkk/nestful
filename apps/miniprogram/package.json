@@ -1,5 +1,5 @@
 {
-  "name": "@family-housekeeper/miniprogram",
+  "name": "@nestful/miniprogram",
   "version": "0.1.0",
   "private": true,
   "scripts": {

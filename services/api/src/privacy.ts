@@ -1,4 +1,4 @@
-import type { FamilyMember, FamilyRole } from "@family-housekeeper/shared";
+import type { FamilyMember, FamilyRole } from "@nestful/shared";
 
 const familyAdminRoles: FamilyRole[] = ["admin"];
 

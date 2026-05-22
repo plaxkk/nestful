@@ -29,7 +29,7 @@ importers:
 
   services/api:
     dependencies:
-      '@family-housekeeper/shared':
+      '@nestful/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       fastify:

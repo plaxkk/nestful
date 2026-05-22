@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reduce the number of steps needed to use Family Housekeeper in WeChat. The target user experience is: a family member can see and act on family reminders, activities, and care tasks directly from the family WeChat group or a persistent WeChat entry, without searching for and reopening the mini-program manually.
+Reduce the number of steps needed to use Nestful in WeChat. The target user experience is: a family member can see and act on family reminders, activities, and care tasks directly from the family WeChat group or a persistent WeChat entry, without searching for and reopening the mini-program manually.
 
 ## Product Constraint
 

@@ -5,7 +5,7 @@ import type {
   LedgerCategory,
   LedgerEntryType,
   ReminderType,
-} from "@family-housekeeper/shared";
+} from "@nestful/shared";
 import { familyStore } from "./store.js";
 import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
 
@@ -70,7 +70,7 @@ const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => 
 export async function registerRoutes(server: FastifyInstance) {
   server.get("/health", async () => ({
     ok: true,
-    service: "family-housekeeper-api",
+    service: "nestful-api",
   }));
 
   server.get("/v1/families", async () => ({

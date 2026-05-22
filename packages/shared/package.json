@@ -1,5 +1,5 @@
 {
-  "name": "@family-housekeeper/shared",
+  "name": "@nestful/shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",

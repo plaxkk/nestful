@@ -1,5 +1,5 @@
 {
-  "name": "@family-housekeeper/api",
+  "name": "@nestful/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "tsc --noEmit"
   },
   "dependencies": {
-    "@family-housekeeper/shared": "workspace:*",
+    "@nestful/shared": "workspace:*",
     "fastify": "^5.0.0"
   },
   "devDependencies": {

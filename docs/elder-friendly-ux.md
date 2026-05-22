@@ -1,6 +1,6 @@
 # Elder-Friendly UX
 
-Family Housekeeper must be usable by elders and non-technical family members.
+Nestful must be usable by elders and non-technical family members.
 
 ## Principles
 

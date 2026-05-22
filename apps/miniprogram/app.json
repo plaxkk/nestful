@@ -10,7 +10,7 @@
     "pages/join/index"
   ],
   "window": {
-    "navigationBarTitleText": "家庭助手",
+    "navigationBarTitleText": "Nestful",
     "navigationBarBackgroundColor": "#fff8f6",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#fff8f6"

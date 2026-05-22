@@ -1,10 +1,10 @@
 # Modern Humanist Interaction Direction
 
-This document is the Figma-ready interaction direction for Family Housekeeper. It is written so the same decisions can be recreated in Figma and implemented in the mini program.
+This document is the Figma-ready interaction direction for Nestful. It is written so the same decisions can be recreated in Figma and implemented in the mini program.
 
 ## Design Intent
 
-Family Housekeeper should feel like a warm family notebook, not a financial or admin dashboard. The interaction should be calm, readable, and human, while still feeling modern and trustworthy.
+Nestful should feel like a warm family notebook, not a financial or admin dashboard. The interaction should be calm, readable, and human, while still feeling modern and trustworthy.
 
 The 2026-05-21 redesign references the local interaction package in `/design` without committing that directory. The extracted direction is "a family notebook on a sunlit table": high-contrast navy actions, warm paper background, generous spacing, rounded tactile cards, and one clear task per page.
 

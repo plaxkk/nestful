@@ -16,7 +16,7 @@ import type {
   LedgerEntryType,
   Reminder,
   ReminderType,
-} from "@family-housekeeper/shared";
+} from "@nestful/shared";
 
 export interface CreateFamilyInput {
   name: string;
@@ -100,7 +100,7 @@ const defaultState = (): StoreState => ({
   auditEvents: [],
 });
 
-const dataFile = resolve(process.env.DATA_FILE ?? ".data/family-housekeeper.json");
+const dataFile = resolve(process.env.DATA_FILE ?? ".data/nestful.json");
 
 const now = () => new Date().toISOString();
 
