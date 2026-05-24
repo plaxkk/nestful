@@ -74,7 +74,7 @@ export async function registerRoutes(server: FastifyInstance) {
   }));
 
   server.get("/v1/families", async () => ({
-    data: familyStore.listFamilies(),
+    data: await familyStore.listFamilies(),
   }));
 
   server.post("/v1/families", async (request, reply) => {
@@ -90,14 +90,14 @@ export async function registerRoutes(server: FastifyInstance) {
       return reply.code(400).send({ error: "missing_required_fields" });
     }
 
-    const data = familyStore.createFamily({ name, ownerUserId, ownerDisplayName });
+    const data = await familyStore.createFamily({ name, ownerUserId, ownerDisplayName });
 
     return reply.code(201).send({ data });
   });
 
   server.get("/v1/families/:familyId", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
-    const family = familyStore.getFamily(familyId);
+    const family = await familyStore.getFamily(familyId);
 
     if (!family) {
       return reply.code(404).send({ error: "family_not_found" });
@@ -109,19 +109,19 @@ export async function registerRoutes(server: FastifyInstance) {
   server.get("/v1/families/:familyId/members", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listMembers(familyId).map(redactMemberForList),
+      data: (await familyStore.listMembers(familyId)).map(redactMemberForList),
     };
   });
 
   server.post("/v1/families/:familyId/members", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -130,7 +130,7 @@ export async function registerRoutes(server: FastifyInstance) {
     }
 
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
-    const actorMember = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+    const actorMember = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
     if (!canAddMemberDirectly(actorMember, familyId)) {
       return reply.code(403).send({ error: "forbidden" });
@@ -142,7 +142,7 @@ export async function registerRoutes(server: FastifyInstance) {
       return reply.code(400).send({ error: "missing_required_fields" });
     }
 
-    const member = familyStore.createMember(
+    const member = await familyStore.createMember(
       familyId,
       {
         displayName,
@@ -162,7 +162,7 @@ export async function registerRoutes(server: FastifyInstance) {
   server.post("/v1/families/:familyId/invitations", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -172,13 +172,13 @@ export async function registerRoutes(server: FastifyInstance) {
 
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
 
-    const actorMember = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+    const actorMember = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
     if (!createdByMemberId || !canCreateInvitation(actorMember, familyId)) {
       return reply.code(400).send({ error: "invalid_creator_member" });
     }
 
-    const invitation = familyStore.createInvitation(familyId, {
+    const invitation = await familyStore.createInvitation(familyId, {
       createdByMemberId,
       role: optionalRole(request.body, "role"),
       expiresAt: optionalString(request.body, "expiresAt"),
@@ -194,7 +194,7 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.get("/v1/invitations/:code", async (request, reply) => {
     const { code } = request.params as { code: string };
-    const invitation = familyStore.getInvitationByCode(code);
+    const invitation = await familyStore.getInvitationByCode(code);
 
     if (!invitation) {
       return reply.code(404).send({ error: "invitation_not_found" });
@@ -226,7 +226,7 @@ export async function registerRoutes(server: FastifyInstance) {
       return reply.code(400).send({ error: "missing_required_fields" });
     }
 
-    const result = familyStore.acceptInvitation(code, {
+    const result = await familyStore.acceptInvitation(code, {
       displayName,
       userId: optionalString(request.body, "userId"),
       birthday: optionalString(request.body, "birthday"),
@@ -250,19 +250,19 @@ export async function registerRoutes(server: FastifyInstance) {
   server.get("/v1/families/:familyId/reminders", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listReminders(familyId),
+      data: await familyStore.listReminders(familyId),
     };
   });
 
   server.post("/v1/families/:familyId/reminders", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -275,8 +275,8 @@ export async function registerRoutes(server: FastifyInstance) {
     const dueAt = requiredString(request.body, "dueAt");
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const assigneeMemberId = optionalString(request.body, "assigneeMemberId");
-    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
-    const assignee = assigneeMemberId ? familyStore.getMember(assigneeMemberId) : undefined;
+    const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
+    const assignee = assigneeMemberId ? await familyStore.getMember(assigneeMemberId) : undefined;
 
     if (!type || !title || !dueAt || !createdByMemberId) {
       return reply.code(400).send({ error: "missing_required_fields" });
@@ -294,7 +294,7 @@ export async function registerRoutes(server: FastifyInstance) {
       return reply.code(400).send({ error: "invalid_assignee_member" });
     }
 
-    const reminder = familyStore.createReminder(familyId, {
+    const reminder = await familyStore.createReminder(familyId, {
       type,
       title,
       dueAt,
@@ -307,7 +307,7 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.post("/v1/reminders/:reminderId/complete", async (request, reply) => {
     const { reminderId } = request.params as { reminderId: string };
-    const reminder = familyStore.getReminder(reminderId);
+    const reminder = await familyStore.getReminder(reminderId);
 
     if (!reminder) {
       return reply.code(404).send({ error: "reminder_not_found" });
@@ -318,33 +318,33 @@ export async function registerRoutes(server: FastifyInstance) {
     }
 
     const actorMemberId = requiredString(request.body, "actorMemberId");
-    const actor = actorMemberId ? familyStore.getMember(actorMemberId) : undefined;
+    const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
 
     if (!actorMemberId || !isFamilyMember(actor, reminder.familyId)) {
       return reply.code(403).send({ error: "forbidden" });
     }
 
     return reply.code(200).send({
-      data: familyStore.completeReminder(reminderId, actorMemberId),
+      data: await familyStore.completeReminder(reminderId, actorMemberId),
     });
   });
 
   server.get("/v1/families/:familyId/activities", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listActivities(familyId),
+      data: await familyStore.listActivities(familyId),
     };
   });
 
   server.post("/v1/families/:familyId/activities", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -357,7 +357,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const location = optionalString(request.body, "location");
     const description = optionalString(request.body, "description");
-    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+    const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
     if (!title || !startsAt || !createdByMemberId) {
       return reply.code(400).send({ error: "missing_required_fields" });
@@ -372,7 +372,7 @@ export async function registerRoutes(server: FastifyInstance) {
     }
 
     return reply.code(201).send({
-      data: familyStore.createActivity(familyId, {
+      data: await familyStore.createActivity(familyId, {
         title,
         startsAt,
         createdByMemberId,
@@ -385,19 +385,19 @@ export async function registerRoutes(server: FastifyInstance) {
   server.get("/v1/families/:familyId/ledger-entries", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listLedgerEntries(familyId),
+      data: await familyStore.listLedgerEntries(familyId),
     };
   });
 
   server.post("/v1/families/:familyId/ledger-entries", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -411,7 +411,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const amountCents = optionalPositiveInteger(request.body, "amountCents");
     const paidByMemberId = requiredString(request.body, "paidByMemberId");
     const occurredAt = requiredString(request.body, "occurredAt");
-    const paidByMember = paidByMemberId ? familyStore.getMember(paidByMemberId) : undefined;
+    const paidByMember = paidByMemberId ? await familyStore.getMember(paidByMemberId) : undefined;
 
     if (!type || !category || !title || !amountCents || !paidByMemberId || !occurredAt) {
       return reply.code(400).send({ error: "missing_required_fields" });
@@ -426,7 +426,7 @@ export async function registerRoutes(server: FastifyInstance) {
     }
 
     return reply.code(201).send({
-      data: familyStore.createLedgerEntry(familyId, {
+      data: await familyStore.createLedgerEntry(familyId, {
         type,
         category,
         title,
@@ -440,19 +440,19 @@ export async function registerRoutes(server: FastifyInstance) {
   server.get("/v1/families/:familyId/digital-space-items", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listDigitalSpaceItems(familyId),
+      data: await familyStore.listDigitalSpaceItems(familyId),
     };
   });
 
   server.post("/v1/families/:familyId/digital-space-items", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
@@ -466,7 +466,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const summary = optionalString(request.body, "summary");
     const url = optionalString(request.body, "url");
     const occurredAt = optionalString(request.body, "occurredAt");
-    const creator = createdByMemberId ? familyStore.getMember(createdByMemberId) : undefined;
+    const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
     if (!kind || !title || !createdByMemberId) {
       return reply.code(400).send({ error: "missing_required_fields" });
@@ -481,7 +481,7 @@ export async function registerRoutes(server: FastifyInstance) {
     }
 
     return reply.code(201).send({
-      data: familyStore.createDigitalSpaceItem(familyId, {
+      data: await familyStore.createDigitalSpaceItem(familyId, {
         kind,
         title,
         createdByMemberId,
@@ -495,12 +495,12 @@ export async function registerRoutes(server: FastifyInstance) {
   server.get("/v1/families/:familyId/audit-events", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
-    if (!familyStore.getFamily(familyId)) {
+    if (!(await familyStore.getFamily(familyId))) {
       return reply.code(404).send({ error: "family_not_found" });
     }
 
     return {
-      data: familyStore.listAuditEvents(familyId),
+      data: await familyStore.listAuditEvents(familyId),
     };
   });
 }

@@ -1,10 +1,15 @@
 # Database Schema and Privacy Permissions
 
-This document defines the target relational schema and the current MVP persistence model.
+This document defines the target relational schema and the current production persistence model.
 
-## Current MVP Persistence
+## Current Persistence
 
-The API currently persists data into a local JSON file:
+The API supports two storage modes:
+
+1. Local development file storage.
+2. Production Postgres/Supabase storage.
+
+Local development still persists data into a local JSON file:
 
 ```text
 .data/nestful.json
@@ -17,6 +22,41 @@ Set a custom path with:
 ```bash
 DATA_FILE=/path/to/nestful.json npm run dev:api
 ```
+
+Production uses Postgres when `NESTFUL_STORAGE=postgres` and `DATABASE_URL` are configured. The API creates this backing table automatically on first access:
+
+```sql
+create table if not exists nestful_app_state (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+```
+
+This replaces Vercel local file storage with cloud database persistence immediately while preserving the current API contract. The JSONB state stores the current business entities:
+
+- families
+- members
+- invitations
+- reminders
+- activities
+- ledgerEntries
+- digitalSpaceItems
+- auditEvents
+
+The normalized tables below remain the target schema for the next hardening pass, after the product validates core family workflows.
+
+## Vercel Environment Variables
+
+Set these on the Vercel Nestful project for Production:
+
+```bash
+NESTFUL_STORAGE=postgres
+DATABASE_URL=<Supabase/Postgres pooled connection string>
+PGSSL=require
+```
+
+Remove the old production `DATA_FILE` variable after `DATABASE_URL` is configured, so production does not imply local filesystem persistence.
 
 ## Target Tables
 

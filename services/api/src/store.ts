@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { Pool } from "pg";
 import type {
   Activity,
   ActivityStatus,
@@ -101,40 +102,129 @@ const defaultState = (): StoreState => ({
 });
 
 const dataFile = resolve(process.env.DATA_FILE ?? ".data/nestful.json");
+const storageDriver = process.env.NESTFUL_STORAGE ?? (process.env.DATABASE_URL ? "postgres" : "file");
+const usePostgresStorage = storageDriver === "postgres";
+const postgresConnectionString = process.env.DATABASE_URL;
+const postgresSsl =
+  process.env.PGSSL === "disable" || postgresConnectionString?.includes("localhost")
+    ? false
+    : { rejectUnauthorized: false };
+const pool = usePostgresStorage
+  ? new Pool({
+      connectionString: postgresConnectionString,
+      ssl: postgresSsl,
+    })
+  : undefined;
 
 const now = () => new Date().toISOString();
 
 const createCode = () => randomUUID().replaceAll("-", "").slice(0, 10);
 
-const readState = (): StoreState => {
+const normalizeState = (parsed: Partial<StoreState> | undefined): StoreState => ({
+  ...defaultState(),
+  ...(parsed ?? {}),
+  families: parsed?.families ?? [],
+  members: parsed?.members ?? [],
+  invitations: parsed?.invitations ?? [],
+  reminders: parsed?.reminders ?? [],
+  activities: parsed?.activities ?? [],
+  ledgerEntries: parsed?.ledgerEntries ?? [],
+  digitalSpaceItems: parsed?.digitalSpaceItems ?? [],
+  auditEvents: parsed?.auditEvents ?? [],
+});
+
+const readFileState = (): StoreState => {
   try {
     const parsed = JSON.parse(readFileSync(dataFile, "utf8")) as Partial<StoreState>;
 
-    return {
-      ...defaultState(),
-      ...parsed,
-      families: parsed.families ?? [],
-      members: parsed.members ?? [],
-      invitations: parsed.invitations ?? [],
-      reminders: parsed.reminders ?? [],
-      activities: parsed.activities ?? [],
-      ledgerEntries: parsed.ledgerEntries ?? [],
-      digitalSpaceItems: parsed.digitalSpaceItems ?? [],
-      auditEvents: parsed.auditEvents ?? [],
-    };
+    return normalizeState(parsed);
   } catch (error) {
     return defaultState();
   }
 };
 
-let state = readState();
+let state = usePostgresStorage ? defaultState() : readFileState();
+let postgresSchemaReady: Promise<void> | undefined;
 
-const persist = () => {
+const ensurePostgresSchema = async () => {
+  if (!pool) {
+    return;
+  }
+
+  postgresSchemaReady ??= (async () => {
+    await pool.query(`
+      create table if not exists nestful_app_state (
+        id text primary key,
+        data jsonb not null,
+        updated_at timestamptz not null default now()
+      )
+    `);
+    await pool.query(
+      `
+        insert into nestful_app_state (id, data)
+        values ($1, $2::jsonb)
+        on conflict (id) do nothing
+      `,
+      ["default", JSON.stringify(defaultState())],
+    );
+  })();
+
+  await postgresSchemaReady;
+};
+
+const readPostgresState = async (): Promise<StoreState> => {
+  if (!pool) {
+    return state;
+  }
+
+  if (!postgresConnectionString) {
+    throw new Error("DATABASE_URL is required when NESTFUL_STORAGE=postgres");
+  }
+
+  await ensurePostgresSchema();
+  const result = await pool.query<{ data: StoreState }>("select data from nestful_app_state where id = $1", ["default"]);
+
+  return normalizeState(result.rows[0]?.data);
+};
+
+const loadState = async () => {
+  if (pool) {
+    state = await readPostgresState();
+  }
+};
+
+const persistFile = () => {
   mkdirSync(dirname(dataFile), { recursive: true });
   const tempFile = `${dataFile}.${process.pid}.tmp`;
 
   writeFileSync(tempFile, `${JSON.stringify(state, null, 2)}\n`);
   renameSync(tempFile, dataFile);
+};
+
+const persistPostgres = async () => {
+  if (!pool) {
+    return;
+  }
+
+  await ensurePostgresSchema();
+  await pool.query(
+    `
+      insert into nestful_app_state (id, data, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (id)
+      do update set data = excluded.data, updated_at = now()
+    `,
+    ["default", JSON.stringify(state)],
+  );
+};
+
+const persist = async () => {
+  if (pool) {
+    await persistPostgres();
+    return;
+  }
+
+  persistFile();
 };
 
 const audit = (event: Omit<AuditEvent, "id" | "createdAt">) => {
@@ -146,15 +236,18 @@ const audit = (event: Omit<AuditEvent, "id" | "createdAt">) => {
 };
 
 export const familyStore = {
-  listFamilies() {
+  async listFamilies() {
+    await loadState();
     return state.families;
   },
 
-  getFamily(familyId: string) {
+  async getFamily(familyId: string) {
+    await loadState();
     return state.families.find((family) => family.id === familyId);
   },
 
-  createFamily(input: CreateFamilyInput) {
+  async createFamily(input: CreateFamilyInput) {
+    await loadState();
     const createdAt = now();
     const family: Family = {
       id: randomUUID(),
@@ -180,20 +273,23 @@ export const familyStore = {
       resourceType: "family",
       resourceId: family.id,
     });
-    persist();
+    await persist();
 
     return { family, ownerMember };
   },
 
-  listMembers(familyId: string) {
+  async listMembers(familyId: string) {
+    await loadState();
     return state.members.filter((member) => member.familyId === familyId);
   },
 
-  getMember(memberId: string) {
+  async getMember(memberId: string) {
+    await loadState();
     return state.members.find((member) => member.id === memberId);
   },
 
-  createMember(familyId: string, input: CreateMemberInput, actorMemberId?: string) {
+  async createMember(familyId: string, input: CreateMemberInput, actorMemberId?: string) {
+    await loadState();
     const member: FamilyMember = {
       id: randomUUID(),
       familyId,
@@ -215,12 +311,13 @@ export const familyStore = {
       resourceType: "member",
       resourceId: member.id,
     });
-    persist();
+    await persist();
 
     return member;
   },
 
-  createInvitation(familyId: string, input: CreateInvitationInput) {
+  async createInvitation(familyId: string, input: CreateInvitationInput) {
+    await loadState();
     const invitation: FamilyInvitation = {
       id: randomUUID(),
       familyId,
@@ -239,17 +336,19 @@ export const familyStore = {
       resourceType: "invitation",
       resourceId: invitation.id,
     });
-    persist();
+    await persist();
 
     return invitation;
   },
 
-  getInvitationByCode(code: string) {
+  async getInvitationByCode(code: string) {
+    await loadState();
     return state.invitations.find((invitation) => invitation.code === code);
   },
 
-  acceptInvitation(code: string, input: CreateMemberInput) {
-    const invitation = this.getInvitationByCode(code);
+  async acceptInvitation(code: string, input: CreateMemberInput) {
+    await loadState();
+    const invitation = state.invitations.find((item) => item.code === code);
 
     if (!invitation || invitation.acceptedAt) {
       return undefined;
@@ -267,15 +366,27 @@ export const familyStore = {
       return undefined;
     }
 
-    const member = this.createMember(
-      invitation.familyId,
-      {
-        ...input,
-        role: invitation.role,
-      },
-      invitation.createdByMemberId,
-    );
+    const member: FamilyMember = {
+      id: randomUUID(),
+      familyId: invitation.familyId,
+      userId: input.userId,
+      displayName: input.displayName,
+      role: invitation.role,
+      birthday: input.birthday,
+      birthdayCalendar: input.birthdayCalendar,
+      location: input.location,
+      emergencyContact: input.emergencyContact,
+      joinedAt: now(),
+    };
 
+    state.members.push(member);
+    audit({
+      familyId: invitation.familyId,
+      actorMemberId: invitation.createdByMemberId,
+      action: "member.created",
+      resourceType: "member",
+      resourceId: member.id,
+    });
     invitation.acceptedAt = now();
     invitation.acceptedByMemberId = member.id;
     audit({
@@ -285,20 +396,23 @@ export const familyStore = {
       resourceType: "invitation",
       resourceId: invitation.id,
     });
-    persist();
+    await persist();
 
     return { invitation, member };
   },
 
-  listReminders(familyId: string) {
+  async listReminders(familyId: string) {
+    await loadState();
     return state.reminders.filter((reminder) => reminder.familyId === familyId);
   },
 
-  getReminder(reminderId: string) {
+  async getReminder(reminderId: string) {
+    await loadState();
     return state.reminders.find((reminder) => reminder.id === reminderId);
   },
 
-  createReminder(familyId: string, input: CreateReminderInput) {
+  async createReminder(familyId: string, input: CreateReminderInput) {
+    await loadState();
     const reminder: Reminder = {
       id: randomUUID(),
       familyId,
@@ -318,13 +432,14 @@ export const familyStore = {
       resourceType: "reminder",
       resourceId: reminder.id,
     });
-    persist();
+    await persist();
 
     return reminder;
   },
 
-  completeReminder(reminderId: string, actorMemberId: string) {
-    const reminder = this.getReminder(reminderId);
+  async completeReminder(reminderId: string, actorMemberId: string) {
+    await loadState();
+    const reminder = state.reminders.find((item) => item.id === reminderId);
 
     if (!reminder) {
       return undefined;
@@ -338,16 +453,18 @@ export const familyStore = {
       resourceType: "reminder",
       resourceId: reminder.id,
     });
-    persist();
+    await persist();
 
     return reminder;
   },
 
-  listActivities(familyId: string) {
+  async listActivities(familyId: string) {
+    await loadState();
     return state.activities.filter((activity) => activity.familyId === familyId);
   },
 
-  createActivity(familyId: string, input: CreateActivityInput) {
+  async createActivity(familyId: string, input: CreateActivityInput) {
+    await loadState();
     const activity: Activity = {
       id: randomUUID(),
       familyId,
@@ -368,16 +485,18 @@ export const familyStore = {
       resourceType: "activity",
       resourceId: activity.id,
     });
-    persist();
+    await persist();
 
     return activity;
   },
 
-  listLedgerEntries(familyId: string) {
+  async listLedgerEntries(familyId: string) {
+    await loadState();
     return state.ledgerEntries.filter((entry) => entry.familyId === familyId);
   },
 
-  createLedgerEntry(familyId: string, input: CreateLedgerEntryInput) {
+  async createLedgerEntry(familyId: string, input: CreateLedgerEntryInput) {
+    await loadState();
     const entry: LedgerEntry = {
       id: randomUUID(),
       familyId,
@@ -398,16 +517,18 @@ export const familyStore = {
       resourceType: "ledger_entry",
       resourceId: entry.id,
     });
-    persist();
+    await persist();
 
     return entry;
   },
 
-  listDigitalSpaceItems(familyId: string) {
+  async listDigitalSpaceItems(familyId: string) {
+    await loadState();
     return state.digitalSpaceItems.filter((item) => item.familyId === familyId);
   },
 
-  createDigitalSpaceItem(familyId: string, input: CreateDigitalSpaceItemInput) {
+  async createDigitalSpaceItem(familyId: string, input: CreateDigitalSpaceItemInput) {
+    await loadState();
     const item: DigitalSpaceItem = {
       id: randomUUID(),
       familyId,
@@ -429,17 +550,18 @@ export const familyStore = {
       resourceType: "digital_space_item",
       resourceId: item.id,
     });
-    persist();
+    await persist();
 
     return item;
   },
 
-  listAuditEvents(familyId: string) {
+  async listAuditEvents(familyId: string) {
+    await loadState();
     return state.auditEvents.filter((event) => event.familyId === familyId);
   },
 
-  resetForTests() {
+  async resetForTests() {
     state = defaultState();
-    persist();
+    await persist();
   },
 };
