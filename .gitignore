@@ -11,3 +11,4 @@ design/
 miniprogram_npm/
 project.private.config.json
 *.log
+.vercel

@@ -2,6 +2,7 @@
   "name": "nestful",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "description": "WeChat-first family management MVP.",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
@@ -17,6 +18,10 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0"
   }
 }
