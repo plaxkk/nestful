@@ -27,6 +27,13 @@ const api = {
     });
   },
 
+  getFamily(familyId) {
+    return request({
+      method: "GET",
+      url: `/v1/families/${familyId}`,
+    });
+  },
+
   listMembers(familyId) {
     return request({
       method: "GET",

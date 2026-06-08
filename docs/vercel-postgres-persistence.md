@@ -14,6 +14,17 @@ PGSSL=require
 
 Remove the old `DATA_FILE` Production variable after `DATABASE_URL` is set. `DATA_FILE` is only for local development.
 
+If the external Postgres database is unavailable during an experience-version
+acceptance, deploy with file storage as a temporary fallback:
+
+```text
+NESTFUL_STORAGE=file
+DATA_FILE=/tmp/nestful.json
+```
+
+This restores the mini-program API on Vercel, but it is not durable production
+persistence. Switch back to Postgres after `DATABASE_URL` is known-good.
+
 ## Recommended Database
 
 Use Supabase/Postgres unless there is an explicit company requirement to keep Nestful data in Tencent Cloud.

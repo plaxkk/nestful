@@ -101,10 +101,17 @@ const defaultState = (): StoreState => ({
   auditEvents: [],
 });
 
-const dataFile = resolve(process.env.DATA_FILE ?? ".data/nestful.json");
-const storageDriver = process.env.NESTFUL_STORAGE ?? (process.env.DATABASE_URL ? "postgres" : "file");
-const usePostgresStorage = storageDriver === "postgres";
-const postgresConnectionString = process.env.DATABASE_URL;
+const envString = (value: string | undefined) => {
+  const trimmed = value?.trim();
+
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const defaultDataFile = process.env.VERCEL ? "/tmp/nestful.json" : ".data/nestful.json";
+const dataFile = resolve(envString(process.env.DATA_FILE) ?? defaultDataFile);
+const postgresConnectionString = envString(process.env.DATABASE_URL);
+const storageDriver = envString(process.env.NESTFUL_STORAGE) ?? (postgresConnectionString ? "postgres" : "file");
+const usePostgresStorage = storageDriver === "postgres" && Boolean(postgresConnectionString);
 const postgresSsl =
   process.env.PGSSL === "disable" || postgresConnectionString?.includes("localhost")
     ? false

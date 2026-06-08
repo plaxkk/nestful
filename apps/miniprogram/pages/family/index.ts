@@ -95,8 +95,17 @@ Page({
       });
     } catch (error) {
       wx.hideLoading();
+      if (error instanceof Error && error.message.includes("status 404")) {
+        session.clear();
+        wx.showToast({
+          title: "家庭记录已失效，请重新创建",
+          icon: "none"
+        });
+        wx.redirectTo({ url: "/pages/home/index" });
+        return;
+      }
       wx.showToast({
-        title: "邀请生成失败",
+        title: "邀请生成失败，请稍后再试",
         icon: "none"
       });
     }

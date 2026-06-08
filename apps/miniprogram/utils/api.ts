@@ -118,6 +118,13 @@ export const api = {
     });
   },
 
+  getFamily(familyId: string) {
+    return request<ApiResponse<Family>>({
+      method: "GET",
+      url: `/v1/families/${familyId}`,
+    });
+  },
+
   listMembers(familyId: string) {
     return request<ApiResponse<FamilyMember[]>>({
       method: "GET",

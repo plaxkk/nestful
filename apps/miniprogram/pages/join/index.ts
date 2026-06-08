@@ -96,13 +96,17 @@ Page({
       wx.hideLoading();
       session.setMember(response.data.member);
 
-      const family = {
-        id: response.data.member.familyId,
-        name: "我的家庭",
-        ownerUserId: "",
-        createdAt: ""
-      };
-      session.setFamily(family);
+      try {
+        const familyResponse = await api.getFamily(response.data.member.familyId);
+        session.setFamily(familyResponse.data);
+      } catch {
+        session.setFamily({
+          id: response.data.member.familyId,
+          name: "我的家庭",
+          ownerUserId: "",
+          createdAt: ""
+        });
+      }
 
       wx.redirectTo({ url: "/pages/family/index" });
     } catch (error) {
