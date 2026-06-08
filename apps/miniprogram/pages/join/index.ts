@@ -1,5 +1,6 @@
 import { api } from "../../utils/api";
 import { session } from "../../utils/session";
+import { getWechatIdentity } from "../../utils/wechat";
 
 Page({
   data: {
@@ -88,9 +89,11 @@ Page({
     wx.showLoading({ title: "加入中" });
 
     try {
+      const identity = await getWechatIdentity();
       const response = await api.acceptInvitation(code, {
         displayName,
-        userId: `local-${Date.now()}`
+        userId: identity.userId,
+        wechatOpenId: identity.wechatOpenId
       });
 
       wx.hideLoading();

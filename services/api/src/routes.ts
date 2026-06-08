@@ -1,13 +1,19 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type {
   DigitalSpaceItemKind,
   FamilyRole,
   LedgerCategory,
   LedgerEntryType,
+  ReminderNotification,
   ReminderType,
 } from "@nestful/shared";
 import { familyStore } from "./store.js";
 import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
+import {
+  exchangeWechatCode,
+  getReminderSubscriptionConfig,
+  sendReminderSubscriptionMessage,
+} from "./wechat.js";
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -61,6 +67,18 @@ const optionalDigitalSpaceKind = (body: Record<string, unknown>, key: string): D
     : undefined;
 };
 
+const optionalReminderNotificationStatus = (
+  body: Record<string, unknown>,
+  key: string,
+): ReminderNotification["subscriptionStatus"] | undefined => {
+  const value = body[key];
+  const statuses: Array<ReminderNotification["subscriptionStatus"]> = ["accept", "reject", "ban", "filter", "unavailable"];
+
+  return typeof value === "string" && statuses.includes(value as ReminderNotification["subscriptionStatus"])
+    ? (value as ReminderNotification["subscriptionStatus"])
+    : undefined;
+};
+
 const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => {
   const value = body[key];
 
@@ -85,12 +103,13 @@ export async function registerRoutes(server: FastifyInstance) {
     const name = requiredString(request.body, "name");
     const ownerUserId = requiredString(request.body, "ownerUserId");
     const ownerDisplayName = requiredString(request.body, "ownerDisplayName");
+    const ownerWechatOpenId = optionalString(request.body, "ownerWechatOpenId");
 
     if (!name || !ownerUserId || !ownerDisplayName) {
       return reply.code(400).send({ error: "missing_required_fields" });
     }
 
-    const data = await familyStore.createFamily({ name, ownerUserId, ownerDisplayName });
+    const data = await familyStore.createFamily({ name, ownerUserId, ownerDisplayName, ownerWechatOpenId });
 
     return reply.code(201).send({ data });
   });
@@ -148,6 +167,7 @@ export async function registerRoutes(server: FastifyInstance) {
         displayName,
         role: optionalRole(request.body, "role"),
         userId: optionalString(request.body, "userId"),
+        wechatOpenId: optionalString(request.body, "wechatOpenId"),
         birthday: optionalString(request.body, "birthday"),
         birthdayCalendar: optionalString(request.body, "birthdayCalendar") as "solar" | "lunar" | undefined,
         location: optionalString(request.body, "location"),
@@ -229,6 +249,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const result = await familyStore.acceptInvitation(code, {
       displayName,
       userId: optionalString(request.body, "userId"),
+      wechatOpenId: optionalString(request.body, "wechatOpenId"),
       birthday: optionalString(request.body, "birthday"),
       birthdayCalendar: optionalString(request.body, "birthdayCalendar") as "solar" | "lunar" | undefined,
       location: optionalString(request.body, "location"),
@@ -259,6 +280,10 @@ export async function registerRoutes(server: FastifyInstance) {
     };
   });
 
+  server.get("/v1/reminders/subscription-config", async () => ({
+    data: getReminderSubscriptionConfig(),
+  }));
+
   server.post("/v1/families/:familyId/reminders", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
@@ -275,6 +300,16 @@ export async function registerRoutes(server: FastifyInstance) {
     const dueAt = requiredString(request.body, "dueAt");
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const assigneeMemberId = optionalString(request.body, "assigneeMemberId");
+    const notificationSubscription = isObject(request.body.notificationSubscription)
+      ? {
+          templateId: requiredString(request.body.notificationSubscription, "templateId"),
+          recipientMemberId: requiredString(request.body.notificationSubscription, "recipientMemberId"),
+          subscriptionStatus: optionalReminderNotificationStatus(
+            request.body.notificationSubscription,
+            "subscriptionStatus",
+          ),
+        }
+      : undefined;
     const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
     const assignee = assigneeMemberId ? await familyStore.getMember(assigneeMemberId) : undefined;
 
@@ -300,6 +335,16 @@ export async function registerRoutes(server: FastifyInstance) {
       dueAt,
       createdByMemberId,
       assigneeMemberId,
+      notificationSubscription:
+        notificationSubscription?.templateId &&
+        notificationSubscription.recipientMemberId &&
+        notificationSubscription.subscriptionStatus
+          ? {
+              templateId: notificationSubscription.templateId,
+              recipientMemberId: notificationSubscription.recipientMemberId,
+              subscriptionStatus: notificationSubscription.subscriptionStatus,
+            }
+          : undefined,
     });
 
     return reply.code(201).send({ data: reminder });
@@ -328,6 +373,46 @@ export async function registerRoutes(server: FastifyInstance) {
       data: await familyStore.completeReminder(reminderId, actorMemberId),
     });
   });
+
+  server.post("/v1/wechat/session", async (request, reply) => {
+    if (!isObject(request.body)) {
+      return reply.code(400).send({ error: "body_required" });
+    }
+
+    const code = requiredString(request.body, "code");
+
+    if (!code) {
+      return reply.code(400).send({ error: "missing_required_fields" });
+    }
+
+    try {
+      return {
+        data: await exchangeWechatCode(code),
+      };
+    } catch (error) {
+      request.log.error({ error }, "wechat session exchange failed");
+      return reply.code(502).send({ error: "wechat_session_failed" });
+    }
+  });
+
+  const dispatchDueReminders = async (request: FastifyRequest, reply: FastifyReply) => {
+    const cronSecret = process.env.CRON_SECRET?.trim() || process.env.NESTFUL_CRON_SECRET?.trim();
+    const query = isObject(request.query) ? request.query : {};
+    const querySecret = typeof query.secret === "string" ? query.secret : undefined;
+    const authHeader = request.headers.authorization;
+    const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
+
+    if (cronSecret && querySecret !== cronSecret && bearerSecret !== cronSecret) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    return {
+      data: await familyStore.dispatchDueReminders(sendReminderSubscriptionMessage),
+    };
+  };
+
+  server.get("/v1/reminders/dispatch-due", dispatchDueReminders);
+  server.post("/v1/reminders/dispatch-due", dispatchDueReminders);
 
   server.get("/v1/families/:familyId/activities", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };

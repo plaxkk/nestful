@@ -27,6 +27,14 @@ const api = {
     });
   },
 
+  createWechatSession(body) {
+    return request({
+      method: "POST",
+      url: "/v1/wechat/session",
+      data: body,
+    });
+  },
+
   getFamily(familyId) {
     return request({
       method: "GET",
@@ -68,6 +76,13 @@ const api = {
     return request({
       method: "GET",
       url: `/v1/families/${familyId}/reminders`,
+    });
+  },
+
+  getReminderSubscriptionConfig() {
+    return request({
+      method: "GET",
+      url: "/v1/reminders/subscription-config",
     });
   },
 

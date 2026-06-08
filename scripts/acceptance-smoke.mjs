@@ -120,6 +120,12 @@ assert(auditActions.includes("family.created"), "family creation audit event mis
 assert(auditActions.includes("invitation.created"), "invitation creation audit event missing");
 assert(auditActions.includes("invitation.accepted"), "invitation acceptance audit event missing");
 
+const reminderSubscriptionConfigResponse = await request("/v1/reminders/subscription-config");
+assert(
+  typeof reminderSubscriptionConfigResponse.data.enabled === "boolean",
+  "reminder subscription config should expose enabled flag",
+);
+
 const reminderResponse = await request(`/v1/families/${family.id}/reminders`, {
   method: "POST",
   body: JSON.stringify({
@@ -128,11 +134,17 @@ const reminderResponse = await request(`/v1/families/${family.id}/reminders`, {
     dueAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     createdByMemberId: ownerMember.id,
     assigneeMemberId: ownerMember.id,
+    notificationSubscription: {
+      templateId: "test-template",
+      recipientMemberId: ownerMember.id,
+      subscriptionStatus: "reject",
+    },
   }),
 });
 
 assert(reminderResponse.data.id, "reminder id missing");
 assert(reminderResponse.data.completedAt === undefined, "new reminder should not be completed");
+assert(reminderResponse.data.notification?.sendStatus === "skipped", "rejected reminder notification should be skipped");
 
 const remindersResponse = await request(`/v1/families/${family.id}/reminders`);
 assert(remindersResponse.data.some((reminder) => reminder.id === reminderResponse.data.id), "reminder list missing new reminder");

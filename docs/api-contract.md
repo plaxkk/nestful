@@ -38,6 +38,16 @@ Do not expose `openid` or `session_key` to the mini-program.
 
 ## Families
 
+`POST /v1/wechat/session`
+
+Exchanges a mini-program `wx.login` code for the current app-scoped WeChat identity. If WeChat credentials are not configured, development environments return a local fallback identity.
+
+```json
+{
+  "code": "wx-login-code"
+}
+```
+
 `GET /v1/families`
 
 Lists known family spaces.
@@ -46,12 +56,13 @@ Lists known family spaces.
 
 Creates a family space and its owner member.
 
-Current in-memory implementation still accepts `ownerUserId`. After WeChat auth lands, backend should derive the owner from the app session token.
+The mini-program uses `POST /v1/wechat/session` to exchange a WeChat login code, then passes `ownerUserId` and `ownerWechatOpenId` when creating the family.
 
 ```json
 {
   "name": "王家",
   "ownerUserId": "wechat-open-id-or-local-user-id",
+  "ownerWechatOpenId": "wechat-open-id",
   "ownerDisplayName": "King"
 }
 ```
@@ -122,7 +133,8 @@ Accepts an invitation and creates a member.
 ```json
 {
   "displayName": "哥哥",
-  "userId": "wechat-open-id-or-local-user-id"
+  "userId": "wechat-open-id-or-local-user-id",
+  "wechatOpenId": "wechat-open-id"
 }
 ```
 
@@ -142,11 +154,31 @@ Creates a reminder. The creator and optional assignee must be members of the sam
   "title": "提醒妈妈吃药",
   "dueAt": "2026-05-22T00:00:00.000Z",
   "createdByMemberId": "member-id",
-  "assigneeMemberId": "member-id"
+  "assigneeMemberId": "member-id",
+  "notificationSubscription": {
+    "templateId": "wechat-subscribe-template-id",
+    "recipientMemberId": "member-id",
+    "subscriptionStatus": "accept"
+  }
 }
 ```
 
 Supported MVP types: `birthday`, `medicine`, `exercise`.
+
+If `notificationSubscription.subscriptionStatus` is `accept` and the recipient member has a `wechatOpenId`, the reminder is queued for one WeChat subscription-message notification. Other statuses keep the reminder visible in-app but skip external notification.
+
+`GET /v1/reminders/subscription-config`
+
+Returns whether the backend has a reminder subscription template configured.
+
+```json
+{
+  "data": {
+    "enabled": true,
+    "templateId": "wechat-subscribe-template-id"
+  }
+}
+```
 
 `POST /v1/reminders/:reminderId/complete`
 
@@ -155,6 +187,22 @@ Marks a reminder as completed and records `completedAt`.
 ```json
 {
   "actorMemberId": "member-id"
+}
+```
+
+`GET /v1/reminders/dispatch-due`
+
+Scans due reminders and sends pending WeChat subscription-message notifications. If `CRON_SECRET` or `NESTFUL_CRON_SECRET` is set, callers must pass either `Authorization: Bearer <secret>` or `?secret=<secret>`.
+
+```json
+{
+  "data": {
+    "due": 1,
+    "sent": 1,
+    "failed": 0,
+    "skipped": 0,
+    "notConfigured": 0
+  }
 }
 ```
 

@@ -1,5 +1,6 @@
 const { api } = require("../../utils/api");
 const { session } = require("../../utils/session");
+const { getWechatIdentity } = require("../../utils/wechat");
 
 Page({
   data: {
@@ -30,9 +31,11 @@ Page({
     wx.showLoading({ title: "创建中" });
 
     try {
+      const identity = await getWechatIdentity();
       const response = await api.createFamily({
         name: familyName,
-        ownerUserId: `local-${Date.now()}`,
+        ownerUserId: identity.userId,
+        ownerWechatOpenId: identity.wechatOpenId,
         ownerDisplayName: "我",
       });
 

@@ -16,6 +16,7 @@ import type {
   LedgerEntry,
   LedgerEntryType,
   Reminder,
+  ReminderNotification,
   ReminderType,
 } from "@nestful/shared";
 
@@ -23,6 +24,7 @@ export interface CreateFamilyInput {
   name: string;
   ownerUserId: string;
   ownerDisplayName: string;
+  ownerWechatOpenId?: string;
 }
 
 export interface CreateMemberInput {
@@ -33,6 +35,7 @@ export interface CreateMemberInput {
   birthdayCalendar?: "solar" | "lunar";
   location?: string;
   emergencyContact?: string;
+  wechatOpenId?: string;
 }
 
 export interface CreateInvitationInput {
@@ -47,6 +50,33 @@ export interface CreateReminderInput {
   dueAt: string;
   createdByMemberId: string;
   assigneeMemberId?: string;
+  notificationSubscription?: ReminderNotificationSubscriptionInput;
+}
+
+export interface ReminderNotificationSubscriptionInput {
+  templateId: string;
+  recipientMemberId: string;
+  subscriptionStatus: ReminderNotification["subscriptionStatus"];
+}
+
+export interface ReminderNotificationSendInput {
+  reminder: Reminder;
+  recipientOpenId: string;
+  templateId: string;
+}
+
+export interface ReminderNotificationSendResult {
+  ok: boolean;
+  skipped?: boolean;
+  error?: string;
+}
+
+export interface ReminderDispatchSummary {
+  due: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  notConfigured: number;
 }
 
 export interface CreateLedgerEntryInput {
@@ -266,6 +296,7 @@ export const familyStore = {
       id: randomUUID(),
       familyId: family.id,
       userId: input.ownerUserId,
+      wechatOpenId: input.ownerWechatOpenId,
       displayName: input.ownerDisplayName,
       role: "admin",
       joinedAt: createdAt,
@@ -301,6 +332,7 @@ export const familyStore = {
       id: randomUUID(),
       familyId,
       userId: input.userId,
+      wechatOpenId: input.wechatOpenId,
       displayName: input.displayName,
       role: input.role ?? "member",
       birthday: input.birthday,
@@ -377,6 +409,7 @@ export const familyStore = {
       id: randomUUID(),
       familyId: invitation.familyId,
       userId: input.userId,
+      wechatOpenId: input.wechatOpenId,
       displayName: input.displayName,
       role: invitation.role,
       birthday: input.birthday,
@@ -420,6 +453,27 @@ export const familyStore = {
 
   async createReminder(familyId: string, input: CreateReminderInput) {
     await loadState();
+    const recipientMemberId = input.notificationSubscription?.recipientMemberId;
+    const recipientMember = recipientMemberId ? state.members.find((member) => member.id === recipientMemberId) : undefined;
+    const notification: ReminderNotification | undefined =
+      input.notificationSubscription && recipientMemberId && recipientMember
+        ? {
+            templateId: input.notificationSubscription.templateId,
+            recipientMemberId,
+            recipientOpenId: recipientMember.wechatOpenId,
+            subscriptionStatus: input.notificationSubscription.subscriptionStatus,
+            sendStatus:
+              input.notificationSubscription.subscriptionStatus === "accept" && recipientMember.wechatOpenId
+                ? "pending"
+                : "skipped",
+            requestedAt: now(),
+            attemptCount: 0,
+            lastError:
+              input.notificationSubscription.subscriptionStatus === "accept" && !recipientMember.wechatOpenId
+                ? "missing_recipient_openid"
+                : undefined,
+          }
+        : undefined;
     const reminder: Reminder = {
       id: randomUUID(),
       familyId,
@@ -429,6 +483,7 @@ export const familyStore = {
       assigneeMemberId: input.assigneeMemberId,
       createdByMemberId: input.createdByMemberId,
       enabled: true,
+      notification,
     };
 
     state.reminders.push(reminder);
@@ -442,6 +497,81 @@ export const familyStore = {
     await persist();
 
     return reminder;
+  },
+
+  async dispatchDueReminders(sendNotification: (input: ReminderNotificationSendInput) => Promise<ReminderNotificationSendResult>) {
+    await loadState();
+    const currentTime = Date.now();
+    const summary: ReminderDispatchSummary = {
+      due: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      notConfigured: 0,
+    };
+
+    for (const reminder of state.reminders) {
+      const notification = reminder.notification;
+
+      if (
+        !reminder.enabled ||
+        reminder.completedAt ||
+        !notification ||
+        notification.sendStatus !== "pending" ||
+        Date.parse(reminder.dueAt) > currentTime
+      ) {
+        continue;
+      }
+
+      summary.due += 1;
+
+      if (!notification.recipientOpenId || notification.subscriptionStatus !== "accept") {
+        notification.sendStatus = "skipped";
+        notification.lastAttemptAt = now();
+        notification.lastError = !notification.recipientOpenId ? "missing_recipient_openid" : "subscription_not_accepted";
+        summary.skipped += 1;
+        continue;
+      }
+
+      const result = await sendNotification({
+        reminder,
+        recipientOpenId: notification.recipientOpenId,
+        templateId: notification.templateId,
+      });
+
+      if (result.ok) {
+        notification.sendStatus = "sent";
+        notification.sentAt = now();
+        notification.lastAttemptAt = notification.sentAt;
+        notification.lastError = undefined;
+        summary.sent += 1;
+        audit({
+          familyId: reminder.familyId,
+          actorMemberId: notification.recipientMemberId,
+          action: "reminder.notification.sent",
+          resourceType: "reminder",
+          resourceId: reminder.id,
+        });
+        continue;
+      }
+
+      if (result.skipped) {
+        summary.notConfigured += 1;
+        continue;
+      }
+
+      notification.attemptCount += 1;
+      notification.lastAttemptAt = now();
+      notification.lastError = result.error ?? "wechat_send_failed";
+      notification.sendStatus = notification.attemptCount >= 3 ? "failed" : "pending";
+      summary.failed += 1;
+    }
+
+    if (summary.sent > 0 || summary.failed > 0 || summary.skipped > 0) {
+      await persist();
+    }
+
+    return summary;
   },
 
   async completeReminder(reminderId: string, actorMemberId: string) {

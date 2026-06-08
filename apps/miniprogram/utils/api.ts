@@ -15,6 +15,7 @@ export interface FamilyMember {
   id: string;
   familyId: string;
   userId?: string;
+  wechatOpenId?: string;
   displayName: string;
   role: "admin" | "member" | "elder" | "child" | "guest";
   birthday?: string;
@@ -47,7 +48,21 @@ export interface Reminder {
   assigneeMemberId?: string;
   createdByMemberId: string;
   enabled: boolean;
+  notification?: ReminderNotification;
   completedAt?: string;
+}
+
+export interface ReminderNotification {
+  templateId: string;
+  recipientMemberId: string;
+  recipientOpenId?: string;
+  subscriptionStatus: "accept" | "reject" | "ban" | "filter" | "unavailable";
+  sendStatus: "pending" | "sent" | "failed" | "skipped";
+  requestedAt: string;
+  sentAt?: string;
+  lastAttemptAt?: string;
+  lastError?: string;
+  attemptCount: number;
 }
 
 export type LedgerEntryType = "expense" | "income";
@@ -110,10 +125,18 @@ const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   });
 
 export const api = {
-  createFamily(body: { name: string; ownerUserId: string; ownerDisplayName: string }) {
+  createFamily(body: { name: string; ownerUserId: string; ownerDisplayName: string; ownerWechatOpenId?: string }) {
     return request<ApiResponse<{ family: Family; ownerMember: FamilyMember }>>({
       method: "POST",
       url: "/v1/families",
+      data: body,
+    });
+  },
+
+  createWechatSession(body: { code: string }) {
+    return request<ApiResponse<{ userId: string; wechatOpenId?: string; configured: boolean }>>({
+      method: "POST",
+      url: "/v1/wechat/session",
       data: body,
     });
   },
@@ -147,7 +170,7 @@ export const api = {
     });
   },
 
-  acceptInvitation(code: string, body: { displayName: string; userId: string }) {
+  acceptInvitation(code: string, body: { displayName: string; userId: string; wechatOpenId?: string }) {
     return request<ApiResponse<{ invitation: FamilyInvitation; member: FamilyMember }>>({
       method: "POST",
       url: `/v1/invitations/${code}/accept`,
@@ -162,9 +185,27 @@ export const api = {
     });
   },
 
+  getReminderSubscriptionConfig() {
+    return request<ApiResponse<{ enabled: boolean; templateId?: string }>>({
+      method: "GET",
+      url: "/v1/reminders/subscription-config",
+    });
+  },
+
   createReminder(
     familyId: string,
-    body: { type: ReminderType; title: string; dueAt: string; createdByMemberId: string; assigneeMemberId?: string },
+    body: {
+      type: ReminderType;
+      title: string;
+      dueAt: string;
+      createdByMemberId: string;
+      assigneeMemberId?: string;
+      notificationSubscription?: {
+        templateId: string;
+        recipientMemberId: string;
+        subscriptionStatus: ReminderNotification["subscriptionStatus"];
+      };
+    },
   ) {
     return request<ApiResponse<Reminder>>({
       method: "POST",

@@ -125,9 +125,9 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 ## Known MVP Boundaries
 
 - Data persists to a local JSON file at `.data/nestful.json`; this is still an MVP stand-in for the target SQL database.
-- WeChat login is documented but not implemented.
+- WeChat login code exchange is implemented for mini-program identity binding when `WECHAT_APP_ID` and `WECHAT_APP_SECRET` are configured; local fallback IDs remain for development.
 - Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
-- Birthday/medicine/exercise reminders have an MVP create/list/complete flow; real WeChat subscription-message delivery is not implemented yet.
+- Birthday/medicine/exercise reminders have a create/list/complete flow. Real WeChat subscription-message delivery is implemented behind `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_REMINDER_TEMPLATE_ID`, and a scheduler that calls `/v1/reminders/dispatch-due`.
 - Ledger has an MVP create/list flow with family-wide visibility; fine-grained finance visibility and export are not implemented yet.
 - Digital space has an MVP create/list flow for document notes, account notes, and memory items. Real file upload, media upload, password storage, and fine-grained visibility are not implemented yet.
 - Family activity day has an MVP create/list/copy-share-text flow. Complex RSVP, calendar sync, payments, and group automation are not implemented yet.

@@ -44,6 +44,7 @@ export interface FamilyMember {
   id: string;
   familyId: string;
   userId?: string;
+  wechatOpenId?: string;
   displayName: string;
   role: FamilyRole;
   birthday?: string;
@@ -84,7 +85,21 @@ export interface Reminder {
   assigneeMemberId?: string;
   createdByMemberId: string;
   enabled: boolean;
+  notification?: ReminderNotification;
   completedAt?: string;
+}
+
+export interface ReminderNotification {
+  templateId: string;
+  recipientMemberId: string;
+  recipientOpenId?: string;
+  subscriptionStatus: "accept" | "reject" | "ban" | "filter" | "unavailable";
+  sendStatus: "pending" | "sent" | "failed" | "skipped";
+  requestedAt: string;
+  sentAt?: string;
+  lastAttemptAt?: string;
+  lastError?: string;
+  attemptCount: number;
 }
 
 export interface Activity {

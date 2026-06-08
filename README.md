@@ -27,6 +27,19 @@ docs/               Product, architecture, roadmap, and decision docs
 - Household ledger, expense sharing, bills, and family goals.
 - WeChat sharing cards and subscription-message-based reminders.
 
+### WeChat Reminder Notifications
+
+Reminder notifications use WeChat Mini Program subscription messages. Configure these environment variables in production:
+
+- `WECHAT_APP_ID`
+- `WECHAT_APP_SECRET`
+- `WECHAT_REMINDER_TEMPLATE_ID`
+- `WECHAT_MINIPROGRAM_STATE` (`trial` for experience version, `formal` after release)
+- `WECHAT_REMINDER_TITLE_KEY`, `WECHAT_REMINDER_TIME_KEY`, `WECHAT_REMINDER_TYPE_KEY` to match the selected subscription-message template keywords
+- `CRON_SECRET` or `NESTFUL_CRON_SECRET` for protecting the dispatch endpoint
+
+After users authorize a reminder notification in the mini-program, run a scheduler every few minutes against `GET /v1/reminders/dispatch-due`. Vercel Hobby cron is limited to daily schedules, so use Vercel Pro cron or an external cron service for near-real-time reminders.
+
 ## Initial Tech Direction
 
 - WeChat Mini Program client with TypeScript.
@@ -57,13 +70,11 @@ npm run acceptance:smoke
 
 The backend must be running first with `npm run dev:api`.
 
-For WeChat DevTools on this Mac, the mini-program currently calls the local API through:
+The mini-program currently calls the production API through:
 
 ```text
-http://172.16.2.66:3100
+https://nestful.kkplayit.online
 ```
-
-This avoids simulator timeouts seen with `127.0.0.1`.
 
 ## Docs
 

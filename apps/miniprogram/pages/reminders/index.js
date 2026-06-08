@@ -1,5 +1,6 @@
 const { api } = require("../../utils/api");
 const { session } = require("../../utils/session");
+const { requestReminderSubscription } = require("../../utils/wechat");
 
 const reminderTypes = [
   { label: "生日", value: "birthday" },
@@ -30,11 +31,27 @@ const normalizeDueAt = (value) => {
 
 const typeLabel = (type) => reminderTypes.find((item) => item.value === type)?.label ?? "提醒";
 
+const notificationLabel = (reminder) => {
+  if (!reminder.notification) {
+    return "";
+  }
+
+  if (reminder.notification.sendStatus === "sent") {
+    return " · 已发微信通知";
+  }
+
+  if (reminder.notification.sendStatus === "pending") {
+    return " · 微信通知待发送";
+  }
+
+  return "";
+};
+
 const withReminderText = (reminder) => ({
   ...reminder,
   typeLabel: typeLabel(reminder.type),
   dueAtText: formatInputTime(new Date(reminder.dueAt)),
-  statusLabel: reminder.completedAt ? "已完成" : "待提醒",
+  statusLabel: `${reminder.completedAt ? "已完成" : "待提醒"}${notificationLabel(reminder)}`,
   isCompleted: Boolean(reminder.completedAt),
 });
 
@@ -131,12 +148,20 @@ Page({
     wx.showLoading({ title: "保存中" });
 
     try {
+      const subscription = await requestReminderSubscription();
       await api.createReminder(family.id, {
         type: reminderType,
         title,
         dueAt,
         createdByMemberId: member.id,
         assigneeMemberId: member.id,
+        notificationSubscription: subscription
+          ? {
+              templateId: subscription.templateId,
+              recipientMemberId: member.id,
+              subscriptionStatus: subscription.subscriptionStatus,
+            }
+          : undefined,
       });
 
       wx.hideLoading();
@@ -146,7 +171,7 @@ Page({
       });
       await this.loadReminders();
       wx.showToast({
-        title: "提醒已保存",
+        title: subscription?.subscriptionStatus === "accept" ? "提醒已保存，到点会通知" : "提醒已保存",
         icon: "success",
       });
     } catch (error) {
