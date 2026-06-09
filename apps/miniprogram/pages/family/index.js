@@ -222,20 +222,19 @@ Page({
       return;
     }
 
+    let openedFromList = false;
+
     if (listedMember) {
-      this.openMemberEditor(listedMember, currentMember);
+      openedFromList = true;
+      this.openMemberEditor(listedMember, currentMember, true);
     }
 
     try {
       const response = await api.getMember(family.id, memberId);
       const member = withAvatarText(response.data);
-      this.openMemberEditor(member, currentMember);
+      this.openMemberEditor(member, currentMember, !openedFromList);
     } catch {
       if (listedMember) {
-        wx.showToast({
-          title: "已打开基础资料",
-          icon: "none",
-        });
         return;
       }
 
@@ -246,21 +245,35 @@ Page({
     }
   },
 
-  openMemberEditor(member, currentMember) {
+  openMemberEditor(member, currentMember, shouldScroll = false) {
     const roleIndex = roleOptions.findIndex((item) => item.value === member.role);
     const calendarIndex = birthdayCalendarOptions.findIndex((item) => item.value === member.birthdayCalendar);
 
-    this.setData({
-      memberEditorVisible: true,
-      selectedMember: member,
-      editDisplayNameInput: member.displayName,
-      editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
-      editBirthdayInput: member.birthday || "",
-      editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
-      editLocationInput: member.location || "",
-      editEmergencyContactInput: member.emergencyContact || "",
-      canEditSelectedRole: this.data.isCurrentMemberAdmin,
-      canRemoveSelected: this.data.isCurrentMemberAdmin && member.id !== currentMember.id,
+    this.setData(
+      {
+        memberEditorVisible: true,
+        selectedMember: member,
+        editDisplayNameInput: member.displayName,
+        editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
+        editBirthdayInput: member.birthday || "",
+        editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
+        editLocationInput: member.location || "",
+        editEmergencyContactInput: member.emergencyContact || "",
+        canEditSelectedRole: this.data.isCurrentMemberAdmin,
+        canRemoveSelected: this.data.isCurrentMemberAdmin && member.id !== currentMember.id,
+      },
+      () => {
+        if (shouldScroll) {
+          this.scrollToMemberEditor();
+        }
+      },
+    );
+  },
+
+  scrollToMemberEditor() {
+    wx.pageScrollTo({
+      selector: ".member-editor",
+      duration: 260,
     });
   },
 

@@ -17,6 +17,14 @@ const expectIncludes = (path, snippets) => {
   }
 };
 
+const expectExcludes = (path, snippets) => {
+  const content = read(path);
+
+  for (const snippet of snippets) {
+    assert(!content.includes(snippet), `${path} should not include ${snippet}`);
+  }
+};
+
 expectIncludes("apps/miniprogram/pages/home/index.wxml", [
   "输入邀请码加入",
   "bindtap=\"onPrimaryAction\"",
@@ -50,7 +58,7 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
   "记忆墙",
   "家庭活动",
   "openMemberEditor",
-  "已打开基础资料",
+  "pageScrollTo",
   "/pages/reminders/index",
   "/pages/ledger/index",
   "/pages/digital-space/index",
@@ -59,8 +67,11 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
 
 expectIncludes("apps/miniprogram/pages/family/index.js", [
   "openMemberEditor",
-  "已打开基础资料",
+  "pageScrollTo",
 ]);
+
+expectExcludes("apps/miniprogram/pages/family/index.ts", ["已打开基础资料"]);
+expectExcludes("apps/miniprogram/pages/family/index.js", ["已打开基础资料"]);
 
 expectIncludes("apps/miniprogram/pages/join/index.wxml", [
   "检查邀请码",
