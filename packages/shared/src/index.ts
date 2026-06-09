@@ -12,6 +12,8 @@ export type ActivityStatus = "draft" | "scheduled" | "completed" | "cancelled";
 
 export type RsvpStatus = "accepted" | "declined" | "tentative" | "pending";
 
+export type ActivityTaskStatus = "open" | "done";
+
 export type LedgerCategory =
   | "daily"
   | "education"
@@ -23,7 +25,11 @@ export type LedgerCategory =
 
 export type LedgerEntryType = "expense" | "income";
 
+export type LedgerRecurrence = "monthly" | "yearly";
+
 export type DigitalSpaceItemKind = "document" | "account" | "memory";
+
+export type DigitalSpaceMediaKind = "image" | "video" | "file" | "link";
 
 export interface User {
   id: string;
@@ -62,6 +68,7 @@ export interface FamilyInvitation {
   createdByMemberId: string;
   createdAt: string;
   expiresAt?: string;
+  canceledAt?: string;
   acceptedAt?: string;
   acceptedByMemberId?: string;
 }
@@ -78,10 +85,13 @@ export interface AuditEvent {
 
 export interface Reminder {
   id: string;
+  planId?: string;
   familyId: string;
   type: ReminderType;
   title: string;
   dueAt: string;
+  occurrenceNumber?: number;
+  occurrenceStatus?: ReminderOccurrenceStatus;
   assigneeMemberId?: string;
   targetScope?: ReminderTargetScope;
   targetMemberIds?: string[];
@@ -90,12 +100,40 @@ export interface Reminder {
   createdByMemberId: string;
   enabled: boolean;
   notification?: ReminderNotification;
+  completedByMemberId?: string;
   completedAt?: string;
+}
+
+export interface ReminderPlan {
+  id: string;
+  familyId: string;
+  type: ReminderType;
+  title: string;
+  assigneeMemberId?: string;
+  targetScope?: ReminderTargetScope;
+  targetMemberIds?: string[];
+  frequency: ReminderFrequency;
+  schedule?: ReminderSchedule;
+  createdByMemberId: string;
+  enabled: boolean;
+  createdAt: string;
+  nextDueAt?: string;
+  lastCompletedAt?: string;
+  completedCount: number;
 }
 
 export type ReminderTargetScope = "member" | "family";
 
-export type ReminderFrequency = "once" | "daily_once" | "daily_twice" | "daily_three_times" | "weekly" | "yearly";
+export type ReminderFrequency =
+  | "once"
+  | "daily_once"
+  | "daily_twice"
+  | "daily_three_times"
+  | "weekly"
+  | "monthly"
+  | "yearly";
+
+export type ReminderOccurrenceStatus = "pending" | "completed" | "skipped";
 
 export interface ReminderSchedule {
   targetLabel?: string;
@@ -117,6 +155,7 @@ export interface ReminderNotification {
   lastAttemptAt?: string;
   lastError?: string;
   attemptCount: number;
+  dispatchKey?: string;
 }
 
 export interface Activity {
@@ -129,12 +168,31 @@ export interface Activity {
   description?: string;
   budgetCents?: number;
   createdByMemberId: string;
+  participants?: ActivityParticipant[];
+  tasks?: ActivityTask[];
+  memoryItemId?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  sharePath?: string;
+  shareText?: string;
 }
 
 export interface ActivityParticipant {
   activityId: string;
   memberId: string;
   rsvp: RsvpStatus;
+  joinedAt: string;
+}
+
+export interface ActivityTask {
+  id: string;
+  activityId: string;
+  familyId: string;
+  title: string;
+  assigneeMemberId?: string;
+  status: ActivityTaskStatus;
+  createdByMemberId: string;
+  completedAt?: string;
 }
 
 export interface MemoryItem {
@@ -158,7 +216,21 @@ export interface DigitalSpaceItem {
   url?: string;
   occurredAt?: string;
   createdByMemberId: string;
+  activityId?: string;
+  place?: string;
   taggedMemberIds: string[];
+  mediaItems?: DigitalSpaceMediaItem[];
+  securityWarning?: string;
+  createdAt: string;
+}
+
+export interface DigitalSpaceMediaItem {
+  id: string;
+  kind: DigitalSpaceMediaKind;
+  label?: string;
+  url?: string;
+  mimeType?: string;
+  sizeBytes?: number;
   createdAt: string;
 }
 
@@ -182,4 +254,44 @@ export interface LedgerEntry {
   paidByMemberId: string;
   splitMemberIds: string[];
   occurredAt: string;
+  recurrence?: LedgerRecurrence;
+  recurringReminderId?: string;
+}
+
+export interface LedgerGoalFund {
+  id: string;
+  familyId: string;
+  title: string;
+  targetAmountCents: number;
+  currentAmountCents: number;
+  createdByMemberId: string;
+  dueAt?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface LedgerCategoryTotal {
+  category: LedgerCategory;
+  amountCents: number;
+  entryCount: number;
+}
+
+export interface LedgerMemberSplit {
+  memberId: string;
+  paidCents: number;
+  owedCents: number;
+  balanceCents: number;
+  entryCount: number;
+}
+
+export interface LedgerMonthlySummary {
+  familyId: string;
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  balanceCents: number;
+  entryCount: number;
+  categoryTotals: LedgerCategoryTotal[];
+  memberSplits: LedgerMemberSplit[];
+  goalFunds: LedgerGoalFund[];
 }

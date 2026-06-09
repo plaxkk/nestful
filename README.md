@@ -41,7 +41,7 @@ Reminder notifications use WeChat Mini Program subscription messages. Configure 
 - Exercise template keyword keys: `WECHAT_EXERCISE_PROJECT_KEY`, `WECHAT_EXERCISE_TIME_KEY`, `WECHAT_EXERCISE_PLAN_KEY`, `WECHAT_EXERCISE_FREQUENCY_KEY`, `WECHAT_EXERCISE_AMOUNT_KEY`
 - `CRON_SECRET` or `NESTFUL_CRON_SECRET` for protecting the dispatch endpoint
 
-After users authorize a reminder notification in the mini-program, run a scheduler every few minutes against `GET /v1/reminders/dispatch-due`. Vercel Hobby cron is limited to daily schedules, so use Vercel Pro cron or an external cron service for near-real-time reminders.
+After users authorize a reminder notification in the mini-program, run a scheduler every few minutes against `GET /v1/reminders/dispatch-due`. Reminder plans create separate due occurrences; completing a recurring occurrence advances the next in-app occurrence, while WeChat subscription-message delivery remains bound to a one-time user authorization. Vercel Hobby cron is limited to daily schedules, so use Vercel Pro cron or an external cron service for near-real-time reminders.
 
 ## Initial Tech Direction
 
@@ -73,10 +73,55 @@ npm run acceptance:smoke
 
 The backend must be running first with `npm run dev:api`.
 
-The mini-program currently calls the production API through:
+## Automated Quality Gate
 
-```text
-https://nestful.kkplayit.online
+Run these before handoff:
+
+```bash
+npm run release:quality-gate
+```
+
+`release:quality-gate` runs the full local handoff gate: `release:local-gate` followed by `release:runtime-smoke`.
+
+`release:local-gate` runs the offline checks, including release script syntax checks, that do not need a local API server, WeChat DevTools automation, or external WeChat artifacts.
+
+`release:runtime-smoke` starts the local API if needed, runs `acceptance:smoke`, starts WeChat DevTools automation on `ws://127.0.0.1:9421` if needed, runs `miniprogram:devtools-smoke`, and cleans up the local API/DevTools instances it started.
+
+WeChat DevTools preview/upload creates external WeChat artifacts and should only be run after an explicit release approval.
+
+Before an approved experience-version upload, generate the command plan and prefill the external validation record:
+
+```bash
+npm run experience:preflight
+npm run experience:preflight -- --check-api-health --health-output docs/experience-version-api-health-<version>.json
+npm run experience:upload-plan
+npm run experience:record-draft -- --output docs/experience-version-invite-validation-record-<version>.md
+```
+
+After two real testers complete the invite flow, fill every remaining `TODO` in that record and validate it:
+
+```bash
+npm run experience:record-check -- docs/experience-version-invite-validation-record-<version>.md
+```
+
+The mini-program selects an API base URL from the WeChat runtime environment:
+
+| WeChat envVersion | Default API |
+| --- | --- |
+| `develop` | `http://127.0.0.1:3100` |
+| `trial` | `https://nestful.kkplayit.online` |
+| `release` | `https://nestful.kkplayit.online` |
+
+For phone previews or LAN testing, override the API URL in WeChat DevTools without editing source:
+
+```js
+wx.setStorageSync("nestful.apiBaseUrl", "http://<mac-lan-ip>:3100")
+```
+
+Clear the override with:
+
+```js
+wx.removeStorageSync("nestful.apiBaseUrl")
 ```
 
 ## Docs
@@ -90,6 +135,8 @@ https://nestful.kkplayit.online
 - [WeChat Login and Invite Plan](docs/wechat-login-invite-plan.md)
 - [WeChat Embedded Experience Plan](docs/wechat-embedded-experience-plan.md)
 - [Acceptance Checklist](docs/acceptance-checklist.md)
+- [Release Quality Gate](docs/release-quality-gate.md)
+- [Experience-Version Invite Validation](docs/experience-version-invite-validation.md)
 - [Elder-Friendly UX](docs/elder-friendly-ux.md)
 - [Modern Humanist Interaction Direction](docs/humanist-interaction-design.md)
 - [Roadmap](docs/roadmap.md)

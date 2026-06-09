@@ -1,4 +1,5 @@
 const { api } = require("./api");
+const { session } = require("./session");
 
 const getWechatIdentity = () =>
   new Promise((resolve) => {
@@ -11,6 +12,7 @@ const getWechatIdentity = () =>
 
         try {
           const response = await api.createWechatSession({ code: loginResult.code });
+          session.setToken(response.data.token);
           resolve({
             userId: response.data.userId,
             wechatOpenId: response.data.wechatOpenId,

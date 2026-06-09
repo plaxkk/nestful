@@ -26,6 +26,16 @@
       <text class="label">说明</text>
       <input class="input" value="{{descriptionInput}}" bindinput="onDescriptionInput" placeholder="例如：一起吃饭、聊聊近况" />
     </view>
+    <view class="field">
+      <text class="label">协作任务</text>
+      <input class="input" value="{{taskInput}}" bindinput="onTaskInput" placeholder="例如：准备水果、订餐、带相机" />
+    </view>
+    <view class="field">
+      <text class="label">任务负责人</text>
+      <picker mode="selector" range="{{memberOptions}}" value="{{taskAssigneeIndex}}" bindchange="onTaskAssigneeChange">
+        <view class="picker-value">{{memberOptions[taskAssigneeIndex] || '我来负责'}}</view>
+      </picker>
+    </view>
     <button class="primary-action" bindtap="onCreateActivity">发起家庭活动</button>
   </view>
 
@@ -42,7 +52,28 @@
           <text class="activity-title">{{item.title}}</text>
           <text class="activity-meta">{{item.startsAtText}} · {{item.locationText}} · {{item.statusLabel}}</text>
           <text class="activity-desc">{{item.descriptionText}}</text>
-          <button class="secondary-action compact" data-text="{{item.shareText}}" bindtap="onCopyShareText">复制群里说明</button>
+          <text class="activity-desc">{{item.participantSummaryText}}</text>
+          <text class="activity-desc">{{item.taskSummaryText}}</text>
+          <text class="activity-desc" wx:if="{{item.memoryText}}">{{item.memoryText}}</text>
+          <view class="action-row">
+            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="accepted" bindtap="onRsvpActivity">确认参加</button>
+            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="tentative" bindtap="onRsvpActivity">待定</button>
+            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="declined" bindtap="onRsvpActivity">无法参加</button>
+          </view>
+          <view class="action-row">
+            <button class="secondary-action compact" data-id="{{item.id}}" bindtap="onCreateTask">加任务</button>
+            <button class="secondary-action compact" data-text="{{item.shareText}}" bindtap="onCopyShareText">复制说明</button>
+          </view>
+          <view class="task-list" wx:if="{{item.tasks.length > 0}}">
+            <view class="task-row" wx:for="{{item.tasks}}" wx:for-item="task" wx:key="id">
+              <text class="task-title">{{task.title}}</text>
+              <button wx:if="{{task.status !== 'done'}}" class="secondary-action compact" data-id="{{item.id}}" data-task-id="{{task.id}}" data-status="done" bindtap="onUpdateTaskStatus">完成任务</button>
+            </view>
+          </view>
+          <view class="action-row" wx:if="{{item.canFinish}}">
+            <button class="secondary-action compact" data-id="{{item.id}}" data-status="completed" bindtap="onUpdateActivityStatus">完成活动</button>
+            <button class="secondary-action compact danger" data-id="{{item.id}}" data-status="cancelled" bindtap="onUpdateActivityStatus">取消活动</button>
+          </view>
         </view>
       </view>
     </view>

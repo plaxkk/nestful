@@ -22,20 +22,80 @@ const normalizeStartsAt = (value) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
-const shareTextFor = (activity) => {
-  const startsAt = formatInputTime(new Date(activity.startsAt));
-  const location = activity.location ? `地点：${activity.location}` : "地点：待定";
+const memberName = (members, memberId) => members.find((member) => member.id === memberId)?.displayName ?? "家人";
 
-  return `家庭活动：${activity.title}\n时间：${startsAt}\n${location}\n打开家庭助手一起确认。`;
+const statusLabelFor = (status) => {
+  const labels = {
+    draft: "草稿",
+    scheduled: "已安排",
+    completed: "已完成",
+    cancelled: "已取消",
+  };
+
+  return labels[status];
 };
 
-const withActivityText = (activity) => ({
+const shareTextFor = (activity, members) => {
+  if (activity.shareText) {
+    return activity.shareText;
+  }
+
+  const startsAt = formatInputTime(new Date(activity.startsAt));
+  const location = activity.location ? `地点：${activity.location}` : "地点：待定";
+  const participants = activity.participants ?? [];
+  const accepted = participants.filter((participant) => participant.rsvp === "accepted").length;
+  const pending = participants.filter((participant) => participant.rsvp === "pending").length;
+  const taskCount = activity.tasks?.length ?? 0;
+  const doneTasks = activity.tasks?.filter((task) => task.status === "done").length ?? 0;
+
+  return `家庭活动：${activity.title}\n时间：${startsAt}\n${location}\n状态：${statusLabelFor(activity.status)}\n确认 ${accepted} 人，未定 ${pending} 人\n协作任务：${doneTasks}/${taskCount} 已完成\n打开家庭助手一起确认。`;
+};
+
+const participantSummaryFor = (activity, members) => {
+  const participants = activity.participants ?? [];
+
+  if (participants.length === 0) {
+    return "还没有参与人";
+  }
+
+  return participants
+    .map((participant) => {
+      const labels = {
+        accepted: "确认",
+        tentative: "待定",
+        declined: "无法参加",
+        pending: "未回应",
+      };
+
+      return `${memberName(members, participant.memberId)} ${labels[participant.rsvp]}`;
+    })
+    .join(" · ");
+};
+
+const taskSummaryFor = (activity, members) => {
+  const tasks = activity.tasks ?? [];
+
+  if (tasks.length === 0) {
+    return "暂无协作任务";
+  }
+
+  return tasks
+    .map((task) => `${task.status === "done" ? "已完成" : "待完成"}：${task.title}${task.assigneeMemberId ? `（${memberName(members, task.assigneeMemberId)}）` : ""}`)
+    .join(" · ");
+};
+
+const withActivityText = (activity, members) => ({
   ...activity,
   startsAtText: formatInputTime(new Date(activity.startsAt)),
   locationText: activity.location || "地点待定",
   descriptionText: activity.description || "家人一起安排一下",
-  statusLabel: activity.status === "scheduled" ? "已安排" : "草稿",
-  shareText: shareTextFor(activity),
+  statusLabel: statusLabelFor(activity.status),
+  participantSummaryText: participantSummaryFor(activity, members),
+  taskSummaryText: taskSummaryFor(activity, members),
+  memoryText: activity.memoryItemId ? "已生成家庭记忆" : "",
+  canFinish: activity.status === "draft" || activity.status === "scheduled",
+  sharePath: activity.sharePath ?? `/pages/activities/index?activityId=${activity.id}`,
+  shareText: shareTextFor(activity, members),
 });
 
 Page({
@@ -44,13 +104,18 @@ Page({
     startsAtInput: defaultStartsAtInput(),
     locationInput: "家里",
     descriptionInput: "一起吃饭、聊天、看看近况",
+    taskInput: "准备家人合照",
+    taskAssigneeIndex: 0,
+    members: [],
+    memberOptions: [],
     activities: [],
     loading: false,
     latestShareText: "",
+    latestSharePath: "/pages/activities/index",
   },
 
   onShow() {
-    this.loadActivities();
+    this.loadPage();
   },
 
   onTitleInput(event) {
@@ -69,6 +134,42 @@ Page({
     this.setData({ descriptionInput: event.detail.value });
   },
 
+  onTaskInput(event) {
+    this.setData({ taskInput: event.detail.value });
+  },
+
+  onTaskAssigneeChange(event) {
+    this.setData({ taskAssigneeIndex: Number(event.detail.value) });
+  },
+
+  async loadPage() {
+    await this.loadMembers();
+    await this.loadActivities();
+  },
+
+  async loadMembers() {
+    const family = session.getFamily();
+
+    if (!family) {
+      return;
+    }
+
+    try {
+      const response = await api.listMembers(family.id);
+      const members = response.data;
+
+      this.setData({
+        members,
+        memberOptions: members.map((member) => member.displayName),
+      });
+    } catch {
+      this.setData({
+        members: [],
+        memberOptions: [],
+      });
+    }
+  },
+
   async loadActivities() {
     const family = session.getFamily();
 
@@ -81,11 +182,12 @@ Page({
 
     try {
       const response = await api.listActivities(family.id);
-      const activities = response.data.map(withActivityText);
+      const activities = response.data.map((activity) => withActivityText(activity, this.data.members));
 
       this.setData({
         activities,
         latestShareText: activities[0]?.shareText ?? "",
+        latestSharePath: activities[0]?.sharePath ?? "/pages/activities/index",
         loading: false,
       });
     } catch (error) {
@@ -104,6 +206,8 @@ Page({
     const startsAt = normalizeStartsAt(this.data.startsAtInput.trim());
     const location = this.data.locationInput.trim();
     const description = this.data.descriptionInput.trim();
+    const taskTitle = this.data.taskInput.trim();
+    const taskAssignee = this.data.members[this.data.taskAssigneeIndex] ?? member;
 
     if (!family || !member) {
       wx.showToast({
@@ -130,8 +234,17 @@ Page({
         location,
         description,
         createdByMemberId: member.id,
+        participantMemberIds: this.data.members.map((item) => item.id),
+        tasks: taskTitle
+          ? [
+              {
+                title: taskTitle,
+                assigneeMemberId: taskAssignee.id,
+              },
+            ]
+          : undefined,
       });
-      const activity = withActivityText(response.data);
+      const activity = withActivityText(response.data, this.data.members);
 
       wx.hideLoading();
       this.setData({
@@ -139,7 +252,9 @@ Page({
         startsAtInput: defaultStartsAtInput(),
         locationInput: "家里",
         descriptionInput: "一起吃饭、聊天、看看近况",
+        taskInput: "准备家人合照",
         latestShareText: activity.shareText,
+        latestSharePath: activity.sharePath,
       });
       await this.loadActivities();
       wx.showToast({
@@ -153,6 +268,83 @@ Page({
         icon: "none",
       });
     }
+  },
+
+  async onRsvpActivity(event) {
+    const family = session.getFamily();
+    const member = session.getMember();
+    const activityId = event.currentTarget.dataset.id;
+    const rsvp = event.currentTarget.dataset.rsvp;
+
+    if (!family || !member || !activityId || !rsvp) {
+      return;
+    }
+
+    await api.updateActivityRsvp(family.id, activityId, {
+      actorMemberId: member.id,
+      memberId: member.id,
+      rsvp,
+    });
+    await this.loadActivities();
+  },
+
+  async onCreateTask(event) {
+    const family = session.getFamily();
+    const member = session.getMember();
+    const activityId = event.currentTarget.dataset.id;
+    const title = this.data.taskInput.trim();
+    const assignee = this.data.members[this.data.taskAssigneeIndex] ?? member;
+
+    if (!family || !member || !activityId || !title) {
+      wx.showToast({
+        title: "请填写协作任务",
+        icon: "none",
+      });
+      return;
+    }
+
+    await api.createActivityTask(family.id, activityId, {
+      actorMemberId: member.id,
+      title,
+      assigneeMemberId: assignee.id,
+    });
+    this.setData({ taskInput: "" });
+    await this.loadActivities();
+  },
+
+  async onUpdateTaskStatus(event) {
+    const family = session.getFamily();
+    const member = session.getMember();
+    const activityId = event.currentTarget.dataset.id;
+    const taskId = event.currentTarget.dataset.taskId;
+    const status = event.currentTarget.dataset.status;
+
+    if (!family || !member || !activityId || !taskId || !status) {
+      return;
+    }
+
+    await api.updateActivityTask(family.id, activityId, taskId, {
+      actorMemberId: member.id,
+      status,
+    });
+    await this.loadActivities();
+  },
+
+  async onUpdateActivityStatus(event) {
+    const family = session.getFamily();
+    const member = session.getMember();
+    const activityId = event.currentTarget.dataset.id;
+    const status = event.currentTarget.dataset.status;
+
+    if (!family || !member || !activityId || !status) {
+      return;
+    }
+
+    await api.updateActivityStatus(family.id, activityId, {
+      actorMemberId: member.id,
+      status,
+    });
+    await this.loadActivities();
   },
 
   onCopyShareText(event) {
@@ -174,7 +366,7 @@ Page({
   onShareAppMessage() {
     return {
       title: this.data.latestShareText ? "邀请家人参加活动" : "家庭活动日",
-      path: "/pages/activities/index",
+      path: this.data.latestSharePath,
     };
   },
 });

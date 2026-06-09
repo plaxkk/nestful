@@ -109,11 +109,11 @@ const reminderMeta = (reminder: Reminder) => {
   return scheduleParts.length > 0 ? ` · ${scheduleParts.join(" · ")}` : "";
 };
 
-const withReminderText = (reminder: Reminder) => ({
+const withReminderText = (reminder: Reminder, hasNextOccurrence: boolean) => ({
   ...reminder,
   typeLabel: typeLabel(reminder.type),
   dueAtText: formatInputTime(new Date(reminder.dueAt)),
-  statusLabel: `${reminder.completedAt ? "已完成" : "待提醒"}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
+  statusLabel: `${reminder.completedAt ? "已完成" : "待提醒"}${hasNextOccurrence ? " · 下次已安排" : ""}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
   isCompleted: Boolean(reminder.completedAt)
 });
 
@@ -244,9 +244,17 @@ Page({
 
     try {
       const response = await api.listReminders(family.id);
+      const pendingPlanIds = new Set(
+        response.data
+          .filter((reminder) => reminder.planId && !reminder.completedAt)
+          .map((reminder) => reminder.planId as string),
+      );
 
       this.setData({
-        reminders: response.data.map(withReminderText),
+        reminders: response.data
+          .slice()
+          .sort((left, right) => Date.parse(left.dueAt) - Date.parse(right.dueAt))
+          .map((reminder) => withReminderText(reminder, Boolean(reminder.planId && reminder.completedAt && pendingPlanIds.has(reminder.planId)))),
         loading: false
       });
     } catch (error) {
@@ -417,7 +425,7 @@ Page({
           notificationSubscription: subscription
             ? {
                 templateId: subscription.templateId,
-                recipientMemberId: reminderBody.assigneeMemberId ?? creator.id,
+                recipientMemberId: creator.id,
                 subscriptionStatus: subscription.subscriptionStatus
               }
             : undefined

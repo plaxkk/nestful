@@ -2,7 +2,7 @@ import type { FamilyMember, FamilyRole } from "@nestful/shared";
 
 const familyAdminRoles: FamilyRole[] = ["admin"];
 
-export const isFamilyMember = (member: FamilyMember | undefined, familyId: string) =>
+export const isFamilyMember = (member: FamilyMember | undefined, familyId: string): member is FamilyMember =>
   Boolean(member && member.familyId === familyId);
 
 export const canManageFamily = (member: FamilyMember | undefined, familyId: string) => {

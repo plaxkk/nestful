@@ -28,22 +28,57 @@
       <text class="label">链接（可选）</text>
       <input class="input" value="{{urlInput}}" bindinput="onUrlInput" placeholder="网盘、相册或资料链接" />
     </view>
+    <view class="field">
+      <text class="label">媒体类型</text>
+      <picker mode="selector" range="{{mediaKindOptions}}" range-key="label" value="{{mediaKindIndex}}" bindchange="onMediaKindChange">
+        <view class="picker-value">{{mediaKindOptions[mediaKindIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">媒体名称</text>
+      <input class="input" value="{{mediaLabelInput}}" bindinput="onMediaLabelInput" placeholder="例如：春节合照、体检报告 PDF" />
+    </view>
+    <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
+      <text class="label">发生日期</text>
+      <input class="input" value="{{occurredAtInput}}" bindinput="onOccurredAtInput" placeholder="例如：2026-06-09" />
+    </view>
+    <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
+      <text class="label">地点</text>
+      <input class="input" value="{{placeInput}}" bindinput="onPlaceInput" placeholder="例如：上海、家里、公园" />
+    </view>
+    <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
+      <text class="label">人物</text>
+      <picker mode="selector" range="{{memberOptions}}" value="{{tagMemberIndex}}" bindchange="onTagMemberChange">
+        <view class="picker-value">{{memberOptions[tagMemberIndex] || '选择家人'}}</view>
+      </picker>
+    </view>
+    <text class="warning-text" wx:if="{{itemKinds[kindIndex].value === 'account'}}">账号说明只能记录用途、归属和找回线索，不要保存密码、验证码、密保答案或恢复密钥。</text>
     <button class="primary-action" bindtap="onCreateItem">放入家庭空间</button>
   </view>
 
   <view class="section">
     <view class="section-heading">
       <text class="section-title">已经放好的东西</text>
-      <text class="section-note">资料、账号说明和记忆先统一放在这里。</text>
+      <text class="section-note">资料、账号说明和记忆分开查看；记忆按发生时间形成时间线。</text>
     </view>
-    <text class="empty-text" wx:if="{{!loading && items.length === 0}}">还没有条目。先放一份家庭资料、账号说明或记忆。</text>
+    <view class="field">
+      <text class="label">查看</text>
+      <picker mode="selector" range="{{filterKinds}}" range-key="label" value="{{filterIndex}}" bindchange="onFilterChange">
+        <view class="picker-value">{{filterKinds[filterIndex].label}}</view>
+      </picker>
+    </view>
+    <text class="empty-text" wx:if="{{!loading && visibleItems.length === 0}}">还没有条目。先放一份家庭资料、账号说明或记忆。</text>
     <view class="item-list">
-      <view class="item-row" wx:for="{{items}}" wx:key="id">
+      <view class="item-row" wx:for="{{visibleItems}}" wx:key="id">
         <view class="item-mark">{{item.kindLabel}}</view>
         <view class="item-main">
           <text class="item-title">{{item.title}}</text>
           <text class="item-summary">{{item.summaryText}}</text>
-          <text class="item-meta">{{item.createdAtText}}{{item.url ? ' · 有链接' : ''}}</text>
+          <text class="item-meta">{{item.occurredAtText || item.createdAtText}}{{item.url ? ' · 有链接' : ''}}{{item.activityText ? ' · ' + item.activityText : ''}}</text>
+          <text class="item-meta" wx:if="{{item.placeText}}">{{item.placeText}}</text>
+          <text class="item-meta" wx:if="{{item.peopleText}}">{{item.peopleText}}</text>
+          <text class="item-meta" wx:if="{{item.mediaText}}">{{item.mediaText}}</text>
+          <text class="warning-text compact-warning" wx:if="{{item.warningText}}">{{item.warningText}}</text>
         </view>
       </view>
     </view>

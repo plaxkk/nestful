@@ -1,5 +1,6 @@
 import { api } from "./api";
 import type { ReminderType } from "./api";
+import { session } from "./session";
 
 export interface WechatIdentity {
   userId: string;
@@ -17,6 +18,7 @@ export const getWechatIdentity = (): Promise<WechatIdentity> =>
 
         try {
           const response = await api.createWechatSession({ code: loginResult.code });
+          session.setToken(response.data.token);
           resolve({
             userId: response.data.userId,
             wechatOpenId: response.data.wechatOpenId,

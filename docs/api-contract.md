@@ -12,7 +12,7 @@ Returns service liveness.
 
 `POST /v1/auth/wechat-login`
 
-Planned phase 1 endpoint. The mini-program sends a `wx.login` code to backend; backend exchanges it through WeChat `code2Session`, binds the `openid` to an internal user, and returns an app session token.
+Planned hardening endpoint. The mini-program will send a `wx.login` code to the backend; the backend will exchange it through WeChat `code2Session`, bind the `openid` to an internal user, and return an app session token.
 
 ```json
 {
@@ -36,15 +36,39 @@ Response:
 
 Do not expose `openid` or `session_key` to the mini-program.
 
+Current MVP implementation uses `POST /v1/wechat/session` as a transitional identity endpoint. It returns a `userId`, an optional `wechatOpenId`, whether production WeChat credentials are configured, and an app session token that the Mini Program sends as `Authorization: Bearer <token>` on later requests. The next identity hardening pass should either replace it with `/v1/auth/wechat-login` or keep it as a compatibility alias after stronger actor validation exists.
+
+Actor-scoped mutations require `Authorization: Bearer <token>`. When a request includes fields such as `createdByMemberId`, `actorMemberId`, or `paidByMemberId`, the backend validates that the token user can act as that member before applying family-level permission checks.
+
 ## Families
 
 `POST /v1/wechat/session`
 
-Exchanges a mini-program `wx.login` code for the current app-scoped WeChat identity. If WeChat credentials are not configured, development environments return a local fallback identity.
+Exchanges a mini-program `wx.login` code for the current app-scoped WeChat identity and creates an app session. If WeChat credentials are not configured, development environments return a local fallback identity plus token.
 
 ```json
 {
   "code": "wx-login-code"
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "userId": "wechat-open-id-or-local-user-id",
+    "wechatOpenId": "wechat-open-id",
+    "configured": true,
+    "token": "app-session-token",
+    "expiresAt": "2026-07-09T00:00:00.000Z",
+    "user": {
+      "id": "wechat-open-id-or-local-user-id",
+      "wechatOpenId": "wechat-open-id",
+      "nickname": "微信用户",
+      "createdAt": "2026-06-09T00:00:00.000Z"
+    }
+  }
 }
 ```
 
@@ -78,6 +102,29 @@ Returns one family.
 Lists family members.
 
 Sensitive fields such as `emergencyContact` are redacted in list responses.
+
+`GET /v1/families/:familyId/members/:memberId`
+
+Returns one member profile. Requires `Authorization: Bearer <token>`. Sensitive fields such as `emergencyContact` are visible only to an admin in the same family or to that member themself.
+
+`PUT /v1/families/:familyId/members/:memberId`
+
+Updates one member profile. A member can update their own display name, birthday, birthday calendar, location, and emergency contact. Admins can update those fields for family members and can also update roles. The final admin in a family cannot be downgraded.
+
+```json
+{
+  "displayName": "妈妈",
+  "role": "elder",
+  "birthday": "1965-03-12",
+  "birthdayCalendar": "lunar",
+  "location": "上海",
+  "emergencyContact": "13800000000"
+}
+```
+
+`DELETE /v1/families/:familyId/members/:memberId`
+
+Removes one member. Requires an admin in the same family. The final admin in a family cannot be removed.
 
 `POST /v1/families/:familyId/members`
 
@@ -122,6 +169,18 @@ Response includes `joinPath`, which the mini-program share card can use:
 }
 ```
 
+Invitations default to a 24-hour expiration when `expiresAt` is omitted.
+
+`GET /v1/families/:familyId/invitations`
+
+Lists invitations for a family. Requires an admin in the same family. Responses include `status` and `joinPath`.
+
+Supported `status`: `active`, `accepted`, `expired`, `canceled`.
+
+`DELETE /v1/families/:familyId/invitations/:invitationId`
+
+Cancels an unused invitation. Requires an admin in the same family. Canceled invitations cannot be accepted.
+
 `GET /v1/invitations/:code`
 
 Returns invitation metadata.
@@ -146,7 +205,7 @@ Lists birthday and health reminders for the family.
 
 `POST /v1/families/:familyId/reminders`
 
-Creates a reminder. The creator and optional assignee must be members of the same family.
+Creates a reminder plan plus its first due occurrence. The creator, optional assignee, target members, and notification recipient must be members of the same family.
 
 ```json
 {
@@ -181,6 +240,15 @@ Reminder targeting and scheduling:
 
 If `notificationSubscription.subscriptionStatus` is `accept` and the recipient member has a `wechatOpenId`, the reminder is queued for one WeChat subscription-message notification. Other statuses keep the reminder visible in-app but skip external notification.
 
+Reminder rows are due occurrences linked by `planId`. Recurring frequencies advance as follows after completion:
+
+- `daily_once`, `daily_twice`, and `daily_three_times` create the next pending occurrence from `schedule.timesOfDay`; if no times are supplied they move forward one day.
+- `weekly` moves forward seven days.
+- `yearly` moves forward one year, which covers both birthday advance-day and birthday-day reminders.
+- `once` does not create another occurrence.
+
+WeChat Mini Program subscription messages are treated as one-time authorizations. Completing a recurring reminder creates the next in-app occurrence, but the next occurrence will not auto-send a WeChat subscription message until a future UI explicitly refreshes authorization.
+
 `GET /v1/reminders/subscription-config`
 
 Returns whether the backend has a reminder subscription template configured.
@@ -206,7 +274,7 @@ Current default WeChat template mappings:
 
 `POST /v1/reminders/:reminderId/complete`
 
-Marks a reminder as completed and records `completedAt`.
+Marks one reminder occurrence as completed, records `completedAt` and `completedByMemberId`, and advances the linked reminder plan when the frequency is recurring. Repeating the same completion request is idempotent and does not create duplicate next occurrences.
 
 ```json
 {
@@ -234,11 +302,15 @@ Scans due reminders and sends pending WeChat subscription-message notifications.
 
 `GET /v1/families/:familyId/activities`
 
-Lists family activities.
+Lists family activities with participants, tasks, share path, and share-copy text.
+
+`GET /v1/families/:familyId/activities/:activityId`
+
+Returns one activity detail with participants, tasks, share path, and share-copy text.
 
 `POST /v1/families/:familyId/activities`
 
-Creates one family activity. The creator must be a member of the same family.
+Creates one family activity. The creator, participants, and task assignees must be members of the same family.
 
 ```json
 {
@@ -246,30 +318,71 @@ Creates one family activity. The creator must be a member of the same family.
   "startsAt": "2026-05-24T02:00:00.000Z",
   "location": "家里",
   "description": "一起吃饭、聊天、看看近况",
-  "createdByMemberId": "member-id"
+  "createdByMemberId": "member-id",
+  "participantMemberIds": ["member-id", "member-id-2"],
+  "tasks": [
+    {
+      "title": "准备水果",
+      "assigneeMemberId": "member-id-2"
+    }
+  ]
 }
 ```
 
-MVP activities default to `scheduled` and can be shared by copying a family-group friendly text from the mini program.
+MVP activities default to `scheduled`. The creator is added as an `accepted` participant; other participants start as `pending`.
+
+`POST /v1/families/:familyId/activities/:activityId/rsvp`
+
+Updates the current member's RSVP state. A member cannot RSVP on behalf of another member.
+
+```json
+{
+  "actorMemberId": "member-id",
+  "memberId": "member-id",
+  "rsvp": "accepted"
+}
+```
+
+`POST /v1/families/:familyId/activities/:activityId/tasks`
+
+Adds an activity task. The actor must be the activity creator or a family admin.
+
+```json
+{
+  "actorMemberId": "member-id",
+  "title": "订家庭视频会议",
+  "assigneeMemberId": "member-id"
+}
+```
+
+`PUT /v1/families/:familyId/activities/:activityId/tasks/:taskId`
+
+Updates a task status to `open` or `done`. The activity creator, an admin, or the task assignee can update it.
+
+`PUT /v1/families/:familyId/activities/:activityId/status`
+
+Updates an activity to `completed` or `cancelled`. Completing an activity creates one `digital-space` memory item linked by `activityId` and returns `memoryItemId` on the activity. Share-copy text and share-card paths include the activity status and activity ID.
 
 ## Ledger
 
 `GET /v1/families/:familyId/ledger-entries`
 
-Lists MVP household ledger entries. Entries are visible to the family in this MVP.
+Lists household ledger entries newest first. Entries are visible to the family in this MVP.
 
 `POST /v1/families/:familyId/ledger-entries`
 
-Creates one household ledger entry. The payer must be a member of the same family.
+Creates one household ledger entry. The payer and every split member must belong to the same family. `recurrence` is optional and only allowed for expense entries in `housing` or `subscription`; it creates a recurring in-app `bill` reminder for the next renewal.
 
 ```json
 {
   "type": "expense",
-  "category": "daily",
-  "title": "买菜",
+  "category": "subscription",
+  "title": "家庭会员",
   "amountCents": 2000,
   "paidByMemberId": "member-id",
-  "occurredAt": "2026-05-21T00:00:00.000Z"
+  "splitMemberIds": ["member-id", "another-member-id"],
+  "occurredAt": "2026-05-21T00:00:00.000Z",
+  "recurrence": "monthly"
 }
 ```
 
@@ -277,11 +390,39 @@ Supported `type`: `expense`, `income`.
 
 Supported `category`: `daily`, `education`, `health`, `travel`, `housing`, `subscription`, `other`.
 
+Supported `recurrence`: `monthly`, `yearly`.
+
+`GET /v1/families/:familyId/ledger-summary?month=YYYY-MM`
+
+Returns a monthly ledger summary with `incomeCents`, `expenseCents`, `balanceCents`, sorted expense `categoryTotals`, member split rows, and the family's goal funds.
+
+`GET /v1/families/:familyId/ledger-goal-funds`
+
+Lists family goal funds.
+
+`POST /v1/families/:familyId/ledger-goal-funds`
+
+Creates a family goal fund. The creator must be a member of the same family.
+
+```json
+{
+  "title": "家庭旅行基金",
+  "targetAmountCents": 100000,
+  "currentAmountCents": 25000,
+  "createdByMemberId": "member-id",
+  "dueAt": "2026-10-01T00:00:00.000Z"
+}
+```
+
 ## Digital Space
 
 `GET /v1/families/:familyId/digital-space-items`
 
 Lists family digital space items. MVP items can be documents, account notes, or memory-wall entries.
+
+Optional query:
+
+- `kind=document|account|memory` filters one information architecture lane.
 
 `POST /v1/families/:familyId/digital-space-items`
 
@@ -293,13 +434,24 @@ Creates one family digital space item. The creator must be a member of the same 
   "title": "一次家庭出行",
   "summary": "周末一起出门散步的记忆",
   "url": "https://example.com/family-memory",
-  "createdByMemberId": "member-id"
+  "createdByMemberId": "member-id",
+  "activityId": "activity-id",
+  "occurredAt": "2026-06-09T00:00:00.000Z",
+  "place": "上海",
+  "taggedMemberIds": ["member-id"],
+  "mediaItems": [
+    {
+      "kind": "image",
+      "label": "散步合照",
+      "url": "https://example.com/family-memory.jpg"
+    }
+  ]
 }
 ```
 
 Supported `kind`: `document`, `account`, `memory`.
 
-MVP account items are notes only. Do not store real passwords or secret recovery information.
+Memory items can carry people tags, place, occurred date, activity linkage, and media metadata before real upload/storage integration lands. `activityId` is optional and is used to connect completed family activities to memory-wall entries. MVP account items are notes only and return a `securityWarning`; do not store real passwords, verification codes, recovery keys, or secret answers.
 
 ## Audit
 

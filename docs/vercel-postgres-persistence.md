@@ -61,10 +61,28 @@ Current business entities are persisted inside the `data` JSONB document:
 - `reminders`
 - `activities`
 - `ledgerEntries`
+- `ledgerGoalFunds`
 - `digitalSpaceItems`
 - `auditEvents`
 
-This is the Phase 3 persistence bridge from local JSON to cloud database. A later hardening pass can split this JSONB state into the normalized target tables in `docs/database-schema.md`.
+This is the Phase 3 persistence bridge from local JSON to cloud database. The normalized migration is now checked in under `services/api/migrations/`, but the API should continue to read and write JSONB until a staged cutover is explicitly scheduled.
+
+## Normalized Migration Rehearsal
+
+Run this on a staging clone first:
+
+```bash
+psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_up.sql
+psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_verify.sql
+```
+
+The verify query should show zero `count_delta` for entities that exist in JSONB. If a rehearsal fails or the application should stay on JSONB, rollback only the normalized projection:
+
+```bash
+psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_down.sql
+```
+
+The rollback keeps `nestful_app_state` intact.
 
 ## Vercel CLI Setup
 

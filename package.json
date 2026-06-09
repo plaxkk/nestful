@@ -8,6 +8,17 @@
   "scripts": {
     "dev:api": "corepack pnpm --filter @nestful/api dev",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
+    "migration:smoke": "node scripts/migration-sql-smoke.mjs",
+    "miniprogram:smoke": "node scripts/miniprogram-static-smoke.mjs",
+    "miniprogram:devtools-smoke": "node scripts/miniprogram-devtools-smoke.mjs",
+    "experience:upload-plan": "node scripts/experience-upload-plan.mjs",
+    "experience:record-draft": "node scripts/experience-validation-record-draft.mjs",
+    "experience:record-check": "node scripts/experience-validation-record-check.mjs",
+    "experience:tooling-smoke": "node scripts/experience-validation-tooling-smoke.mjs",
+    "experience:preflight": "node scripts/experience-preflight.mjs",
+    "release:local-gate": "node scripts/release-local-gate.mjs",
+    "release:runtime-smoke": "node scripts/release-runtime-smoke.mjs",
+    "release:quality-gate": "node scripts/release-quality-gate.mjs",
     "typecheck": "corepack pnpm -r typecheck",
     "lint": "corepack pnpm -r lint",
     "test": "corepack pnpm -r test"

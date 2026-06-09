@@ -71,6 +71,22 @@
   line-height: 1.6;
 }
 
+.warning-text {
+  padding: 22rpx;
+  border: 2rpx solid #f7b27a;
+  border-radius: 20rpx;
+  background: #fff7ed;
+  color: #8a3b12;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
+.compact-warning {
+  margin-top: 4rpx;
+  padding: 16rpx;
+  font-size: 28rpx;
+}
+
 .item-list {
   display: flex;
   flex-direction: column;

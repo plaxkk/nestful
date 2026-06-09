@@ -2,6 +2,7 @@ import type { Family, FamilyMember } from "./api";
 
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
+const tokenKey = "appSessionToken";
 
 export const session = {
   getFamily() {
@@ -20,8 +21,17 @@ export const session = {
     wx.setStorageSync(memberKey, member);
   },
 
+  getToken() {
+    return wx.getStorageSync(tokenKey) as string | "";
+  },
+
+  setToken(token: string) {
+    wx.setStorageSync(tokenKey, token);
+  },
+
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
+    wx.removeStorageSync(tokenKey);
   },
 };

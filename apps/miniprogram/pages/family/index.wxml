@@ -27,6 +27,19 @@
     <button class="secondary-action" bindtap="onCopyInviteCode">复制邀请码</button>
   </view>
 
+  <view class="section invitation-section" wx:if="{{isCurrentMemberAdmin && invitations.length > 0}}">
+    <text class="section-title">邀请记录</text>
+    <view class="invitation-list">
+      <view class="invitation-row" wx:for="{{invitations}}" wx:key="id">
+        <view class="invitation-main">
+          <text class="invitation-code">{{item.code}}</text>
+          <text class="invitation-meta">{{item.statusLabel}} · {{item.expiresAtText}}</text>
+        </view>
+        <button wx:if="{{item.canCancel}}" class="small-danger-button" data-id="{{item.id}}" bindtap="onCancelInvitation">撤销</button>
+      </view>
+    </view>
+  </view>
+
   <view class="section today-section">
     <text class="section-title">今天要处理</text>
     <view class="feature-list">
@@ -43,13 +56,58 @@
   <view class="section members-section">
     <text class="section-title">家里人</text>
     <view class="member-list">
-      <view class="member-row" wx:for="{{members}}" wx:key="id">
+      <view class="member-row" wx:for="{{members}}" wx:key="id" data-id="{{item.id}}" bindtap="onOpenMember">
         <view class="avatar">{{item.avatarText}}</view>
         <view class="member-main">
           <text class="member-name">{{item.displayName}}</text>
-          <text class="member-meta">{{item.roleLabel}}</text>
+          <text class="member-meta">{{item.roleLabel}} · {{item.detailText}}</text>
         </view>
+        <text class="feature-arrow">›</text>
       </view>
     </view>
+  </view>
+
+  <view class="panel member-editor" wx:if="{{memberEditorVisible && selectedMember}}">
+    <view class="editor-header">
+      <text class="section-title">家人资料</text>
+      <button class="text-button" bindtap="onCloseMemberEditor">关闭</button>
+    </view>
+
+    <view class="field">
+      <text class="label">称呼</text>
+      <input class="input" value="{{editDisplayNameInput}}" bindinput="onEditDisplayNameInput" placeholder="例如：妈妈、哥哥" />
+    </view>
+
+    <view class="field" wx:if="{{canEditSelectedRole}}">
+      <text class="label">身份</text>
+      <picker mode="selector" range="{{roleOptions}}" range-key="label" value="{{editRoleIndex}}" bindchange="onEditRoleChange">
+        <view class="picker-value">{{roleOptions[editRoleIndex].label}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">生日</text>
+      <input class="input" value="{{editBirthdayInput}}" bindinput="onEditBirthdayInput" placeholder="例如：1965-03-12" />
+    </view>
+
+    <view class="field">
+      <text class="label">生日历法</text>
+      <picker mode="selector" range="{{birthdayCalendarOptions}}" range-key="label" value="{{editBirthdayCalendarIndex}}" bindchange="onEditBirthdayCalendarChange">
+        <view class="picker-value">{{birthdayCalendarOptions[editBirthdayCalendarIndex].label}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">常住地</text>
+      <input class="input" value="{{editLocationInput}}" bindinput="onEditLocationInput" placeholder="例如：上海" />
+    </view>
+
+    <view class="field">
+      <text class="label">紧急联系</text>
+      <input class="input" value="{{editEmergencyContactInput}}" bindinput="onEditEmergencyContactInput" placeholder="只有本人和管理员可见" />
+    </view>
+
+    <button class="primary-action" bindtap="onSaveMemberProfile">保存资料</button>
+    <button wx:if="{{canRemoveSelected}}" class="danger-action" bindtap="onRemoveSelectedMember">移除这位家人</button>
   </view>
 </view>

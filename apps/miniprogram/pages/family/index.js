@@ -1,10 +1,67 @@
 const { api } = require("../../utils/api");
 const { session } = require("../../utils/session");
 
+const roleOptions = [
+  { label: "管理员", value: "admin" },
+  { label: "家人", value: "member" },
+  { label: "长辈", value: "elder" },
+  { label: "孩子", value: "child" },
+  { label: "访客", value: "guest" },
+];
+
+const birthdayCalendarOptions = [
+  { label: "阳历", value: "solar" },
+  { label: "农历", value: "lunar" },
+];
+
+const roleLabel = (role) => roleOptions.find((item) => item.value === role)?.label || "家人";
+
+const statusLabel = (invitation) => {
+  if (invitation.status === "accepted") {
+    return "已使用";
+  }
+
+  if (invitation.status === "canceled") {
+    return "已撤销";
+  }
+
+  if (invitation.status === "expired") {
+    return "已过期";
+  }
+
+  return "可使用";
+};
+
+const formatDateTime = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 16);
+  }
+
+  const pad = (item) => item.toString().padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
+    date.getMinutes(),
+  )}`;
+};
+
 const withAvatarText = (member) => ({
   ...member,
   avatarText: member.displayName ? member.displayName.slice(0, 1) : "?",
-  roleLabel: member.role === "admin" ? "管理员" : "家人",
+  roleLabel: roleLabel(member.role),
+  detailText: [member.birthday, member.location].filter(Boolean).join(" · ") || "点开补充资料",
+});
+
+const withInvitationText = (invitation) => ({
+  ...invitation,
+  statusLabel: statusLabel(invitation),
+  expiresAtText: invitation.expiresAt ? `到期：${formatDateTime(invitation.expiresAt)}` : "24 小时内有效",
+  canCancel: invitation.status === "active",
 });
 
 Page({
@@ -15,7 +72,22 @@ Page({
     inviteCode: "",
     inviteDigits: [],
     joinPath: "",
+    invitations: [],
     loading: false,
+    inviteMode: false,
+    isCurrentMemberAdmin: false,
+    roleOptions,
+    birthdayCalendarOptions,
+    memberEditorVisible: false,
+    selectedMember: null,
+    editDisplayNameInput: "",
+    editRoleIndex: 1,
+    editBirthdayInput: "",
+    editBirthdayCalendarIndex: 0,
+    editLocationInput: "",
+    editEmergencyContactInput: "",
+    canEditSelectedRole: false,
+    canRemoveSelected: false,
     nextActions: [
       { title: "生日和健康", desc: "生日、吃药、运动都放这里", page: "reminders" },
       { title: "家庭活动", desc: "约吃饭、散步或视频聊天", page: "activities" },
@@ -25,11 +97,17 @@ Page({
   },
 
   onShow() {
-    this.loadMembers();
+    void this.loadFamilyData();
+  },
+
+  async loadFamilyData() {
+    await this.loadMembers();
+    await this.loadInvitations();
   },
 
   async loadMembers() {
     const family = session.getFamily();
+    const currentMember = session.getMember();
 
     if (!family) {
       wx.redirectTo({ url: "/pages/home/index" });
@@ -38,6 +116,7 @@ Page({
 
     this.setData({
       familyName: family.name,
+      isCurrentMemberAdmin: Boolean(currentMember && currentMember.role === "admin"),
       loading: true,
     });
 
@@ -63,6 +142,24 @@ Page({
         title: "成员加载失败，请确认 API 已启动",
         icon: "none",
       });
+    }
+  },
+
+  async loadInvitations() {
+    const family = session.getFamily();
+
+    if (!family || !this.data.isCurrentMemberAdmin) {
+      this.setData({ invitations: [] });
+      return;
+    }
+
+    try {
+      const response = await api.listInvitations(family.id);
+      this.setData({
+        invitations: response.data.map(withInvitationText),
+      });
+    } catch {
+      this.setData({ invitations: [] });
     }
   },
 
@@ -92,6 +189,7 @@ Page({
         inviteDigits: response.data.invitation.code.split(""),
         joinPath: response.data.joinPath,
       });
+      await this.loadInvitations();
     } catch (error) {
       wx.hideLoading();
       if (error instanceof Error && error.message.includes("status 404")) {
@@ -105,6 +203,202 @@ Page({
       }
       wx.showToast({
         title: "邀请生成失败，请稍后再试",
+        icon: "none",
+      });
+    }
+  },
+
+  async onOpenMember(event) {
+    const family = session.getFamily();
+    const currentMember = session.getMember();
+    const memberId = event.currentTarget.dataset.id;
+
+    if (!family || !currentMember || !memberId) {
+      wx.showToast({
+        title: "请先创建家庭",
+        icon: "none",
+      });
+      return;
+    }
+
+    try {
+      const response = await api.getMember(family.id, memberId);
+      const member = withAvatarText(response.data);
+      const roleIndex = roleOptions.findIndex((item) => item.value === member.role);
+      const calendarIndex = birthdayCalendarOptions.findIndex((item) => item.value === member.birthdayCalendar);
+
+      this.setData({
+        memberEditorVisible: true,
+        selectedMember: member,
+        editDisplayNameInput: member.displayName,
+        editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
+        editBirthdayInput: member.birthday || "",
+        editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
+        editLocationInput: member.location || "",
+        editEmergencyContactInput: member.emergencyContact || "",
+        canEditSelectedRole: this.data.isCurrentMemberAdmin,
+        canRemoveSelected: this.data.isCurrentMemberAdmin && member.id !== currentMember.id,
+      });
+    } catch {
+      wx.showToast({
+        title: "资料打开失败，请稍后再试",
+        icon: "none",
+      });
+    }
+  },
+
+  onCloseMemberEditor() {
+    this.setData({
+      memberEditorVisible: false,
+      selectedMember: null,
+    });
+  },
+
+  onEditDisplayNameInput(event) {
+    this.setData({ editDisplayNameInput: event.detail.value });
+  },
+
+  onEditBirthdayInput(event) {
+    this.setData({ editBirthdayInput: event.detail.value });
+  },
+
+  onEditLocationInput(event) {
+    this.setData({ editLocationInput: event.detail.value });
+  },
+
+  onEditEmergencyContactInput(event) {
+    this.setData({ editEmergencyContactInput: event.detail.value });
+  },
+
+  onEditRoleChange(event) {
+    this.setData({ editRoleIndex: Number(event.detail.value) });
+  },
+
+  onEditBirthdayCalendarChange(event) {
+    this.setData({ editBirthdayCalendarIndex: Number(event.detail.value) });
+  },
+
+  async onSaveMemberProfile() {
+    const family = session.getFamily();
+    const currentMember = session.getMember();
+    const selectedMember = this.data.selectedMember;
+    const displayName = this.data.editDisplayNameInput.trim();
+
+    if (!family || !currentMember || !selectedMember) {
+      wx.showToast({
+        title: "请先选择家人",
+        icon: "none",
+      });
+      return;
+    }
+
+    if (!displayName) {
+      wx.showToast({
+        title: "请填写称呼",
+        icon: "none",
+      });
+      return;
+    }
+
+    wx.showLoading({ title: "保存中" });
+
+    try {
+      const response = await api.updateMember(family.id, selectedMember.id, {
+        displayName,
+        role: this.data.canEditSelectedRole ? roleOptions[this.data.editRoleIndex]?.value : undefined,
+        birthday: this.data.editBirthdayInput.trim(),
+        birthdayCalendar: birthdayCalendarOptions[this.data.editBirthdayCalendarIndex]?.value,
+        location: this.data.editLocationInput.trim(),
+        emergencyContact: this.data.editEmergencyContactInput.trim(),
+      });
+
+      if (response.data.id === currentMember.id) {
+        session.setMember(response.data);
+      }
+
+      wx.hideLoading();
+      this.setData({
+        memberEditorVisible: false,
+        selectedMember: null,
+      });
+      await this.loadFamilyData();
+      wx.showToast({
+        title: "资料已保存",
+        icon: "success",
+      });
+    } catch {
+      wx.hideLoading();
+      wx.showToast({
+        title: "保存失败，请稍后再试",
+        icon: "none",
+      });
+    }
+  },
+
+  async onRemoveSelectedMember() {
+    const family = session.getFamily();
+    const selectedMember = this.data.selectedMember;
+
+    if (!family || !selectedMember || !this.data.canRemoveSelected) {
+      wx.showToast({
+        title: "不能移除这位家人",
+        icon: "none",
+      });
+      return;
+    }
+
+    wx.showModal({
+      title: "移除家人",
+      content: `确定把${selectedMember.displayName}移出这个家庭吗？`,
+      confirmText: "移除",
+      success: async (result) => {
+        if (!result.confirm) {
+          return;
+        }
+
+        wx.showLoading({ title: "处理中" });
+
+        try {
+          await api.removeMember(family.id, selectedMember.id);
+          wx.hideLoading();
+          this.setData({
+            memberEditorVisible: false,
+            selectedMember: null,
+          });
+          await this.loadFamilyData();
+          wx.showToast({
+            title: "已移除",
+            icon: "success",
+          });
+        } catch {
+          wx.hideLoading();
+          wx.showToast({
+            title: "移除失败，请稍后再试",
+            icon: "none",
+          });
+        }
+      },
+    });
+  },
+
+  async onCancelInvitation(event) {
+    const family = session.getFamily();
+    const invitationId = event.currentTarget.dataset.id;
+
+    if (!family || !invitationId) {
+      return;
+    }
+
+    try {
+      await api.cancelInvitation(family.id, invitationId);
+      await this.loadInvitations();
+      wx.showToast({
+        title: "邀请已撤销",
+        icon: "success",
+      });
+    } catch {
+      wx.showToast({
+        title: "撤销失败，请稍后再试",
         icon: "none",
       });
     }

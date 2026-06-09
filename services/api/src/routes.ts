@@ -1,117 +1,101 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type {
-  DigitalSpaceItemKind,
-  FamilyRole,
-  LedgerCategory,
-  LedgerEntryType,
-  ReminderFrequency,
-  ReminderNotification,
-  ReminderTargetScope,
-  ReminderType,
-} from "@nestful/shared";
+import type { FamilyInvitation, FamilyMember, ReminderType, User } from "@nestful/shared";
 import { familyStore } from "./store.js";
-import { canAddMemberDirectly, canCreateInvitation, isFamilyMember, redactMemberForList } from "./privacy.js";
+import {
+  canAddMemberDirectly,
+  canCreateInvitation,
+  canManageFamily,
+  isFamilyMember,
+  redactMemberForList,
+} from "./privacy.js";
+import {
+  isObject,
+  optionalActivityStatus,
+  optionalActivityTaskStatus,
+  optionalBirthdayCalendar,
+  optionalDigitalSpaceKind,
+  optionalDigitalSpaceMediaKind,
+  optionalLedgerCategory,
+  optionalLedgerEntryType,
+  optionalLedgerRecurrence,
+  optionalPositiveInteger,
+  optionalReminderFrequency,
+  optionalReminderNotificationStatus,
+  optionalReminderTargetScope,
+  optionalReminderType,
+  optionalRole,
+  optionalRsvpStatus,
+  optionalString,
+  optionalStringArray,
+  requiredString,
+  sendApiError,
+} from "./request.js";
 import {
   exchangeWechatCode,
   getReminderSubscriptionConfig,
   sendReminderSubscriptionMessage,
 } from "./wechat.js";
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const bearerTokenFrom = (request: FastifyRequest) => {
+  const authHeader = request.headers.authorization;
 
-const requiredString = (body: Record<string, unknown>, key: string) => {
-  const value = body[key];
-
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  return authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
 };
 
-const optionalString = (body: Record<string, unknown>, key: string) => {
-  const value = body[key];
+const requireAuthenticatedUser = async (request: FastifyRequest, reply: FastifyReply) => {
+  const auth = await familyStore.getUserSession(bearerTokenFrom(request));
 
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  if (!auth?.user) {
+    sendApiError(reply, 401, "unauthorized");
+    return undefined;
+  }
+
+  return auth.user;
 };
 
-const optionalRole = (body: Record<string, unknown>, key: string): FamilyRole | undefined => {
-  const value = body[key];
-  const roles: FamilyRole[] = ["admin", "member", "elder", "child", "guest"];
+const canActAsMember = (member: FamilyMember | undefined, user: User) =>
+  Boolean(member && (member.userId === user.id || (member.wechatOpenId && member.wechatOpenId === user.wechatOpenId)));
 
-  return typeof value === "string" && roles.includes(value as FamilyRole) ? (value as FamilyRole) : undefined;
+const memberForUser = async (familyId: string, user: User) => {
+  const members = await familyStore.listMembers(familyId);
+
+  return members.find((member) => canActAsMember(member, user));
 };
 
-const optionalReminderType = (body: Record<string, unknown>, key: string): ReminderType | undefined => {
-  const value = body[key];
-  const types: ReminderType[] = ["birthday", "medicine", "exercise"];
+const canViewSensitiveMember = (viewer: FamilyMember | undefined, member: FamilyMember | undefined) =>
+  Boolean(viewer && member && (viewer.id === member.id || canManageFamily(viewer, member.familyId)));
 
-  return typeof value === "string" && types.includes(value as ReminderType) ? (value as ReminderType) : undefined;
+const memberForViewer = (member: FamilyMember, viewer: FamilyMember | undefined) =>
+  canViewSensitiveMember(viewer, member) ? member : redactMemberForList(member);
+
+const canManageActivity = (
+  actor: FamilyMember | undefined,
+  activity: { familyId: string; createdByMemberId: string } | undefined,
+) => Boolean(actor && activity && (actor.id === activity.createdByMemberId || canManageFamily(actor, activity.familyId)));
+
+const invitationStatus = (invitation: FamilyInvitation) => {
+  if (invitation.acceptedAt) {
+    return "accepted";
+  }
+
+  if (invitation.canceledAt) {
+    return "canceled";
+  }
+
+  if (invitation.expiresAt && Date.parse(invitation.expiresAt) < Date.now()) {
+    return "expired";
+  }
+
+  return "active";
 };
 
-const optionalReminderTargetScope = (body: Record<string, unknown>, key: string): ReminderTargetScope | undefined => {
-  const value = body[key];
-  const scopes: ReminderTargetScope[] = ["member", "family"];
+const invitationForList = (invitation: FamilyInvitation) => ({
+  ...invitation,
+  status: invitationStatus(invitation),
+  joinPath: `/pages/join/index?code=${invitation.code}`,
+});
 
-  return typeof value === "string" && scopes.includes(value as ReminderTargetScope)
-    ? (value as ReminderTargetScope)
-    : undefined;
-};
-
-const optionalReminderFrequency = (body: Record<string, unknown>, key: string): ReminderFrequency | undefined => {
-  const value = body[key];
-  const frequencies: ReminderFrequency[] = ["once", "daily_once", "daily_twice", "daily_three_times", "weekly", "yearly"];
-
-  return typeof value === "string" && frequencies.includes(value as ReminderFrequency)
-    ? (value as ReminderFrequency)
-    : undefined;
-};
-
-const optionalLedgerEntryType = (body: Record<string, unknown>, key: string): LedgerEntryType | undefined => {
-  const value = body[key];
-  const types: LedgerEntryType[] = ["expense", "income"];
-
-  return typeof value === "string" && types.includes(value as LedgerEntryType) ? (value as LedgerEntryType) : undefined;
-};
-
-const optionalLedgerCategory = (body: Record<string, unknown>, key: string): LedgerCategory | undefined => {
-  const value = body[key];
-  const categories: LedgerCategory[] = ["daily", "education", "health", "travel", "housing", "subscription", "other"];
-
-  return typeof value === "string" && categories.includes(value as LedgerCategory) ? (value as LedgerCategory) : undefined;
-};
-
-const optionalDigitalSpaceKind = (body: Record<string, unknown>, key: string): DigitalSpaceItemKind | undefined => {
-  const value = body[key];
-  const kinds: DigitalSpaceItemKind[] = ["document", "account", "memory"];
-
-  return typeof value === "string" && kinds.includes(value as DigitalSpaceItemKind)
-    ? (value as DigitalSpaceItemKind)
-    : undefined;
-};
-
-const optionalReminderNotificationStatus = (
-  body: Record<string, unknown>,
-  key: string,
-): ReminderNotification["subscriptionStatus"] | undefined => {
-  const value = body[key];
-  const statuses: Array<ReminderNotification["subscriptionStatus"]> = ["accept", "reject", "ban", "filter", "unavailable"];
-
-  return typeof value === "string" && statuses.includes(value as ReminderNotification["subscriptionStatus"])
-    ? (value as ReminderNotification["subscriptionStatus"])
-    : undefined;
-};
-
-const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => {
-  const value = body[key];
-
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
-};
-
-const optionalStringArray = (body: Record<string, unknown>, key: string) => {
-  const value = body[key];
-
-  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0)
-    ? value.map((item) => item.trim())
-    : undefined;
-};
+const hasKey = (body: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(body, key);
 
 export async function registerRoutes(server: FastifyInstance) {
   server.get("/health", async () => ({
@@ -124,8 +108,14 @@ export async function registerRoutes(server: FastifyInstance) {
   }));
 
   server.post("/v1/families", async (request, reply) => {
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const name = requiredString(request.body, "name");
@@ -134,7 +124,11 @@ export async function registerRoutes(server: FastifyInstance) {
     const ownerWechatOpenId = optionalString(request.body, "ownerWechatOpenId");
 
     if (!name || !ownerUserId || !ownerDisplayName) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (ownerUserId !== authUser.id) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     const data = await familyStore.createFamily({ name, ownerUserId, ownerDisplayName, ownerWechatOpenId });
@@ -147,7 +141,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const family = await familyStore.getFamily(familyId);
 
     if (!family) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return { data: family };
@@ -157,7 +151,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {
@@ -165,28 +159,187 @@ export async function registerRoutes(server: FastifyInstance) {
     };
   });
 
-  server.post("/v1/families/:familyId/members", async (request, reply) => {
-    const { familyId } = request.params as { familyId: string };
+  server.get("/v1/families/:familyId/members/:memberId", async (request, reply) => {
+    const { familyId, memberId } = request.params as { familyId: string; memberId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    const viewer = await memberForUser(familyId, authUser);
+    const member = await familyStore.getMember(memberId);
+
+    if (!viewer) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(member, familyId)) {
+      return sendApiError(reply, 404, "member_not_found");
+    }
+
+    return {
+      data: memberForViewer(member, viewer),
+    };
+  });
+
+  server.put("/v1/families/:familyId/members/:memberId", async (request, reply) => {
+    const { familyId, memberId } = request.params as { familyId: string; memberId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const viewer = await memberForUser(familyId, authUser);
+    const member = await familyStore.getMember(memberId);
+
+    if (!viewer) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(member, familyId)) {
+      return sendApiError(reply, 404, "member_not_found");
+    }
+
+    const changingRole = hasKey(request.body, "role");
+    const nextRole = changingRole ? optionalRole(request.body, "role") : undefined;
+
+    if (changingRole && !nextRole) {
+      return sendApiError(reply, 400, "invalid_role");
+    }
+
+    if (hasKey(request.body, "birthdayCalendar") && request.body.birthdayCalendar !== undefined) {
+      const nextBirthdayCalendar = optionalBirthdayCalendar(request.body, "birthdayCalendar");
+
+      if (!nextBirthdayCalendar) {
+        return sendApiError(reply, 400, "invalid_birthday_calendar");
+      }
+    }
+
+    if (viewer.id !== member.id && !canManageFamily(viewer, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (changingRole && !canManageFamily(viewer, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    const members = await familyStore.listMembers(familyId);
+    const adminCount = members.filter((item) => item.role === "admin").length;
+
+    if (member.role === "admin" && nextRole && nextRole !== "admin" && adminCount <= 1) {
+      return sendApiError(reply, 400, "last_admin_required");
+    }
+
+    const displayName = hasKey(request.body, "displayName") ? requiredString(request.body, "displayName") : undefined;
+
+    if (hasKey(request.body, "displayName") && !displayName) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    const updated = await familyStore.updateMember(
+      member.id,
+      {
+        ...(displayName ? { displayName } : {}),
+        ...(nextRole ? { role: nextRole } : {}),
+        ...(hasKey(request.body, "birthday") ? { birthday: optionalString(request.body, "birthday") } : {}),
+        ...(hasKey(request.body, "birthdayCalendar")
+          ? { birthdayCalendar: optionalBirthdayCalendar(request.body, "birthdayCalendar") }
+          : {}),
+        ...(hasKey(request.body, "location") ? { location: optionalString(request.body, "location") } : {}),
+        ...(hasKey(request.body, "emergencyContact")
+          ? { emergencyContact: optionalString(request.body, "emergencyContact") }
+          : {}),
+      },
+      viewer.id,
+    );
+
+    return {
+      data: memberForViewer(updated ?? member, viewer),
+    };
+  });
+
+  server.delete("/v1/families/:familyId/members/:memberId", async (request, reply) => {
+    const { familyId, memberId } = request.params as { familyId: string; memberId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    const viewer = await memberForUser(familyId, authUser);
+    const member = await familyStore.getMember(memberId);
+
+    if (!viewer || !canManageFamily(viewer, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(member, familyId)) {
+      return sendApiError(reply, 404, "member_not_found");
+    }
+
+    const members = await familyStore.listMembers(familyId);
+    const adminCount = members.filter((item) => item.role === "admin").length;
+
+    if (member.role === "admin" && adminCount <= 1) {
+      return sendApiError(reply, 400, "last_admin_required");
+    }
+
+    const removed = await familyStore.removeMember(member.id, viewer.id);
+
+    return {
+      data: removed ? redactMemberForList(removed) : undefined,
+    };
+  });
+
+  server.post("/v1/families/:familyId/members", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
     }
 
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const actorMember = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
+    if (!canActAsMember(actorMember, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
     if (!canAddMemberDirectly(actorMember, familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
     }
 
     const displayName = requiredString(request.body, "displayName");
 
     if (!displayName) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
     }
 
     const member = await familyStore.createMember(
@@ -197,7 +350,7 @@ export async function registerRoutes(server: FastifyInstance) {
         userId: optionalString(request.body, "userId"),
         wechatOpenId: optionalString(request.body, "wechatOpenId"),
         birthday: optionalString(request.body, "birthday"),
-        birthdayCalendar: optionalString(request.body, "birthdayCalendar") as "solar" | "lunar" | undefined,
+        birthdayCalendar: optionalBirthdayCalendar(request.body, "birthdayCalendar"),
         location: optionalString(request.body, "location"),
         emergencyContact: optionalString(request.body, "emergencyContact"),
       },
@@ -209,21 +362,34 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.post("/v1/families/:familyId/invitations", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
 
     const actorMember = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
 
-    if (!createdByMemberId || !canCreateInvitation(actorMember, familyId)) {
-      return reply.code(400).send({ error: "invalid_creator_member" });
+    if (!createdByMemberId || !actorMember) {
+      return sendApiError(reply, 400, "invalid_creator_member");
+    }
+
+    if (!canActAsMember(actorMember, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!canCreateInvitation(actorMember, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     const invitation = await familyStore.createInvitation(familyId, {
@@ -240,12 +406,70 @@ export async function registerRoutes(server: FastifyInstance) {
     });
   });
 
+  server.get("/v1/families/:familyId/invitations", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    const viewer = await memberForUser(familyId, authUser);
+
+    if (!viewer || !canManageFamily(viewer, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    return {
+      data: (await familyStore.listInvitations(familyId)).map(invitationForList),
+    };
+  });
+
+  server.delete("/v1/families/:familyId/invitations/:invitationId", async (request, reply) => {
+    const { familyId, invitationId } = request.params as { familyId: string; invitationId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    const viewer = await memberForUser(familyId, authUser);
+
+    if (!viewer || !canManageFamily(viewer, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    const invitation = await familyStore.getInvitation(invitationId);
+
+    if (!invitation || invitation.familyId !== familyId) {
+      return sendApiError(reply, 404, "invitation_not_found");
+    }
+
+    if (invitation.acceptedAt) {
+      return sendApiError(reply, 400, "invitation_already_accepted");
+    }
+
+    const canceled = await familyStore.cancelInvitation(invitation.id, viewer.id);
+
+    return {
+      data: canceled ? invitationForList(canceled) : undefined,
+    };
+  });
+
   server.get("/v1/invitations/:code", async (request, reply) => {
     const { code } = request.params as { code: string };
     const invitation = await familyStore.getInvitationByCode(code);
 
     if (!invitation) {
-      return reply.code(404).send({ error: "invitation_not_found" });
+      return sendApiError(reply, 404, "invitation_not_found");
     }
 
     return {
@@ -256,36 +480,43 @@ export async function registerRoutes(server: FastifyInstance) {
         role: invitation.role,
         createdAt: invitation.createdAt,
         expiresAt: invitation.expiresAt,
+        canceledAt: invitation.canceledAt,
         acceptedAt: invitation.acceptedAt,
+        status: invitationStatus(invitation),
       },
     };
   });
 
   server.post("/v1/invitations/:code/accept", async (request, reply) => {
     const { code } = request.params as { code: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const displayName = requiredString(request.body, "displayName");
 
     if (!displayName) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
     }
 
     const result = await familyStore.acceptInvitation(code, {
       displayName,
-      userId: optionalString(request.body, "userId"),
-      wechatOpenId: optionalString(request.body, "wechatOpenId"),
+      userId: authUser.id,
+      wechatOpenId: authUser.wechatOpenId,
       birthday: optionalString(request.body, "birthday"),
-      birthdayCalendar: optionalString(request.body, "birthdayCalendar") as "solar" | "lunar" | undefined,
+      birthdayCalendar: optionalBirthdayCalendar(request.body, "birthdayCalendar"),
       location: optionalString(request.body, "location"),
       emergencyContact: optionalString(request.body, "emergencyContact"),
     });
 
     if (!result) {
-      return reply.code(404).send({ error: "invitation_unavailable" });
+      return sendApiError(reply, 404, "invitation_unavailable");
     }
 
     return reply.code(201).send({
@@ -300,7 +531,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {
@@ -322,13 +553,18 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.post("/v1/families/:familyId/reminders", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const type = optionalReminderType(request.body, "type");
@@ -353,25 +589,52 @@ export async function registerRoutes(server: FastifyInstance) {
     const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
     const assignee = assigneeMemberId ? await familyStore.getMember(assigneeMemberId) : undefined;
     const targetMembers = targetMemberIds ? await Promise.all(targetMemberIds.map((id) => familyStore.getMember(id))) : [];
+    const notificationRecipient = notificationSubscription?.recipientMemberId
+      ? await familyStore.getMember(notificationSubscription.recipientMemberId)
+      : undefined;
 
     if (!type || !title || !dueAt || !createdByMemberId) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (
+      notificationSubscription &&
+      (!notificationSubscription.templateId ||
+        !notificationSubscription.recipientMemberId ||
+        !notificationSubscription.subscriptionStatus)
+    ) {
+      return sendApiError(reply, 400, "invalid_notification_subscription");
     }
 
     if (Number.isNaN(Date.parse(dueAt))) {
-      return reply.code(400).send({ error: "invalid_due_at" });
+      return sendApiError(reply, 400, "invalid_due_at");
+    }
+
+    if (!canActAsMember(creator, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (!isFamilyMember(creator, familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (assigneeMemberId && !isFamilyMember(assignee, familyId)) {
-      return reply.code(400).send({ error: "invalid_assignee_member" });
+      return sendApiError(reply, 400, "invalid_assignee_member");
     }
 
     if (targetMembers.some((member) => !isFamilyMember(member, familyId))) {
-      return reply.code(400).send({ error: "invalid_target_member" });
+      return sendApiError(reply, 400, "invalid_target_member");
+    }
+
+    if (notificationSubscription && !isFamilyMember(notificationRecipient, familyId)) {
+      return sendApiError(reply, 400, "invalid_notification_recipient");
+    }
+
+    if (
+      notificationSubscription?.subscriptionStatus === "accept" &&
+      !canActAsMember(notificationRecipient, authUser)
+    ) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     const reminder = await familyStore.createReminder(familyId, {
@@ -410,21 +673,31 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.post("/v1/reminders/:reminderId/complete", async (request, reply) => {
     const { reminderId } = request.params as { reminderId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
     const reminder = await familyStore.getReminder(reminderId);
 
     if (!reminder) {
-      return reply.code(404).send({ error: "reminder_not_found" });
+      return sendApiError(reply, 404, "reminder_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const actorMemberId = requiredString(request.body, "actorMemberId");
     const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
 
+    if (!canActAsMember(actor, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
     if (!actorMemberId || !isFamilyMember(actor, reminder.familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
     }
 
     return reply.code(200).send({
@@ -434,22 +707,33 @@ export async function registerRoutes(server: FastifyInstance) {
 
   server.post("/v1/wechat/session", async (request, reply) => {
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const code = requiredString(request.body, "code");
 
     if (!code) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
     }
 
     try {
+      const identity = await exchangeWechatCode(code);
+      const appSession = await familyStore.createUserSession({
+        userId: identity.userId,
+        wechatOpenId: identity.wechatOpenId,
+      });
+
       return {
-        data: await exchangeWechatCode(code),
+        data: {
+          ...identity,
+          token: appSession.token,
+          user: appSession.user,
+          expiresAt: appSession.expiresAt,
+        },
       };
     } catch (error) {
       request.log.error({ error }, "wechat session exchange failed");
-      return reply.code(502).send({ error: "wechat_session_failed" });
+      return sendApiError(reply, 502, "wechat_session_failed");
     }
   });
 
@@ -461,7 +745,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
 
     if (cronSecret && querySecret !== cronSecret && bearerSecret !== cronSecret) {
-      return reply.code(401).send({ error: "unauthorized" });
+      return sendApiError(reply, 401, "unauthorized");
     }
 
     return {
@@ -476,7 +760,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {
@@ -484,15 +768,37 @@ export async function registerRoutes(server: FastifyInstance) {
     };
   });
 
-  server.post("/v1/families/:familyId/activities", async (request, reply) => {
-    const { familyId } = request.params as { familyId: string };
+  server.get("/v1/families/:familyId/activities/:activityId", async (request, reply) => {
+    const { familyId, activityId } = request.params as { familyId: string; activityId: string };
+    const activity = await familyStore.getActivity(activityId);
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!activity || activity.familyId !== familyId) {
+      return sendApiError(reply, 404, "activity_not_found");
+    }
+
+    return {
+      data: activity,
+    };
+  });
+
+  server.post("/v1/families/:familyId/activities", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const title = requiredString(request.body, "title");
@@ -500,18 +806,47 @@ export async function registerRoutes(server: FastifyInstance) {
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const location = optionalString(request.body, "location");
     const description = optionalString(request.body, "description");
+    const participantMemberIds = optionalStringArray(request.body, "participantMemberIds") ?? [];
+    const rawTasks = Array.isArray(request.body.tasks) ? request.body.tasks : [];
+    const tasks = rawTasks.map((task) =>
+      isObject(task)
+        ? {
+            title: requiredString(task, "title"),
+            assigneeMemberId: optionalString(task, "assigneeMemberId"),
+          }
+        : undefined,
+    );
     const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
+    const participantMembers = await Promise.all(participantMemberIds.map((id) => familyStore.getMember(id)));
+    const taskAssigneeIds = tasks.map((task) => task?.assigneeMemberId).filter(Boolean) as string[];
+    const taskAssignees = await Promise.all(taskAssigneeIds.map((id) => familyStore.getMember(id)));
 
     if (!title || !startsAt || !createdByMemberId) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (tasks.some((task) => !task?.title)) {
+      return sendApiError(reply, 400, "invalid_activity_task");
     }
 
     if (Number.isNaN(Date.parse(startsAt))) {
-      return reply.code(400).send({ error: "invalid_starts_at" });
+      return sendApiError(reply, 400, "invalid_starts_at");
+    }
+
+    if (!canActAsMember(creator, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (!isFamilyMember(creator, familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (participantMembers.some((member) => !isFamilyMember(member, familyId))) {
+      return sendApiError(reply, 400, "invalid_activity_participant");
+    }
+
+    if (taskAssignees.some((member) => !isFamilyMember(member, familyId))) {
+      return sendApiError(reply, 400, "invalid_activity_task_assignee");
     }
 
     return reply.code(201).send({
@@ -521,15 +856,234 @@ export async function registerRoutes(server: FastifyInstance) {
         createdByMemberId,
         location,
         description,
+        participantMemberIds,
+        tasks: tasks.map((task) => ({
+          title: task?.title ?? "",
+          assigneeMemberId: task?.assigneeMemberId,
+        })),
       }),
     });
+  });
+
+  server.post("/v1/families/:familyId/activities/:activityId/rsvp", async (request, reply) => {
+    const { familyId, activityId } = request.params as { familyId: string; activityId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    const activity = await familyStore.getActivity(activityId);
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!activity || activity.familyId !== familyId) {
+      return sendApiError(reply, 404, "activity_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const actorMemberId = requiredString(request.body, "actorMemberId");
+    const memberId = requiredString(request.body, "memberId");
+    const rsvp = optionalRsvpStatus(request.body, "rsvp");
+    const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
+    const member = memberId ? await familyStore.getMember(memberId) : undefined;
+
+    if (!actorMemberId || !memberId || !rsvp) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (!canActAsMember(actor, authUser) || actorMemberId !== memberId) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(actor, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(member, familyId)) {
+      return sendApiError(reply, 400, "invalid_activity_participant");
+    }
+
+    return {
+      data: await familyStore.updateActivityRsvp(activityId, {
+        actorMemberId,
+        memberId,
+        rsvp,
+      }),
+    };
+  });
+
+  server.post("/v1/families/:familyId/activities/:activityId/tasks", async (request, reply) => {
+    const { familyId, activityId } = request.params as { familyId: string; activityId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    const activity = await familyStore.getActivity(activityId);
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!activity || activity.familyId !== familyId) {
+      return sendApiError(reply, 404, "activity_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const actorMemberId = requiredString(request.body, "actorMemberId");
+    const title = requiredString(request.body, "title");
+    const assigneeMemberId = optionalString(request.body, "assigneeMemberId");
+    const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
+    const assignee = assigneeMemberId ? await familyStore.getMember(assigneeMemberId) : undefined;
+
+    if (!actorMemberId || !title) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (!canActAsMember(actor, authUser) || !canManageActivity(actor, activity)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(actor, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (assigneeMemberId && !isFamilyMember(assignee, familyId)) {
+      return sendApiError(reply, 400, "invalid_activity_task_assignee");
+    }
+
+    return reply.code(201).send({
+      data: await familyStore.createActivityTask(activityId, {
+        actorMemberId,
+        title,
+        assigneeMemberId,
+      }),
+    });
+  });
+
+  server.put("/v1/families/:familyId/activities/:activityId/tasks/:taskId", async (request, reply) => {
+    const { familyId, activityId, taskId } = request.params as { familyId: string; activityId: string; taskId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    const activity = await familyStore.getActivity(activityId);
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!activity || activity.familyId !== familyId) {
+      return sendApiError(reply, 404, "activity_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const actorMemberId = requiredString(request.body, "actorMemberId");
+    const status = optionalActivityTaskStatus(request.body, "status");
+    const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
+    const task = activity.tasks?.find((item) => item.id === taskId);
+
+    if (!actorMemberId || !status) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (!task) {
+      return sendApiError(reply, 404, "activity_task_not_found");
+    }
+
+    if (
+      !canActAsMember(actor, authUser) ||
+      (!canManageActivity(actor, activity) && task.assigneeMemberId !== actorMemberId)
+    ) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(actor, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    return {
+      data: await familyStore.updateActivityTask(activityId, taskId, {
+        actorMemberId,
+        status,
+      }),
+    };
+  });
+
+  server.put("/v1/families/:familyId/activities/:activityId/status", async (request, reply) => {
+    const { familyId, activityId } = request.params as { familyId: string; activityId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    const activity = await familyStore.getActivity(activityId);
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!activity || activity.familyId !== familyId) {
+      return sendApiError(reply, 404, "activity_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const actorMemberId = requiredString(request.body, "actorMemberId");
+    const status = optionalActivityStatus(request.body, "status");
+    const actor = actorMemberId ? await familyStore.getMember(actorMemberId) : undefined;
+
+    if (!actorMemberId || !status) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (status !== "completed" && status !== "cancelled") {
+      return sendApiError(reply, 400, "invalid_activity_status");
+    }
+
+    if (!canActAsMember(actor, authUser) || !canManageActivity(actor, activity)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(actor, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (activity.status === "completed" && status === "cancelled") {
+      return sendApiError(reply, 400, "activity_already_completed");
+    }
+
+    return {
+      data: await familyStore.updateActivityStatus(activityId, {
+        actorMemberId,
+        status,
+      }),
+    };
   });
 
   server.get("/v1/families/:familyId/ledger-entries", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {
@@ -537,15 +1091,108 @@ export async function registerRoutes(server: FastifyInstance) {
     };
   });
 
-  server.post("/v1/families/:familyId/ledger-entries", async (request, reply) => {
+  server.get("/v1/families/:familyId/ledger-summary", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const query = isObject(request.query) ? request.query : {};
+    const month = optionalString(query, "month");
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      return sendApiError(reply, 400, "invalid_month");
+    }
+
+    return {
+      data: await familyStore.getLedgerMonthlySummary(familyId, month),
+    };
+  });
+
+  server.get("/v1/families/:familyId/ledger-goal-funds", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    return {
+      data: await familyStore.listLedgerGoalFunds(familyId),
+    };
+  });
+
+  server.post("/v1/families/:familyId/ledger-goal-funds", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
+    }
+
+    const title = requiredString(request.body, "title");
+    const targetAmountCents = optionalPositiveInteger(request.body, "targetAmountCents");
+    const createdByMemberId = requiredString(request.body, "createdByMemberId");
+    const dueAt = optionalString(request.body, "dueAt");
+    const currentAmountValue = request.body.currentAmountCents;
+    const currentAmountCents =
+      typeof currentAmountValue === "number" && Number.isInteger(currentAmountValue) && currentAmountValue >= 0
+        ? currentAmountValue
+        : undefined;
+    const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
+
+    if (!title || !targetAmountCents || !createdByMemberId) {
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (hasKey(request.body, "currentAmountCents") && currentAmountCents === undefined) {
+      return sendApiError(reply, 400, "invalid_current_amount");
+    }
+
+    if (dueAt && Number.isNaN(Date.parse(dueAt))) {
+      return sendApiError(reply, 400, "invalid_due_at");
+    }
+
+    if (!canActAsMember(creator, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (!isFamilyMember(creator, familyId)) {
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    return reply.code(201).send({
+      data: await familyStore.createLedgerGoalFund(familyId, {
+        title,
+        targetAmountCents,
+        currentAmountCents,
+        createdByMemberId,
+        dueAt,
+      }),
+    });
+  });
+
+  server.post("/v1/families/:familyId/ledger-entries", async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    if (!(await familyStore.getFamily(familyId))) {
+      return sendApiError(reply, 404, "family_not_found");
+    }
+
+    if (!isObject(request.body)) {
+      return sendApiError(reply, 400, "body_required");
     }
 
     const type = optionalLedgerEntryType(request.body, "type");
@@ -553,19 +1200,42 @@ export async function registerRoutes(server: FastifyInstance) {
     const title = requiredString(request.body, "title");
     const amountCents = optionalPositiveInteger(request.body, "amountCents");
     const paidByMemberId = requiredString(request.body, "paidByMemberId");
+    const splitMemberIds = optionalStringArray(request.body, "splitMemberIds");
     const occurredAt = requiredString(request.body, "occurredAt");
+    const recurrence = optionalLedgerRecurrence(request.body, "recurrence");
     const paidByMember = paidByMemberId ? await familyStore.getMember(paidByMemberId) : undefined;
+    const splitMembers = splitMemberIds ? await Promise.all(splitMemberIds.map((id) => familyStore.getMember(id))) : [];
 
     if (!type || !category || !title || !amountCents || !paidByMemberId || !occurredAt) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (hasKey(request.body, "splitMemberIds") && !splitMemberIds) {
+      return sendApiError(reply, 400, "invalid_split_members");
+    }
+
+    if (hasKey(request.body, "recurrence") && request.body.recurrence !== undefined && !recurrence) {
+      return sendApiError(reply, 400, "invalid_ledger_recurrence");
     }
 
     if (Number.isNaN(Date.parse(occurredAt))) {
-      return reply.code(400).send({ error: "invalid_occurred_at" });
+      return sendApiError(reply, 400, "invalid_occurred_at");
+    }
+
+    if (!canActAsMember(paidByMember, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (!isFamilyMember(paidByMember, familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
+    }
+
+    if (splitMembers.some((member) => !isFamilyMember(member, familyId))) {
+      return sendApiError(reply, 400, "invalid_split_member");
+    }
+
+    if (recurrence && (type !== "expense" || !["housing", "subscription"].includes(category))) {
+      return sendApiError(reply, 400, "invalid_ledger_recurrence");
     }
 
     return reply.code(201).send({
@@ -575,32 +1245,41 @@ export async function registerRoutes(server: FastifyInstance) {
         title,
         amountCents,
         paidByMemberId,
+        splitMemberIds,
         occurredAt,
+        recurrence,
       }),
     });
   });
 
   server.get("/v1/families/:familyId/digital-space-items", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
+    const query = isObject(request.query) ? request.query : {};
+    const kind = optionalDigitalSpaceKind(query, "kind");
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {
-      data: await familyStore.listDigitalSpaceItems(familyId),
+      data: await familyStore.listDigitalSpaceItems(familyId, kind),
     };
   });
 
   server.post("/v1/families/:familyId/digital-space-items", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     if (!isObject(request.body)) {
-      return reply.code(400).send({ error: "body_required" });
+      return sendApiError(reply, 400, "body_required");
     }
 
     const kind = optionalDigitalSpaceKind(request.body, "kind");
@@ -609,18 +1288,54 @@ export async function registerRoutes(server: FastifyInstance) {
     const summary = optionalString(request.body, "summary");
     const url = optionalString(request.body, "url");
     const occurredAt = optionalString(request.body, "occurredAt");
+    const activityId = optionalString(request.body, "activityId");
+    const place = optionalString(request.body, "place");
+    const taggedMemberIds = optionalStringArray(request.body, "taggedMemberIds") ?? [];
+    const rawMediaItems = Array.isArray(request.body.mediaItems) ? request.body.mediaItems : [];
+    const mediaItems = rawMediaItems.map((media) =>
+      isObject(media)
+        ? {
+            kind: optionalDigitalSpaceMediaKind(media, "kind"),
+            label: optionalString(media, "label"),
+            url: optionalString(media, "url"),
+            mimeType: optionalString(media, "mimeType"),
+            sizeBytes:
+              typeof media.sizeBytes === "number" && Number.isInteger(media.sizeBytes) && media.sizeBytes > 0
+                ? media.sizeBytes
+                : undefined,
+          }
+        : undefined,
+    );
     const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
+    const activity = activityId ? await familyStore.getActivity(activityId) : undefined;
+    const taggedMembers = await Promise.all(taggedMemberIds.map((id) => familyStore.getMember(id)));
 
     if (!kind || !title || !createdByMemberId) {
-      return reply.code(400).send({ error: "missing_required_fields" });
+      return sendApiError(reply, 400, "missing_required_fields");
+    }
+
+    if (!canActAsMember(creator, authUser)) {
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (!isFamilyMember(creator, familyId)) {
-      return reply.code(403).send({ error: "forbidden" });
+      return sendApiError(reply, 403, "forbidden");
     }
 
     if (occurredAt && Number.isNaN(Date.parse(occurredAt))) {
-      return reply.code(400).send({ error: "invalid_occurred_at" });
+      return sendApiError(reply, 400, "invalid_occurred_at");
+    }
+
+    if (activityId && (!activity || activity.familyId !== familyId)) {
+      return sendApiError(reply, 400, "invalid_activity");
+    }
+
+    if (taggedMembers.some((member) => !isFamilyMember(member, familyId))) {
+      return sendApiError(reply, 400, "invalid_tagged_member");
+    }
+
+    if (mediaItems.some((media) => !media?.kind)) {
+      return sendApiError(reply, 400, "invalid_media_item");
     }
 
     return reply.code(201).send({
@@ -631,6 +1346,16 @@ export async function registerRoutes(server: FastifyInstance) {
         summary,
         url,
         occurredAt,
+        activityId,
+        place,
+        taggedMemberIds,
+        mediaItems: mediaItems.map((media) => ({
+          kind: media?.kind ?? "link",
+          label: media?.label,
+          url: media?.url,
+          mimeType: media?.mimeType,
+          sizeBytes: media?.sizeBytes,
+        })),
       }),
     });
   });
@@ -639,7 +1364,7 @@ export async function registerRoutes(server: FastifyInstance) {
     const { familyId } = request.params as { familyId: string };
 
     if (!(await familyStore.getFamily(familyId))) {
-      return reply.code(404).send({ error: "family_not_found" });
+      return sendApiError(reply, 404, "family_not_found");
     }
 
     return {

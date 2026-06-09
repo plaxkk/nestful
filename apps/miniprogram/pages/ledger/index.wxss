@@ -51,6 +51,10 @@
   border-color: #ffdad2;
 }
 
+.summary-section {
+  margin-top: -8rpx;
+}
+
 .summary-label {
   color: #44474c;
   font-size: 30rpx;
@@ -127,9 +131,68 @@
   gap: 12rpx;
 }
 
-.ledger-row {
+.mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.mini-row {
   display: flex;
   align-items: center;
+  gap: 18rpx;
+  min-height: 104rpx;
+  padding: 24rpx 28rpx;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.mini-row.tall {
+  min-height: 128rpx;
+}
+
+.mini-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.mini-title {
+  color: #2b1611;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.mini-meta {
+  color: #44474c;
+  font-size: 28rpx;
+  line-height: 1.45;
+}
+
+.mini-amount {
+  min-width: 160rpx;
+  text-align: right;
+  color: #2b1611;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.mini-amount.income {
+  color: #041627;
+}
+
+.mini-amount.expense {
+  color: #9a4b2f;
+}
+
+.ledger-row {
+  display: flex;
+  align-items: flex-start;
   gap: 18rpx;
   padding: 30rpx;
   border: 2rpx solid #ffe2db;
@@ -160,6 +223,7 @@
 
 .ledger-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8rpx;
@@ -179,6 +243,7 @@
 
 .ledger-amount {
   min-width: 170rpx;
+  padding-top: 6rpx;
   text-align: right;
   font-size: 34rpx;
   font-weight: 800;

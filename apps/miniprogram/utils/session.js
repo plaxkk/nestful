@@ -1,5 +1,6 @@
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
+const tokenKey = "appSessionToken";
 
 const session = {
   getFamily() {
@@ -18,9 +19,18 @@ const session = {
     wx.setStorageSync(memberKey, member);
   },
 
+  getToken() {
+    return wx.getStorageSync(tokenKey);
+  },
+
+  setToken(token) {
+    wx.setStorageSync(tokenKey, token);
+  },
+
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
+    wx.removeStorageSync(tokenKey);
   },
 };
 

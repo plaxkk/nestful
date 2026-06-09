@@ -50,6 +50,17 @@
   line-height: 1.5;
 }
 
+.picker-value {
+  min-height: 104rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #c4c6cd;
+  border-radius: 24rpx;
+  background: #ffffff;
+  color: #2b1611;
+  font-size: 36rpx;
+  line-height: 104rpx;
+}
+
 .empty-text {
   padding: 30rpx;
   border: 2rpx solid #ffe2db;
@@ -110,7 +121,47 @@
 }
 
 .secondary-action.compact {
-  min-height: 96rpx;
+  width: auto;
+  min-width: 156rpx;
+  min-height: 88rpx;
   margin-top: 8rpx;
-  font-size: 32rpx;
+  padding: 0 22rpx;
+  font-size: 30rpx;
+  line-height: 88rpx;
+}
+
+.secondary-action.danger {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding-top: 6rpx;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  padding: 16rpx;
+  border: 2rpx solid #ffe2db;
+  border-radius: 20rpx;
+  background: #fff8f6;
+}
+
+.task-title {
+  flex: 1;
+  color: #2b1611;
+  font-size: 30rpx;
+  line-height: 1.5;
 }

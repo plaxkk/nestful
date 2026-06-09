@@ -7,7 +7,7 @@
 
   <view class="summary-grid">
     <view class="summary-card primary">
-      <text class="summary-label">结余</text>
+      <text class="summary-label">{{summary.month}} 结余</text>
       <text class="summary-value">{{summary.balanceText}}</text>
       <text class="summary-helper">收入减去支出</text>
     </view>
@@ -23,10 +23,27 @@
     </view>
   </view>
 
+  <view class="section summary-section">
+    <view class="section-heading">
+      <text class="section-title">本月分类</text>
+      <text class="section-note">支出分类会自动按金额排序。</text>
+    </view>
+    <text class="empty-text" wx:if="{{summary.categoryTotals.length === 0}}">本月还没有支出分类。</text>
+    <view class="mini-list">
+      <view class="mini-row" wx:for="{{summary.categoryTotals}}" wx:key="category">
+        <view class="mini-main">
+          <text class="mini-title">{{item.label}}</text>
+          <text class="mini-meta">{{item.entryCountText}}</text>
+        </view>
+        <text class="mini-amount expense">{{item.amountText}}</text>
+      </view>
+    </view>
+  </view>
+
   <view class="panel form-panel">
     <view class="section-heading">
       <text class="section-title">记一笔</text>
-      <text class="section-note">先记大概，之后还能改进分类。</text>
+      <text class="section-note">分摊成员会进入本月分摊视图，会员和住房支出可以生成续费提醒。</text>
     </view>
     <view class="field">
       <text class="label">类型</text>
@@ -52,7 +69,76 @@
       <text class="label">日期</text>
       <input class="input" value="{{occurredAtInput}}" bindinput="onOccurredAtInput" placeholder="例如：2026-05-21" />
     </view>
+    <view class="field">
+      <text class="label">分摊</text>
+      <picker mode="selector" range="{{splitOptions}}" value="{{splitMemberIndex}}" bindchange="onSplitMemberChange">
+        <view class="picker-value">{{splitOptions[splitMemberIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">续费提醒</text>
+      <picker mode="selector" range="{{recurrenceOptions}}" range-key="label" value="{{recurrenceIndex}}" bindchange="onRecurrenceChange">
+        <view class="picker-value">{{recurrenceOptions[recurrenceIndex].label}}</view>
+      </picker>
+    </view>
     <button class="primary-action" bindtap="onCreateLedgerEntry">保存这一笔</button>
+  </view>
+
+  <view class="panel form-panel">
+    <view class="section-heading">
+      <text class="section-title">目标基金</text>
+      <text class="section-note">把旅行、装修、年度会员这些共同目标先放进家庭视野。</text>
+    </view>
+    <view class="field">
+      <text class="label">目标</text>
+      <input class="input" value="{{goalTitleInput}}" bindinput="onGoalTitleInput" placeholder="例如：家庭旅行基金" />
+    </view>
+    <view class="field">
+      <text class="label">目标金额（元）</text>
+      <input class="input" type="digit" value="{{goalTargetInput}}" bindinput="onGoalTargetInput" placeholder="例如：1000" />
+    </view>
+    <view class="field">
+      <text class="label">已准备（元）</text>
+      <input class="input" type="digit" value="{{goalCurrentInput}}" bindinput="onGoalCurrentInput" placeholder="例如：200" />
+    </view>
+    <view class="field">
+      <text class="label">目标日期</text>
+      <input class="input" value="{{goalDueAtInput}}" bindinput="onGoalDueAtInput" placeholder="例如：2026-10-01" />
+    </view>
+    <button class="secondary-action" bindtap="onCreateGoalFund">保存目标</button>
+  </view>
+
+  <view class="section">
+    <view class="section-heading">
+      <text class="section-title">目标进度</text>
+      <text class="section-note">目标基金会跟着月度汇总一起展示。</text>
+    </view>
+    <text class="empty-text" wx:if="{{summary.goalFunds.length === 0}}">还没有家庭目标基金。</text>
+    <view class="mini-list">
+      <view class="mini-row tall" wx:for="{{summary.goalFunds}}" wx:key="id">
+        <view class="mini-main">
+          <text class="mini-title">{{item.title}}</text>
+          <text class="mini-meta">{{item.currentText}} / {{item.targetText}} · {{item.progressText}} · {{item.dueAtText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-heading">
+      <text class="section-title">本月分摊</text>
+      <text class="section-note">正数表示这个月垫付更多，负数表示应补给家人。</text>
+    </view>
+    <text class="empty-text" wx:if="{{summary.memberSplits.length === 0}}">本月还没有可分摊的支出。</text>
+    <view class="mini-list">
+      <view class="mini-row tall" wx:for="{{summary.memberSplits}}" wx:key="memberId">
+        <view class="mini-main">
+          <text class="mini-title">{{item.displayName}}</text>
+          <text class="mini-meta">已付 {{item.paidText}} · 应摊 {{item.owedText}}</text>
+        </view>
+        <text class="mini-amount {{item.balanceClass}}">{{item.balanceText}}</text>
+      </view>
+    </view>
   </view>
 
   <view class="section">
@@ -67,6 +153,8 @@
         <view class="ledger-main">
           <text class="ledger-title">{{item.title}}</text>
           <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>
+          <text class="ledger-meta">付款 {{item.paidByText}} · 分摊 {{item.splitText}}</text>
+          <text class="ledger-meta" wx:if="{{item.recurrenceText}}">{{item.recurrenceText}} · 已安排提醒</text>
         </view>
         <text class="ledger-amount {{item.isIncome ? 'income' : 'expense'}}">{{item.amountText}}</text>
       </view>
