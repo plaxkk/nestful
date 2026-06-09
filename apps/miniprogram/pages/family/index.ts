@@ -64,6 +64,16 @@ const withInvitationText = (invitation: FamilyInvitation) => ({
   canCancel: invitation.status === "active"
 });
 
+const memberSnapshotFor = (familyId: string, currentMember: FamilyMember | "") => {
+  const cachedMembers = session.getMembers(familyId);
+
+  if (cachedMembers.length > 0) {
+    return cachedMembers;
+  }
+
+  return currentMember && currentMember.familyId === familyId ? [currentMember] : [];
+};
+
 Page({
   data: {
     familyName: "",
@@ -103,8 +113,26 @@ Page({
   },
 
   async loadFamilyData() {
-    await this.loadMembers();
-    await this.loadInvitations();
+    const family = session.getFamily();
+    const currentMember = session.getMember();
+
+    if (!family) {
+      wx.redirectTo({ url: "/pages/home/index" });
+      return;
+    }
+
+    const members = memberSnapshotFor(family.id, currentMember);
+    const isCurrentMemberAdmin = Boolean(currentMember && currentMember.role === "admin");
+
+    this.setData({
+      familyName: family.name,
+      isCurrentMemberAdmin,
+      members: members.map(withAvatarText),
+      memberCountText: `${members.length} 位家人`,
+      invitations: isCurrentMemberAdmin ? this.data.invitations : []
+    });
+
+    await Promise.all([this.loadMembers(), this.loadInvitations()]);
   },
 
   async loadMembers() {
@@ -124,6 +152,7 @@ Page({
 
     try {
       const response = await api.listMembers(family.id);
+      session.setMembers(family.id, response.data);
       this.setData({
         members: response.data.map(withAvatarText),
         memberCountText: `${response.data.length} 位家人`,

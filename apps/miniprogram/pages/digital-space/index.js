@@ -133,8 +133,48 @@ Page({
   },
 
   async loadPage() {
-    await this.loadMembers();
-    await this.loadItems();
+    const family = session.getFamily();
+
+    if (!family) {
+      wx.redirectTo({ url: "/pages/home/index" });
+      return;
+    }
+
+    const cachedMembers = session.getMembers(family.id);
+
+    if (cachedMembers.length > 0) {
+      this.setData({
+        members: cachedMembers,
+        memberOptions: cachedMembers.map((member) => member.displayName),
+      });
+    }
+
+    this.setData({ loading: true });
+
+    try {
+      const [membersResponse, itemsResponse] = await Promise.all([
+        api.listMembers(family.id),
+        api.listDigitalSpaceItems(family.id),
+      ]);
+      const members = membersResponse.data;
+      const items = itemsResponse.data.map((item) => withItemText(item, members));
+      const filterKind = filterKinds[this.data.filterIndex]?.value ?? "all";
+      session.setMembers(family.id, members);
+
+      this.setData({
+        members,
+        memberOptions: members.map((member) => member.displayName),
+        items,
+        visibleItems: filterItems(items, filterKind),
+        loading: false,
+      });
+    } catch (error) {
+      this.setData({ loading: false });
+      wx.showToast({
+        title: "数字空间加载失败，请确认 API 已启动",
+        icon: "none",
+      });
+    }
   },
 
   async loadMembers() {
@@ -147,6 +187,7 @@ Page({
     try {
       const response = await api.listMembers(family.id);
       const members = response.data;
+      session.setMembers(family.id, members);
 
       this.setData({
         members,

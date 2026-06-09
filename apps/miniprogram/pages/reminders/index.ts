@@ -239,9 +239,20 @@ Page({
       return;
     }
 
+    const cachedMembers = session.getMembers(family.id);
+
+    if (cachedMembers.length > 0) {
+      this.setData({
+        members: cachedMembers,
+        memberOptions: cachedMembers.map((item) => item.displayName),
+        birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
+      });
+    }
+
     try {
       const response = await api.listMembers(family.id);
       const members = response.data;
+      session.setMembers(family.id, members);
 
       this.setData({
         members,

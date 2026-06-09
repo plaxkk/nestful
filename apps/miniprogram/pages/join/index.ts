@@ -98,6 +98,7 @@ Page({
 
       wx.hideLoading();
       session.setMember(response.data.member);
+      session.setMembers(response.data.member.familyId, [response.data.member]);
 
       try {
         const familyResponse = await api.getFamily(response.data.member.familyId);

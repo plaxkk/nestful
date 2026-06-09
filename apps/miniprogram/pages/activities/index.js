@@ -143,8 +143,48 @@ Page({
   },
 
   async loadPage() {
-    await this.loadMembers();
-    await this.loadActivities();
+    const family = session.getFamily();
+
+    if (!family) {
+      wx.redirectTo({ url: "/pages/home/index" });
+      return;
+    }
+
+    const cachedMembers = session.getMembers(family.id);
+
+    if (cachedMembers.length > 0) {
+      this.setData({
+        members: cachedMembers,
+        memberOptions: cachedMembers.map((member) => member.displayName),
+      });
+    }
+
+    this.setData({ loading: true });
+
+    try {
+      const [membersResponse, activitiesResponse] = await Promise.all([
+        api.listMembers(family.id),
+        api.listActivities(family.id),
+      ]);
+      const members = membersResponse.data;
+      const activities = activitiesResponse.data.map((activity) => withActivityText(activity, members));
+      session.setMembers(family.id, members);
+
+      this.setData({
+        members,
+        memberOptions: members.map((member) => member.displayName),
+        activities,
+        latestShareText: activities[0]?.shareText ?? "",
+        latestSharePath: activities[0]?.sharePath ?? "/pages/activities/index",
+        loading: false,
+      });
+    } catch (error) {
+      this.setData({ loading: false });
+      wx.showToast({
+        title: "活动加载失败，请确认 API 已启动",
+        icon: "none",
+      });
+    }
   },
 
   async loadMembers() {
@@ -157,6 +197,7 @@ Page({
     try {
       const response = await api.listMembers(family.id);
       const members = response.data;
+      session.setMembers(family.id, members);
 
       this.setData({
         members,

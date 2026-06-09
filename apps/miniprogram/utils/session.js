@@ -1,7 +1,13 @@
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
+const membersKey = "familyMembers";
 const tokenKey = "appSessionToken";
 const tokenExpiresAtKey = "appSessionTokenExpiresAt";
+const readMembersCache = () => {
+  const value = wx.getStorageSync(membersKey);
+
+  return typeof value === "object" && value ? value : {};
+};
 
 const session = {
   getFamily() {
@@ -18,6 +24,19 @@ const session = {
 
   setMember(member) {
     wx.setStorageSync(memberKey, member);
+  },
+
+  getMembers(familyId) {
+    const members = readMembersCache()[familyId];
+
+    return Array.isArray(members) ? members : [];
+  },
+
+  setMembers(familyId, members) {
+    wx.setStorageSync(membersKey, {
+      ...readMembersCache(),
+      [familyId]: members,
+    });
   },
 
   getToken() {
@@ -41,6 +60,7 @@ const session = {
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
+    wx.removeStorageSync(membersKey);
     wx.removeStorageSync(tokenKey);
     wx.removeStorageSync(tokenExpiresAtKey);
   },

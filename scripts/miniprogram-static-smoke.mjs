@@ -45,6 +45,10 @@ expectIncludes("apps/miniprogram/pages/create-family/index.wxml", [
   "bindtap=\"onCreateFamily\"",
 ]);
 
+expectIncludes("apps/miniprogram/pages/create-family/index.ts", [
+  "session.setMembers",
+]);
+
 expectIncludes("apps/miniprogram/pages/family/index.wxml", [
   "生成家人邀请码",
   "微信发送邀请",
@@ -59,6 +63,8 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
   "家庭活动",
   "openMemberEditor",
   "pageScrollTo",
+  "memberSnapshotFor",
+  "Promise.all([this.loadMembers(), this.loadInvitations()])",
   "/pages/reminders/index",
   "/pages/ledger/index",
   "/pages/digital-space/index",
@@ -68,15 +74,44 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
 expectIncludes("apps/miniprogram/pages/family/index.js", [
   "openMemberEditor",
   "pageScrollTo",
+  "memberSnapshotFor",
+  "Promise.all([this.loadMembers(), this.loadInvitations()])",
 ]);
 
 expectExcludes("apps/miniprogram/pages/family/index.ts", ["已打开基础资料"]);
 expectExcludes("apps/miniprogram/pages/family/index.js", ["已打开基础资料"]);
 
+expectIncludes("apps/miniprogram/app.wxss", [
+  "align-items: center",
+  "justify-content: center",
+  "line-height: 1.2",
+]);
+
+expectIncludes("apps/miniprogram/pages/family/index.wxss", [
+  ".small-danger-button",
+  ".text-button",
+  ".danger-action",
+  "line-height: 1.2",
+]);
+
+expectIncludes("apps/miniprogram/pages/reminders/index.wxss", [
+  ".complete-button",
+  "line-height: 1.2",
+]);
+
+expectIncludes("apps/miniprogram/pages/activities/index.wxss", [
+  ".secondary-action.compact",
+  "line-height: 1.2",
+]);
+
 expectIncludes("apps/miniprogram/pages/join/index.wxml", [
   "检查邀请码",
   "确认加入家庭",
   "bindtap=\"onJoinFamily\"",
+]);
+
+expectIncludes("apps/miniprogram/pages/join/index.ts", [
+  "session.setMembers",
 ]);
 
 expectIncludes("apps/miniprogram/pages/reminders/index.wxml", [
@@ -92,6 +127,8 @@ expectIncludes("apps/miniprogram/pages/reminders/index.ts", [
   "notifyOnBirthday",
   "isAuthReminderError",
   "登录已失效，请重新进入家庭",
+  "session.getMembers",
+  "session.setMembers",
 ]);
 
 expectIncludes("apps/miniprogram/pages/ledger/index.wxml", [
@@ -129,8 +166,16 @@ expectIncludes("apps/miniprogram/pages/ledger/index.ts", [
   "api.createLedgerGoalFund",
   "isAuthLedgerError",
   "登录已失效，请重新进入家庭",
+  "session.getMembers",
+  "session.setMembers",
   "splitMemberIds",
   "recurrence",
+]);
+
+expectIncludes("apps/miniprogram/utils/session.ts", [
+  "familyMembers",
+  "getMembers",
+  "setMembers",
 ]);
 
 const runApiAuthRetrySmoke = async () => {
@@ -214,12 +259,18 @@ expectIncludes("apps/miniprogram/pages/digital-space/index.ts", [
   "mediaItems",
   "taggedMemberIds",
   "filterItems",
+  "Promise.all([",
+  "session.getMembers",
+  "session.setMembers",
 ]);
 
 expectIncludes("apps/miniprogram/pages/activities/index.ts", [
   "api.updateActivityRsvp",
   "api.createActivityTask",
   "api.updateActivityStatus",
+  "Promise.all([",
+  "session.getMembers",
+  "session.setMembers",
 ]);
 
 console.log("miniprogram static smoke passed");

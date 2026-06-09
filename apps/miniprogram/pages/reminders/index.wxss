@@ -93,13 +93,19 @@
 }
 
 .complete-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 144rpx;
   min-height: 96rpx;
   margin: 0;
+  padding: 0 18rpx;
   border-radius: 24rpx;
   background: #fff8f6;
   color: #041627;
   border: 2rpx solid #041627;
   font-size: 32rpx;
   font-weight: 800;
+  line-height: 1.2;
 }

@@ -282,6 +282,15 @@ Page({
       return;
     }
 
+    const cachedMembers = session.getMembers(family.id);
+
+    if (cachedMembers.length > 0) {
+      this.setData({
+        members: cachedMembers,
+        splitOptions: ["仅自己", ...cachedMembers.map((member) => member.displayName)]
+      });
+    }
+
     this.setData({ loading: true });
 
     try {
@@ -291,6 +300,7 @@ Page({
         api.getLedgerSummary(family.id)
       ]);
       const members = membersResponse.data;
+      session.setMembers(family.id, members);
 
       this.setData({
         members,

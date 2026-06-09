@@ -205,6 +205,13 @@ Page({
             wx.redirectTo({ url: "/pages/home/index" });
             return;
         }
+        const cachedMembers = session_1.session.getMembers(family.id);
+        if (cachedMembers.length > 0) {
+            this.setData({
+                members: cachedMembers,
+                splitOptions: ["仅自己", ...cachedMembers.map((member) => member.displayName)]
+            });
+        }
         this.setData({ loading: true });
         try {
             const [membersResponse, entriesResponse, summaryResponse] = await Promise.all([
@@ -213,6 +220,7 @@ Page({
                 api_1.api.getLedgerSummary(family.id)
             ]);
             const members = membersResponse.data;
+            session_1.session.setMembers(family.id, members);
             this.setData({
                 members,
                 splitOptions: ["仅自己", ...members.map((member) => member.displayName)],

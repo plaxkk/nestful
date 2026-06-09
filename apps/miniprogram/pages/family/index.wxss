@@ -224,6 +224,10 @@
 }
 
 .small-danger-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 116rpx;
   min-height: 76rpx;
   margin: 0;
@@ -234,7 +238,7 @@
   color: #b3261e;
   font-size: 30rpx;
   font-weight: 800;
-  line-height: 76rpx;
+  line-height: 1.2;
 }
 
 .member-editor {
@@ -251,6 +255,10 @@
 }
 
 .text-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 108rpx;
   min-height: 70rpx;
   margin: 0;
@@ -260,17 +268,23 @@
   color: #041627;
   font-size: 30rpx;
   font-weight: 800;
-  line-height: 70rpx;
+  line-height: 1.2;
 }
 
 .danger-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 100%;
   min-height: 98rpx;
   margin: 0;
+  padding: 0 26rpx;
   border: 3rpx solid #b3261e;
   border-radius: 24rpx;
   background: #ffffff;
   color: #b3261e;
   font-size: 34rpx;
   font-weight: 800;
+  line-height: 1.2;
 }
