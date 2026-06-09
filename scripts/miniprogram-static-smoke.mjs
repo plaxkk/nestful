@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const read = (path) => readFileSync(path, "utf8");
 
@@ -78,6 +79,8 @@ expectIncludes("apps/miniprogram/pages/reminders/index.ts", [
   "每天两次",
   "daily_twice",
   "notifyOnBirthday",
+  "isAuthReminderError",
+  "登录已失效，请重新进入家庭",
 ]);
 
 expectIncludes("apps/miniprogram/pages/ledger/index.wxml", [
@@ -113,9 +116,88 @@ expectIncludes("apps/miniprogram/pages/activities/index.wxml", [
 expectIncludes("apps/miniprogram/pages/ledger/index.ts", [
   "api.getLedgerSummary",
   "api.createLedgerGoalFund",
+  "isAuthLedgerError",
+  "登录已失效，请重新进入家庭",
   "splitMemberIds",
   "recurrence",
 ]);
+
+const runApiAuthRetrySmoke = async () => {
+  const require = createRequire(import.meta.url);
+  const storage = new Map();
+  const requests = [];
+
+  global.wx = {
+    getAccountInfoSync: () => ({ miniProgram: { envVersion: "develop" } }),
+    getStorageSync: (key) => storage.get(key) ?? "",
+    setStorageSync: (key, value) => {
+      storage.set(key, value);
+    },
+    removeStorageSync: (key) => {
+      storage.delete(key);
+    },
+    login: ({ success }) => {
+      success({ code: "refresh-code" });
+    },
+    request: (options) => {
+      requests.push(options);
+
+      if (options.url.endsWith("/v1/wechat/session")) {
+        options.success({
+          statusCode: 200,
+          data: {
+            data: {
+              userId: "user-1",
+              token: "fresh-token",
+              expiresAt: "2030-01-01T00:00:00.000Z",
+              configured: false,
+              user: {
+                id: "user-1",
+                nickname: "微信用户",
+                createdAt: "2030-01-01T00:00:00.000Z",
+              },
+            },
+          },
+        });
+        return;
+      }
+
+      const goalRequests = requests.filter((request) => request.url.endsWith("/ledger-goal-funds"));
+
+      if (options.url.endsWith("/ledger-goal-funds") && goalRequests.length === 1) {
+        options.success({ statusCode: 401, data: { error: "unauthorized" } });
+        return;
+      }
+
+      if (options.url.endsWith("/ledger-goal-funds")) {
+        assert(options.header.authorization === "Bearer fresh-token", "goal fund retry should use refreshed token");
+        options.success({ statusCode: 201, data: { data: { id: "goal-1" } } });
+        return;
+      }
+
+      throw new Error(`Unexpected request ${options.url}`);
+    },
+  };
+
+  const { api } = require("../apps/miniprogram/utils/api.js");
+  const response = await api.createLedgerGoalFund("family-1", {
+    title: "家庭旅行基金",
+    targetAmountCents: 100000,
+    currentAmountCents: 0,
+    createdByMemberId: "member-1",
+  });
+
+  assert(response.data.id === "goal-1", "goal fund request should retry after auth refresh");
+  assert(storage.get("appSessionToken") === "fresh-token", "auth refresh should store the new app session token");
+  assert(
+    storage.get("appSessionTokenExpiresAt") === "2030-01-01T00:00:00.000Z",
+    "auth refresh should store the app session expiry",
+  );
+
+  delete global.wx;
+};
+
+await runApiAuthRetrySmoke();
 
 expectIncludes("apps/miniprogram/pages/digital-space/index.ts", [
   "mediaItems",

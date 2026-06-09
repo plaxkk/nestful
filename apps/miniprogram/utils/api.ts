@@ -246,7 +246,30 @@ const authHeaders = () => {
   return token ? { authorization: `Bearer ${token}` } : {};
 };
 
-const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
+class ApiRequestError extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly data: unknown,
+  ) {
+    super(`Request failed with status ${statusCode}`);
+  }
+}
+
+const loginCode = (): Promise<string | undefined> =>
+  new Promise((resolve) => {
+    wx.login({
+      success: (loginResult) => {
+        resolve(loginResult.code || undefined);
+      },
+      fail: () => {
+        resolve(undefined);
+      },
+    });
+  });
+
+let sessionRefresh: Promise<boolean> | undefined;
+
+const sendRequest = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
     wx.request({
       ...options,
@@ -263,11 +286,55 @@ const request = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
           return;
         }
 
-        reject(new Error(`Request failed with status ${response.statusCode}`));
+        reject(new ApiRequestError(response.statusCode, response.data));
       },
       fail: reject,
     });
   });
+
+const refreshAppSession = async () => {
+  sessionRefresh ??= (async () => {
+    const code = await loginCode();
+
+    if (!code) {
+      return false;
+    }
+
+    try {
+      const response = await sendRequest<ApiResponse<WechatSession>>({
+        method: "POST",
+        url: "/v1/wechat/session",
+        data: { code },
+      });
+      session.setToken(response.data.token, response.data.expiresAt);
+
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await sessionRefresh;
+  } finally {
+    sessionRefresh = undefined;
+  }
+};
+
+const shouldRefreshSession = (options: WechatMiniprogram.RequestOption, error: unknown) =>
+  error instanceof ApiRequestError && error.statusCode === 401 && options.url !== "/v1/wechat/session";
+
+const request = async <T>(options: WechatMiniprogram.RequestOption): Promise<T> => {
+  try {
+    return await sendRequest<T>(options);
+  } catch (error) {
+    if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
+      return sendRequest<T>(options);
+    }
+
+    throw error;
+  }
+};
 
 export const api = {
   createFamily(body: { name: string; ownerUserId: string; ownerDisplayName: string; ownerWechatOpenId?: string }) {

@@ -7,7 +7,29 @@ const authHeaders = () => {
   return token ? { authorization: `Bearer ${token}` } : {};
 };
 
-const request = (options) =>
+class ApiRequestError extends Error {
+  constructor(statusCode, data) {
+    super(`Request failed with status ${statusCode}`);
+    this.statusCode = statusCode;
+    this.data = data;
+  }
+}
+
+const loginCode = () =>
+  new Promise((resolve) => {
+    wx.login({
+      success: (loginResult) => {
+        resolve(loginResult.code || undefined);
+      },
+      fail: () => {
+        resolve(undefined);
+      },
+    });
+  });
+
+let sessionRefresh;
+
+const sendRequest = (options) =>
   new Promise((resolve, reject) => {
     wx.request({
       ...options,
@@ -24,11 +46,55 @@ const request = (options) =>
           return;
         }
 
-        reject(new Error(`Request failed with status ${response.statusCode}`));
+        reject(new ApiRequestError(response.statusCode, response.data));
       },
       fail: reject,
     });
   });
+
+const refreshAppSession = async () => {
+  sessionRefresh ??= (async () => {
+    const code = await loginCode();
+
+    if (!code) {
+      return false;
+    }
+
+    try {
+      const response = await sendRequest({
+        method: "POST",
+        url: "/v1/wechat/session",
+        data: { code },
+      });
+      session.setToken(response.data.token, response.data.expiresAt);
+
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await sessionRefresh;
+  } finally {
+    sessionRefresh = undefined;
+  }
+};
+
+const shouldRefreshSession = (options, error) =>
+  error instanceof ApiRequestError && error.statusCode === 401 && options.url !== "/v1/wechat/session";
+
+const request = async (options) => {
+  try {
+    return await sendRequest(options);
+  } catch (error) {
+    if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
+      return sendRequest(options);
+    }
+
+    throw error;
+  }
+};
 
 const api = {
   createFamily(body) {

@@ -3,6 +3,7 @@ import type { Family, FamilyMember } from "./api";
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
 const tokenKey = "appSessionToken";
+const tokenExpiresAtKey = "appSessionTokenExpiresAt";
 
 export const session = {
   getFamily() {
@@ -25,13 +26,24 @@ export const session = {
     return wx.getStorageSync(tokenKey) as string | "";
   },
 
-  setToken(token: string) {
+  getTokenExpiresAt() {
+    return wx.getStorageSync(tokenExpiresAtKey) as string | "";
+  },
+
+  setToken(token: string, expiresAt?: string) {
     wx.setStorageSync(tokenKey, token);
+
+    if (expiresAt) {
+      wx.setStorageSync(tokenExpiresAtKey, expiresAt);
+    } else {
+      wx.removeStorageSync(tokenExpiresAtKey);
+    }
   },
 
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
     wx.removeStorageSync(tokenKey);
+    wx.removeStorageSync(tokenExpiresAtKey);
   },
 };

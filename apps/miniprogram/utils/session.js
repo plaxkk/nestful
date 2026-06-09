@@ -1,6 +1,7 @@
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
 const tokenKey = "appSessionToken";
+const tokenExpiresAtKey = "appSessionTokenExpiresAt";
 
 const session = {
   getFamily() {
@@ -23,14 +24,25 @@ const session = {
     return wx.getStorageSync(tokenKey);
   },
 
-  setToken(token) {
+  getTokenExpiresAt() {
+    return wx.getStorageSync(tokenExpiresAtKey);
+  },
+
+  setToken(token, expiresAt) {
     wx.setStorageSync(tokenKey, token);
+
+    if (expiresAt) {
+      wx.setStorageSync(tokenExpiresAtKey, expiresAt);
+    } else {
+      wx.removeStorageSync(tokenExpiresAtKey);
+    }
   },
 
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
     wx.removeStorageSync(tokenKey);
+    wx.removeStorageSync(tokenExpiresAtKey);
   },
 };
 

@@ -91,6 +91,31 @@ const withSummaryText = (summary, members) => ({
         dueAtText: goal.dueAt ? formatDate(new Date(goal.dueAt)) : "未设置日期"
     }))
 });
+const statusCodeFromError = (error) => {
+    if (typeof error === "object" && error && "statusCode" in error) {
+        const statusCode = error.statusCode;
+        if (typeof statusCode === "number") {
+            return statusCode;
+        }
+    }
+    if (error instanceof Error) {
+        const match = error.message.match(/status (\d+)/);
+        return match ? Number(match[1]) : undefined;
+    }
+    return undefined;
+};
+const isAuthLedgerError = (error) => {
+    const statusCode = statusCodeFromError(error);
+    return statusCode === 401 || statusCode === 403;
+};
+const handleAuthLedgerError = () => {
+    session_1.session.clear();
+    wx.showToast({
+        title: "登录已失效，请重新进入家庭",
+        icon: "none"
+    });
+    wx.redirectTo({ url: "/pages/home/index" });
+};
 Page({
     data: {
         entryTypes,
@@ -264,6 +289,10 @@ Page({
         }
         catch (error) {
             wx.hideLoading();
+            if (isAuthLedgerError(error)) {
+                handleAuthLedgerError();
+                return;
+            }
             wx.showToast({
                 title: "保存失败，请确认 API 已启动",
                 icon: "none"
@@ -315,6 +344,10 @@ Page({
         }
         catch (error) {
             wx.hideLoading();
+            if (isAuthLedgerError(error)) {
+                handleAuthLedgerError();
+                return;
+            }
             wx.showToast({
                 title: "目标保存失败",
                 icon: "none"

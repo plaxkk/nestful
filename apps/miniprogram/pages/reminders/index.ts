@@ -119,6 +119,30 @@ const withReminderText = (reminder: Reminder, hasNextOccurrence: boolean) => ({
 
 type ReminderBody = Parameters<typeof api.createReminder>[1];
 
+const statusCodeFromError = (error: unknown) => {
+  if (typeof error === "object" && error && "statusCode" in error) {
+    const statusCode = (error as { statusCode?: unknown }).statusCode;
+
+    if (typeof statusCode === "number") {
+      return statusCode;
+    }
+  }
+
+  if (error instanceof Error) {
+    const match = error.message.match(/status (\d+)/);
+
+    return match ? Number(match[1]) : undefined;
+  }
+
+  return undefined;
+};
+
+const isAuthReminderError = (error: unknown) => {
+  const statusCode = statusCodeFromError(error);
+
+  return statusCode === 401 || statusCode === 403;
+};
+
 Page({
   data: {
     reminderTypes,
@@ -444,6 +468,16 @@ Page({
       });
     } catch (error) {
       wx.hideLoading();
+      if (isAuthReminderError(error)) {
+        session.clear();
+        wx.showToast({
+          title: "登录已失效，请重新进入家庭",
+          icon: "none"
+        });
+        wx.redirectTo({ url: "/pages/home/index" });
+        return;
+      }
+
       wx.showToast({
         title: "保存失败，请确认 API 已启动",
         icon: "none"

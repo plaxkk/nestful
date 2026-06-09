@@ -12,7 +12,7 @@ const getWechatIdentity = () =>
 
         try {
           const response = await api.createWechatSession({ code: loginResult.code });
-          session.setToken(response.data.token);
+          session.setToken(response.data.token, response.data.expiresAt);
           resolve({
             userId: response.data.userId,
             wechatOpenId: response.data.wechatOpenId,
