@@ -17,6 +17,13 @@ const medicineTimeKey = envString(process.env.WECHAT_MEDICINE_TIME_KEY) ?? "shor
 const medicineNameKey = envString(process.env.WECHAT_MEDICINE_NAME_KEY) ?? "thing2";
 const medicineUsageKey = envString(process.env.WECHAT_MEDICINE_USAGE_KEY) ?? "thing3";
 const medicineDosageKey = envString(process.env.WECHAT_MEDICINE_DOSAGE_KEY) ?? "short_thing4";
+const birthdayNameKey = envString(process.env.WECHAT_BIRTHDAY_NAME_KEY) ?? "thing1";
+const birthdayDateKey = envString(process.env.WECHAT_BIRTHDAY_DATE_KEY) ?? "time2";
+const exerciseProjectKey = envString(process.env.WECHAT_EXERCISE_PROJECT_KEY) ?? "thing1";
+const exerciseTimeKey = envString(process.env.WECHAT_EXERCISE_TIME_KEY) ?? "thing2";
+const exercisePlanKey = envString(process.env.WECHAT_EXERCISE_PLAN_KEY) ?? "thing4";
+const exerciseFrequencyKey = envString(process.env.WECHAT_EXERCISE_FREQUENCY_KEY) ?? "thing5";
+const exerciseAmountKey = envString(process.env.WECHAT_EXERCISE_AMOUNT_KEY) ?? "thing6";
 
 interface WeChatErrorResponse {
   errcode?: number;
@@ -145,6 +152,17 @@ const formatShortReminderTime = (value: string) => {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
+const formatReminderDate = (value: string) => {
+  const date = new Date(value);
+  const pad = (item: number) => item.toString().padStart(2, "0");
+
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 10);
+  }
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 const typeLabel = (type: Reminder["type"]) => {
   const labels: Record<Reminder["type"], string> = {
     birthday: "生日提醒",
@@ -174,33 +192,67 @@ export const sendReminderSubscriptionMessage = async (input: {
   const accessToken = await getAccessToken();
   const url = new URL("https://api.weixin.qq.com/cgi-bin/message/subscribe/send");
   url.searchParams.set("access_token", accessToken);
-  const templateData =
-    input.reminder.type === "medicine"
-      ? {
-          [medicineTimeKey]: {
-            value: formatShortReminderTime(input.reminder.dueAt),
-          },
-          [medicineNameKey]: {
-            value: input.reminder.title.slice(0, 20),
-          },
-          [medicineUsageKey]: {
-            value: (input.reminder.schedule?.frequencyLabel ?? typeLabel(input.reminder.type)).slice(0, 20),
-          },
-          [medicineDosageKey]: {
-            value: "按医嘱",
-          },
-        }
-      : {
-          thing1: {
-            value: input.reminder.title.slice(0, 20),
-          },
-          time2: {
-            value: formatReminderTime(input.reminder.dueAt),
-          },
-          thing3: {
-            value: typeLabel(input.reminder.type).slice(0, 20),
-          },
-        };
+  const templateData = (() => {
+    if (input.reminder.type === "medicine") {
+      return {
+        [medicineTimeKey]: {
+          value: formatShortReminderTime(input.reminder.dueAt),
+        },
+        [medicineNameKey]: {
+          value: input.reminder.title.slice(0, 20),
+        },
+        [medicineUsageKey]: {
+          value: (input.reminder.schedule?.frequencyLabel ?? typeLabel(input.reminder.type)).slice(0, 20),
+        },
+        [medicineDosageKey]: {
+          value: "按医嘱",
+        },
+      };
+    }
+
+    if (input.reminder.type === "birthday") {
+      return {
+        [birthdayNameKey]: {
+          value: (input.reminder.schedule?.targetLabel ?? input.reminder.title).slice(0, 20),
+        },
+        [birthdayDateKey]: {
+          value: input.reminder.schedule?.birthdayDate ?? formatReminderDate(input.reminder.dueAt),
+        },
+      };
+    }
+
+    if (input.reminder.type === "exercise") {
+      return {
+        [exerciseProjectKey]: {
+          value: input.reminder.title.slice(0, 20),
+        },
+        [exerciseTimeKey]: {
+          value: formatShortReminderTime(input.reminder.dueAt),
+        },
+        [exercisePlanKey]: {
+          value: (input.reminder.schedule?.targetLabel === "全家" ? "家庭运动计划" : "个人运动计划").slice(0, 20),
+        },
+        [exerciseFrequencyKey]: {
+          value: (input.reminder.schedule?.frequencyLabel ?? "按计划").slice(0, 20),
+        },
+        [exerciseAmountKey]: {
+          value: "按计划完成",
+        },
+      };
+    }
+
+    return {
+      thing1: {
+        value: input.reminder.title.slice(0, 20),
+      },
+      time2: {
+        value: formatReminderTime(input.reminder.dueAt),
+      },
+      thing3: {
+        value: typeLabel(input.reminder.type).slice(0, 20),
+      },
+    };
+  })();
 
   const response = await fetch(url, {
     method: "POST",

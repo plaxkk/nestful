@@ -37,6 +37,8 @@ Reminder notifications use WeChat Mini Program subscription messages. Configure 
 - `WECHAT_BIRTHDAY_TEMPLATE_ID` and `WECHAT_EXERCISE_TEMPLATE_ID` when those reminder types should also request WeChat subscription-message authorization
 - `WECHAT_MINIPROGRAM_STATE` (`trial` for experience version, `formal` after release)
 - Medicine template keyword keys: `WECHAT_MEDICINE_TIME_KEY`, `WECHAT_MEDICINE_NAME_KEY`, `WECHAT_MEDICINE_USAGE_KEY`, `WECHAT_MEDICINE_DOSAGE_KEY`
+- Birthday template keyword keys: `WECHAT_BIRTHDAY_NAME_KEY`, `WECHAT_BIRTHDAY_DATE_KEY`
+- Exercise template keyword keys: `WECHAT_EXERCISE_PROJECT_KEY`, `WECHAT_EXERCISE_TIME_KEY`, `WECHAT_EXERCISE_PLAN_KEY`, `WECHAT_EXERCISE_FREQUENCY_KEY`, `WECHAT_EXERCISE_AMOUNT_KEY`
 - `CRON_SECRET` or `NESTFUL_CRON_SECRET` for protecting the dispatch endpoint
 
 After users authorize a reminder notification in the mini-program, run a scheduler every few minutes against `GET /v1/reminders/dispatch-due`. Vercel Hobby cron is limited to daily schedules, so use Vercel Pro cron or an external cron service for near-real-time reminders.

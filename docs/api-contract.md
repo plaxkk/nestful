@@ -198,6 +198,12 @@ Returns whether the backend has a reminder subscription template configured.
 
 Returns the configured subscription template for one reminder type. With only the medicine template configured, `medicine` returns `enabled: true` while `birthday` and `exercise` return `enabled: false`.
 
+Current default WeChat template mappings:
+
+- Medicine: `short_thing1` eat time, `thing2` medicine name, `thing3` usage/frequency, `short_thing4` dosage.
+- Birthday: `thing1` member name, `time2` birth date.
+- Exercise: `thing1` project, `thing2` time, `thing4` plan, `thing5` frequency, `thing6` single exercise amount.
+
 `POST /v1/reminders/:reminderId/complete`
 
 Marks a reminder as completed and records `completedAt`.
