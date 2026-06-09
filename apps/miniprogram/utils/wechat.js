@@ -25,9 +25,9 @@ const getWechatIdentity = () =>
     });
   });
 
-const requestReminderSubscription = async () => {
+const requestReminderSubscription = async (type) => {
   try {
-    const response = await api.getReminderSubscriptionConfig();
+    const response = await api.getReminderSubscriptionConfig(type);
     const templateId = response.data.templateId;
 
     if (!response.data.enabled || !templateId || !wx.requestSubscribeMessage) {

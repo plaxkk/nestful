@@ -1,4 +1,5 @@
 import { api } from "./api";
+import type { ReminderType } from "./api";
 
 export interface WechatIdentity {
   userId: string;
@@ -30,9 +31,9 @@ export const getWechatIdentity = (): Promise<WechatIdentity> =>
     });
   });
 
-export const requestReminderSubscription = async () => {
+export const requestReminderSubscription = async (type: ReminderType) => {
   try {
-    const response = await api.getReminderSubscriptionConfig();
+    const response = await api.getReminderSubscriptionConfig(type);
     const templateId = response.data.templateId;
 
     if (!response.data.enabled || !templateId || !wx.requestSubscribeMessage) {

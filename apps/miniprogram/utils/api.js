@@ -79,10 +79,10 @@ const api = {
     });
   },
 
-  getReminderSubscriptionConfig() {
+  getReminderSubscriptionConfig(type) {
     return request({
       method: "GET",
-      url: "/v1/reminders/subscription-config",
+      url: type ? `/v1/reminders/subscription-config/${type}` : "/v1/reminders/subscription-config",
     });
   },
 

@@ -194,6 +194,10 @@ Returns whether the backend has a reminder subscription template configured.
 }
 ```
 
+`GET /v1/reminders/subscription-config/:type`
+
+Returns the configured subscription template for one reminder type. With only the medicine template configured, `medicine` returns `enabled: true` while `birthday` and `exercise` return `enabled: false`.
+
 `POST /v1/reminders/:reminderId/complete`
 
 Marks a reminder as completed and records `completedAt`.

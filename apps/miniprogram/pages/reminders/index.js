@@ -400,7 +400,7 @@ Page({
       let acceptedSubscription = false;
 
       for (const reminderBody of reminderBodies) {
-        const subscription = await requestReminderSubscription();
+        const subscription = await requestReminderSubscription(reminderBody.type);
         acceptedSubscription = acceptedSubscription || subscription?.subscriptionStatus === "accept";
 
         await api.createReminder(family.id, {

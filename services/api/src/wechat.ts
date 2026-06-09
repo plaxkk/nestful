@@ -9,10 +9,14 @@ const envString = (value: string | undefined) => {
 const appId = envString(process.env.WECHAT_APP_ID);
 const appSecret = envString(process.env.WECHAT_APP_SECRET);
 const reminderTemplateId = envString(process.env.WECHAT_REMINDER_TEMPLATE_ID);
+const medicineTemplateId = envString(process.env.WECHAT_MEDICINE_TEMPLATE_ID) ?? reminderTemplateId;
+const birthdayTemplateId = envString(process.env.WECHAT_BIRTHDAY_TEMPLATE_ID);
+const exerciseTemplateId = envString(process.env.WECHAT_EXERCISE_TEMPLATE_ID);
 const miniProgramState = envString(process.env.WECHAT_MINIPROGRAM_STATE) ?? "trial";
-const reminderTitleKey = envString(process.env.WECHAT_REMINDER_TITLE_KEY) ?? "thing1";
-const reminderTimeKey = envString(process.env.WECHAT_REMINDER_TIME_KEY) ?? "time2";
-const reminderTypeKey = envString(process.env.WECHAT_REMINDER_TYPE_KEY) ?? "thing3";
+const medicineTimeKey = envString(process.env.WECHAT_MEDICINE_TIME_KEY) ?? "short_thing1";
+const medicineNameKey = envString(process.env.WECHAT_MEDICINE_NAME_KEY) ?? "thing2";
+const medicineUsageKey = envString(process.env.WECHAT_MEDICINE_USAGE_KEY) ?? "thing3";
+const medicineDosageKey = envString(process.env.WECHAT_MEDICINE_DOSAGE_KEY) ?? "short_thing4";
 
 interface WeChatErrorResponse {
   errcode?: number;
@@ -32,10 +36,30 @@ interface CodeSessionResponse extends WeChatErrorResponse {
 
 let cachedAccessToken: { token: string; expiresAt: number } | undefined;
 
-export const getReminderSubscriptionConfig = () => ({
-  enabled: Boolean(reminderTemplateId && appId && appSecret),
-  templateId: reminderTemplateId,
-});
+const templateForType = (type: Reminder["type"] | undefined) => {
+  if (type === "medicine") {
+    return medicineTemplateId;
+  }
+
+  if (type === "birthday") {
+    return birthdayTemplateId;
+  }
+
+  if (type === "exercise") {
+    return exerciseTemplateId;
+  }
+
+  return reminderTemplateId;
+};
+
+export const getReminderSubscriptionConfig = (type?: Reminder["type"]) => {
+  const templateId = templateForType(type);
+
+  return {
+    enabled: Boolean(templateId && appId && appSecret),
+    templateId,
+  };
+};
 
 export const hasWeChatCredentials = () => Boolean(appId && appSecret);
 
@@ -110,6 +134,17 @@ const formatReminderTime = (value: string) => {
   )}`;
 };
 
+const formatShortReminderTime = (value: string) => {
+  const date = new Date(value);
+  const pad = (item: number) => item.toString().padStart(2, "0");
+
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 5);
+  }
+
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const typeLabel = (type: Reminder["type"]) => {
   const labels: Record<Reminder["type"], string> = {
     birthday: "生日提醒",
@@ -139,6 +174,33 @@ export const sendReminderSubscriptionMessage = async (input: {
   const accessToken = await getAccessToken();
   const url = new URL("https://api.weixin.qq.com/cgi-bin/message/subscribe/send");
   url.searchParams.set("access_token", accessToken);
+  const templateData =
+    input.reminder.type === "medicine"
+      ? {
+          [medicineTimeKey]: {
+            value: formatShortReminderTime(input.reminder.dueAt),
+          },
+          [medicineNameKey]: {
+            value: input.reminder.title.slice(0, 20),
+          },
+          [medicineUsageKey]: {
+            value: (input.reminder.schedule?.frequencyLabel ?? typeLabel(input.reminder.type)).slice(0, 20),
+          },
+          [medicineDosageKey]: {
+            value: "按医嘱",
+          },
+        }
+      : {
+          thing1: {
+            value: input.reminder.title.slice(0, 20),
+          },
+          time2: {
+            value: formatReminderTime(input.reminder.dueAt),
+          },
+          thing3: {
+            value: typeLabel(input.reminder.type).slice(0, 20),
+          },
+        };
 
   const response = await fetch(url, {
     method: "POST",
@@ -151,24 +213,14 @@ export const sendReminderSubscriptionMessage = async (input: {
       page: "/pages/reminders/index",
       miniprogram_state: miniProgramState,
       lang: "zh_CN",
-      data: {
-        [reminderTitleKey]: {
-          value: input.reminder.title.slice(0, 20),
-        },
-        [reminderTimeKey]: {
-          value: formatReminderTime(input.reminder.dueAt),
-        },
-        [reminderTypeKey]: {
-          value: typeLabel(input.reminder.type).slice(0, 20),
-        },
-      },
+      data: templateData,
     }),
   });
 
-  const data = (await response.json()) as WeChatErrorResponse;
+  const responseData = (await response.json()) as WeChatErrorResponse;
 
   return {
-    ok: response.ok && data.errcode === 0,
-    error: data.errmsg ?? `wechat_subscribe_send_failed:${data.errcode ?? response.status}`,
+    ok: response.ok && responseData.errcode === 0,
+    error: responseData.errmsg ?? `wechat_subscribe_send_failed:${responseData.errcode ?? response.status}`,
   };
 };

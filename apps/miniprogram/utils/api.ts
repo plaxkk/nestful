@@ -201,10 +201,10 @@ export const api = {
     });
   },
 
-  getReminderSubscriptionConfig() {
+  getReminderSubscriptionConfig(type?: ReminderType) {
     return request<ApiResponse<{ enabled: boolean; templateId?: string }>>({
       method: "GET",
-      url: "/v1/reminders/subscription-config",
+      url: type ? `/v1/reminders/subscription-config/${type}` : "/v1/reminders/subscription-config",
     });
   },
 

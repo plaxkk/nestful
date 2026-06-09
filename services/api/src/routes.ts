@@ -312,6 +312,14 @@ export async function registerRoutes(server: FastifyInstance) {
     data: getReminderSubscriptionConfig(),
   }));
 
+  server.get("/v1/reminders/subscription-config/:type", async (request) => {
+    const { type } = request.params as { type: ReminderType };
+
+    return {
+      data: getReminderSubscriptionConfig(type),
+    };
+  });
+
   server.post("/v1/families/:familyId/reminders", async (request, reply) => {
     const { familyId } = request.params as { familyId: string };
 
