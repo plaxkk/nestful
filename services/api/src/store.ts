@@ -16,7 +16,10 @@ import type {
   LedgerEntry,
   LedgerEntryType,
   Reminder,
+  ReminderFrequency,
   ReminderNotification,
+  ReminderSchedule,
+  ReminderTargetScope,
   ReminderType,
 } from "@nestful/shared";
 
@@ -50,6 +53,10 @@ export interface CreateReminderInput {
   dueAt: string;
   createdByMemberId: string;
   assigneeMemberId?: string;
+  targetScope?: ReminderTargetScope;
+  targetMemberIds?: string[];
+  frequency?: ReminderFrequency;
+  schedule?: ReminderSchedule;
   notificationSubscription?: ReminderNotificationSubscriptionInput;
 }
 
@@ -481,6 +488,10 @@ export const familyStore = {
       title: input.title,
       dueAt: input.dueAt,
       assigneeMemberId: input.assigneeMemberId,
+      targetScope: input.targetScope,
+      targetMemberIds: input.targetMemberIds,
+      frequency: input.frequency,
+      schedule: input.schedule,
       createdByMemberId: input.createdByMemberId,
       enabled: true,
       notification,

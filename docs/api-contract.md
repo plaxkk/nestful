@@ -155,6 +155,14 @@ Creates a reminder. The creator and optional assignee must be members of the sam
   "dueAt": "2026-05-22T00:00:00.000Z",
   "createdByMemberId": "member-id",
   "assigneeMemberId": "member-id",
+  "targetScope": "member",
+  "targetMemberIds": ["member-id"],
+  "frequency": "daily_twice",
+  "schedule": {
+    "targetLabel": "妈妈",
+    "frequencyLabel": "每天两次",
+    "timesOfDay": ["08:00", "20:00"]
+  },
   "notificationSubscription": {
     "templateId": "wechat-subscribe-template-id",
     "recipientMemberId": "member-id",
@@ -164,6 +172,12 @@ Creates a reminder. The creator and optional assignee must be members of the sam
 ```
 
 Supported MVP types: `birthday`, `medicine`, `exercise`.
+
+Reminder targeting and scheduling:
+
+- `medicine` should target one family member and can use `once`, `daily_once`, `daily_twice`, `daily_three_times`, or `weekly`.
+- `exercise` can target `member` or `family`; family-targeted reminders include all current member IDs in `targetMemberIds`.
+- `birthday` targets one member and uses `schedule.birthdayDate`, `schedule.advanceDays`, and `schedule.notifyOnDay`. The mini-program creates separate reminder rows for advance-day and birthday-day notifications when both are enabled.
 
 If `notificationSubscription.subscriptionStatus` is `accept` and the recipient member has a `wechatOpenId`, the reminder is queued for one WeChat subscription-message notification. Other statuses keep the reminder visible in-app but skip external notification.
 

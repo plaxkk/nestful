@@ -1,7 +1,7 @@
 <view class="page reminders-page">
   <view class="panel header">
     <text class="page-title">生日和健康提醒</text>
-    <text class="page-subtitle">把家人的生日、吃药、运动记在这里。完成后点一下，家里人都能看到。</text>
+    <text class="page-subtitle">吃药要指定到人；运动可以给一个人，也可以给全家；生日可以提前提醒，也可以当天推送。</text>
   </view>
 
   <view class="panel form-panel">
@@ -12,14 +12,55 @@
         <view class="picker-value">{{reminderTypes[typeIndex].label}}</view>
       </picker>
     </view>
+
     <view class="field">
+      <text class="label">{{reminderTypes[typeIndex].value === 'exercise' && targetScopeOptions[targetScopeIndex].value === 'family' ? '负责人' : '提醒对象'}}</text>
+      <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange">
+        <view class="picker-value">{{memberOptions[memberIndex] || '还没有家庭成员'}}</view>
+      </picker>
+    </view>
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'exercise'}}">
+      <text class="label">运动范围</text>
+      <picker mode="selector" range="{{targetScopeOptions}}" range-key="label" value="{{targetScopeIndex}}" bindchange="onTargetScopeChange">
+        <view class="picker-value">{{targetScopeOptions[targetScopeIndex].label}}</view>
+      </picker>
+    </view>
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
       <text class="label">提醒内容</text>
-      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：提醒妈妈吃药" />
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：降压药、散步 20 分钟" />
     </view>
-    <view class="field">
-      <text class="label">提醒时间</text>
-      <input class="input" value="{{dueAtInput}}" bindinput="onDueAtInput" placeholder="例如：2026-05-22 08:00" />
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
+      <text class="label">频次</text>
+      <picker mode="selector" range="{{frequencyOptions}}" range-key="label" value="{{frequencyIndex}}" bindchange="onFrequencyChange">
+        <view class="picker-value">{{frequencyOptions[frequencyIndex].label}}</view>
+      </picker>
     </view>
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
+      <text class="label">第一次提醒时间</text>
+      <input class="input" value="{{dueAtInput}}" bindinput="onDueAtInput" placeholder="例如：2026-06-09 08:00" />
+    </view>
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
+      <text class="label">出生日期</text>
+      <input class="input" value="{{birthdayDateInput}}" bindinput="onBirthdayDateInput" placeholder="例如：1965-03-12" />
+    </view>
+
+    <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
+      <text class="label">提前多久提醒</text>
+      <picker mode="selector" range="{{advanceDayOptions}}" range-key="label" value="{{advanceDayIndex}}" bindchange="onAdvanceDayChange">
+        <view class="picker-value">{{advanceDayOptions[advanceDayIndex].label}}</view>
+      </picker>
+    </view>
+
+    <view class="switch-row" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
+      <text class="label">生日当天也推送</text>
+      <switch checked="{{notifyOnBirthday}}" bindchange="onNotifyOnBirthdayChange" />
+    </view>
+
     <button class="primary-action" bindtap="onCreateReminder">保存提醒</button>
   </view>
 

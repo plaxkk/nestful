@@ -4,7 +4,9 @@ import type {
   FamilyRole,
   LedgerCategory,
   LedgerEntryType,
+  ReminderFrequency,
   ReminderNotification,
+  ReminderTargetScope,
   ReminderType,
 } from "@nestful/shared";
 import { familyStore } from "./store.js";
@@ -42,6 +44,24 @@ const optionalReminderType = (body: Record<string, unknown>, key: string): Remin
   const types: ReminderType[] = ["birthday", "medicine", "exercise"];
 
   return typeof value === "string" && types.includes(value as ReminderType) ? (value as ReminderType) : undefined;
+};
+
+const optionalReminderTargetScope = (body: Record<string, unknown>, key: string): ReminderTargetScope | undefined => {
+  const value = body[key];
+  const scopes: ReminderTargetScope[] = ["member", "family"];
+
+  return typeof value === "string" && scopes.includes(value as ReminderTargetScope)
+    ? (value as ReminderTargetScope)
+    : undefined;
+};
+
+const optionalReminderFrequency = (body: Record<string, unknown>, key: string): ReminderFrequency | undefined => {
+  const value = body[key];
+  const frequencies: ReminderFrequency[] = ["once", "daily_once", "daily_twice", "daily_three_times", "weekly", "yearly"];
+
+  return typeof value === "string" && frequencies.includes(value as ReminderFrequency)
+    ? (value as ReminderFrequency)
+    : undefined;
 };
 
 const optionalLedgerEntryType = (body: Record<string, unknown>, key: string): LedgerEntryType | undefined => {
@@ -83,6 +103,14 @@ const optionalPositiveInteger = (body: Record<string, unknown>, key: string) => 
   const value = body[key];
 
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
+};
+
+const optionalStringArray = (body: Record<string, unknown>, key: string) => {
+  const value = body[key];
+
+  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0)
+    ? value.map((item) => item.trim())
+    : undefined;
 };
 
 export async function registerRoutes(server: FastifyInstance) {
@@ -300,6 +328,10 @@ export async function registerRoutes(server: FastifyInstance) {
     const dueAt = requiredString(request.body, "dueAt");
     const createdByMemberId = requiredString(request.body, "createdByMemberId");
     const assigneeMemberId = optionalString(request.body, "assigneeMemberId");
+    const targetScope = optionalReminderTargetScope(request.body, "targetScope");
+    const targetMemberIds = optionalStringArray(request.body, "targetMemberIds");
+    const frequency = optionalReminderFrequency(request.body, "frequency");
+    const schedule = isObject(request.body.schedule) ? request.body.schedule : undefined;
     const notificationSubscription = isObject(request.body.notificationSubscription)
       ? {
           templateId: requiredString(request.body.notificationSubscription, "templateId"),
@@ -312,6 +344,7 @@ export async function registerRoutes(server: FastifyInstance) {
       : undefined;
     const creator = createdByMemberId ? await familyStore.getMember(createdByMemberId) : undefined;
     const assignee = assigneeMemberId ? await familyStore.getMember(assigneeMemberId) : undefined;
+    const targetMembers = targetMemberIds ? await Promise.all(targetMemberIds.map((id) => familyStore.getMember(id))) : [];
 
     if (!type || !title || !dueAt || !createdByMemberId) {
       return reply.code(400).send({ error: "missing_required_fields" });
@@ -329,12 +362,29 @@ export async function registerRoutes(server: FastifyInstance) {
       return reply.code(400).send({ error: "invalid_assignee_member" });
     }
 
+    if (targetMembers.some((member) => !isFamilyMember(member, familyId))) {
+      return reply.code(400).send({ error: "invalid_target_member" });
+    }
+
     const reminder = await familyStore.createReminder(familyId, {
       type,
       title,
       dueAt,
       createdByMemberId,
       assigneeMemberId,
+      targetScope,
+      targetMemberIds,
+      frequency,
+      schedule: schedule
+        ? {
+            targetLabel: optionalString(schedule, "targetLabel"),
+            frequencyLabel: optionalString(schedule, "frequencyLabel"),
+            timesOfDay: optionalStringArray(schedule, "timesOfDay"),
+            birthdayDate: optionalString(schedule, "birthdayDate"),
+            advanceDays: optionalPositiveInteger(schedule, "advanceDays") ?? 0,
+            notifyOnDay: typeof schedule.notifyOnDay === "boolean" ? schedule.notifyOnDay : undefined,
+          }
+        : undefined,
       notificationSubscription:
         notificationSubscription?.templateId &&
         notificationSubscription.recipientMemberId &&

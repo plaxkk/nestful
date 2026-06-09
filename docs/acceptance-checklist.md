@@ -67,8 +67,10 @@ Expected setup flow:
 Expected family-task flow:
 
 1. In family overview, "今天要处理" contains entries for birthday/health, activity, memory wall, and ledger.
-2. Tap "生日和健康"; create a reminder with type "吃药", then confirm it appears as "待提醒".
-3. Tap "完成" and confirm the reminder status changes to "已完成".
+2. Tap "生日和健康"; create a medicine reminder, choose the family member who needs medicine, choose a frequency such as "每天两次", then confirm it appears as "待提醒".
+3. Create an exercise reminder and verify it can target either one member or "全家一起".
+4. Create a birthday reminder, choose the member birthday date, select an advance reminder such as "提前 7 天", keep "生日当天也推送" enabled, and verify reminder rows are created for both timing points.
+5. Tap "完成" and confirm the reminder status changes to "已完成".
 4. Return to the family page and tap "家庭账本".
 5. Create one ledger entry, then confirm it appears in "最近记录".
 6. Return to the family page and tap "记忆墙".
@@ -127,7 +129,7 @@ Use these checks on the home, family, join, and any new Phase 2 pages before han
 - Data persists to a local JSON file at `.data/nestful.json`; this is still an MVP stand-in for the target SQL database.
 - WeChat login code exchange is implemented for mini-program identity binding when `WECHAT_APP_ID` and `WECHAT_APP_SECRET` are configured; local fallback IDs remain for development.
 - Database schema and baseline privacy permissions are documented in `docs/database-schema.md`.
-- Birthday/medicine/exercise reminders have a create/list/complete flow. Real WeChat subscription-message delivery is implemented behind `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_REMINDER_TEMPLATE_ID`, and a scheduler that calls `/v1/reminders/dispatch-due`.
+- Birthday/medicine/exercise reminders have a create/list/complete flow with member targeting, medicine/exercise frequency metadata, and birthday advance/day-of reminder rows. Real WeChat subscription-message delivery is implemented behind `WECHAT_APP_ID`, `WECHAT_APP_SECRET`, `WECHAT_REMINDER_TEMPLATE_ID`, and a scheduler that calls `/v1/reminders/dispatch-due`.
 - Ledger has an MVP create/list flow with family-wide visibility; fine-grained finance visibility and export are not implemented yet.
 - Digital space has an MVP create/list flow for document notes, account notes, and memory items. Real file upload, media upload, password storage, and fine-grained visibility are not implemented yet.
 - Family activity day has an MVP create/list/copy-share-text flow. Complex RSVP, calendar sync, payments, and group automation are not implemented yet.

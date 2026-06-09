@@ -134,6 +134,14 @@ const reminderResponse = await request(`/v1/families/${family.id}/reminders`, {
     dueAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     createdByMemberId: ownerMember.id,
     assigneeMemberId: ownerMember.id,
+    targetScope: "member",
+    targetMemberIds: [ownerMember.id],
+    frequency: "daily_twice",
+    schedule: {
+      targetLabel: "验收人",
+      frequencyLabel: "每天两次",
+      timesOfDay: ["08:00", "20:00"],
+    },
     notificationSubscription: {
       templateId: "test-template",
       recipientMemberId: ownerMember.id,
@@ -145,6 +153,10 @@ const reminderResponse = await request(`/v1/families/${family.id}/reminders`, {
 assert(reminderResponse.data.id, "reminder id missing");
 assert(reminderResponse.data.completedAt === undefined, "new reminder should not be completed");
 assert(reminderResponse.data.notification?.sendStatus === "skipped", "rejected reminder notification should be skipped");
+assert(reminderResponse.data.targetScope === "member", "reminder target scope missing");
+assert(reminderResponse.data.targetMemberIds?.[0] === ownerMember.id, "reminder target member missing");
+assert(reminderResponse.data.frequency === "daily_twice", "reminder frequency missing");
+assert(reminderResponse.data.schedule?.frequencyLabel === "每天两次", "reminder schedule label missing");
 
 const remindersResponse = await request(`/v1/families/${family.id}/reminders`);
 assert(remindersResponse.data.some((reminder) => reminder.id === reminderResponse.data.id), "reminder list missing new reminder");

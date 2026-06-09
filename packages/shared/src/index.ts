@@ -83,10 +83,27 @@ export interface Reminder {
   title: string;
   dueAt: string;
   assigneeMemberId?: string;
+  targetScope?: ReminderTargetScope;
+  targetMemberIds?: string[];
+  frequency?: ReminderFrequency;
+  schedule?: ReminderSchedule;
   createdByMemberId: string;
   enabled: boolean;
   notification?: ReminderNotification;
   completedAt?: string;
+}
+
+export type ReminderTargetScope = "member" | "family";
+
+export type ReminderFrequency = "once" | "daily_once" | "daily_twice" | "daily_three_times" | "weekly" | "yearly";
+
+export interface ReminderSchedule {
+  targetLabel?: string;
+  frequencyLabel?: string;
+  timesOfDay?: string[];
+  birthdayDate?: string;
+  advanceDays?: number;
+  notifyOnDay?: boolean;
 }
 
 export interface ReminderNotification {
