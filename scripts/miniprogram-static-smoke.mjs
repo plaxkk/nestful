@@ -48,10 +48,17 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
   "家庭账本",
   "记忆墙",
   "家庭活动",
+  "openMemberEditor",
+  "已打开基础资料",
   "/pages/reminders/index",
   "/pages/ledger/index",
   "/pages/digital-space/index",
   "/pages/activities/index",
+]);
+
+expectIncludes("apps/miniprogram/pages/family/index.js", [
+  "openMemberEditor",
+  "已打开基础资料",
 ]);
 
 expectIncludes("apps/miniprogram/pages/join/index.wxml", [

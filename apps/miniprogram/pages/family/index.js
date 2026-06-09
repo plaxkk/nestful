@@ -212,6 +212,7 @@ Page({
     const family = session.getFamily();
     const currentMember = session.getMember();
     const memberId = event.currentTarget.dataset.id;
+    const listedMember = this.data.members.find((item) => item.id === memberId);
 
     if (!family || !currentMember || !memberId) {
       wx.showToast({
@@ -221,30 +222,46 @@ Page({
       return;
     }
 
+    if (listedMember) {
+      this.openMemberEditor(listedMember, currentMember);
+    }
+
     try {
       const response = await api.getMember(family.id, memberId);
       const member = withAvatarText(response.data);
-      const roleIndex = roleOptions.findIndex((item) => item.value === member.role);
-      const calendarIndex = birthdayCalendarOptions.findIndex((item) => item.value === member.birthdayCalendar);
-
-      this.setData({
-        memberEditorVisible: true,
-        selectedMember: member,
-        editDisplayNameInput: member.displayName,
-        editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
-        editBirthdayInput: member.birthday || "",
-        editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
-        editLocationInput: member.location || "",
-        editEmergencyContactInput: member.emergencyContact || "",
-        canEditSelectedRole: this.data.isCurrentMemberAdmin,
-        canRemoveSelected: this.data.isCurrentMemberAdmin && member.id !== currentMember.id,
-      });
+      this.openMemberEditor(member, currentMember);
     } catch {
+      if (listedMember) {
+        wx.showToast({
+          title: "已打开基础资料",
+          icon: "none",
+        });
+        return;
+      }
+
       wx.showToast({
         title: "资料打开失败，请稍后再试",
         icon: "none",
       });
     }
+  },
+
+  openMemberEditor(member, currentMember) {
+    const roleIndex = roleOptions.findIndex((item) => item.value === member.role);
+    const calendarIndex = birthdayCalendarOptions.findIndex((item) => item.value === member.birthdayCalendar);
+
+    this.setData({
+      memberEditorVisible: true,
+      selectedMember: member,
+      editDisplayNameInput: member.displayName,
+      editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
+      editBirthdayInput: member.birthday || "",
+      editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
+      editLocationInput: member.location || "",
+      editEmergencyContactInput: member.emergencyContact || "",
+      canEditSelectedRole: this.data.isCurrentMemberAdmin,
+      canRemoveSelected: this.data.isCurrentMemberAdmin && member.id !== currentMember.id,
+    });
   },
 
   onCloseMemberEditor() {
