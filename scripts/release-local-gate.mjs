@@ -11,6 +11,7 @@ const checks = [
   ["test", npmBin, ["test"]],
   ["lint", npmBin, ["run", "lint"]],
   ["migration smoke", npmBin, ["run", "migration:smoke"]],
+  ["deployment config smoke", npmBin, ["run", "deployment:smoke"]],
   ["mini-program static smoke", npmBin, ["run", "miniprogram:smoke"]],
   ["experience preflight", npmBin, ["run", "experience:preflight"]],
   ["experience record template check", npmBin, ["run", "experience:record-check"]],

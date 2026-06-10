@@ -9,6 +9,7 @@
     "dev:api": "corepack pnpm --filter @nestful/api dev",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
     "migration:smoke": "node scripts/migration-sql-smoke.mjs",
+    "deployment:smoke": "node scripts/deployment-config-smoke.mjs",
     "miniprogram:smoke": "node scripts/miniprogram-static-smoke.mjs",
     "miniprogram:devtools-smoke": "node scripts/miniprogram-devtools-smoke.mjs",
     "experience:upload-plan": "node scripts/experience-upload-plan.mjs",

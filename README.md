@@ -41,7 +41,7 @@ Reminder notifications use WeChat Mini Program subscription messages. Configure 
 - Exercise template keyword keys: `WECHAT_EXERCISE_PROJECT_KEY`, `WECHAT_EXERCISE_TIME_KEY`, `WECHAT_EXERCISE_PLAN_KEY`, `WECHAT_EXERCISE_FREQUENCY_KEY`, `WECHAT_EXERCISE_AMOUNT_KEY`
 - `CRON_SECRET` or `NESTFUL_CRON_SECRET` for protecting the dispatch endpoint
 
-After users authorize a reminder notification in the mini-program, run a scheduler every few minutes against `GET /v1/reminders/dispatch-due`. Reminder plans create separate due occurrences; completing a recurring occurrence advances the next in-app occurrence, while WeChat subscription-message delivery remains bound to a one-time user authorization. Vercel Hobby cron is limited to daily schedules, so use Vercel Pro cron or an external cron service for near-real-time reminders.
+After users authorize a reminder notification in the mini-program, `.github/workflows/reminder-dispatch.yml` calls `GET /v1/reminders/dispatch-due` every 5 minutes. Reminder plans create separate due occurrences; completing a recurring occurrence advances the next in-app occurrence, while WeChat subscription-message delivery remains bound to a one-time user authorization. Vercel Hobby only supports daily cron jobs, so near-real-time reminder dispatch uses GitHub Actions instead of Vercel Cron. If `CRON_SECRET` or `NESTFUL_CRON_SECRET` is enabled on the API, set the same value as the repository secret `NESTFUL_CRON_SECRET`.
 
 ## Initial Tech Direction
 
