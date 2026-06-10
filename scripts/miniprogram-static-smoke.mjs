@@ -91,6 +91,9 @@ expectIncludes("apps/miniprogram/pages/family/index.wxss", [
   ".small-danger-button",
   ".text-button",
   ".danger-action",
+  "flex-wrap: wrap",
+  "max-width: 420rpx",
+  "box-sizing: border-box",
   "line-height: 1.2",
 ]);
 

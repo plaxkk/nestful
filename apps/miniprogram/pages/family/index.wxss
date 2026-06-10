@@ -73,22 +73,27 @@
 
 .code-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 12rpx;
+  gap: 12rpx 10rpx;
+  width: 100%;
+  max-width: 420rpx;
 }
 
 .code-tile {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 76rpx;
-  height: 96rpx;
+  box-sizing: border-box;
+  width: 72rpx;
+  height: 92rpx;
   border: 2rpx solid #ffdad2;
   border-radius: 16rpx;
   background: #ffffff;
   color: #041627;
-  font-size: 54rpx;
+  font-size: 50rpx;
   font-weight: 800;
+  line-height: 1;
 }
 
 .section {
