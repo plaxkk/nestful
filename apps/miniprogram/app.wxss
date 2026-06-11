@@ -21,7 +21,6 @@ page {
   border: 2rpx solid #ffe2db;
   border-radius: 24rpx;
   background: #ffffff;
-  box-shadow: 0 8rpx 24rpx rgba(78, 52, 46, 0.05);
 }
 
 .field {
@@ -61,7 +60,6 @@ page {
   font-size: 36rpx;
   font-weight: 700;
   line-height: 1.2;
-  box-shadow: 0 8rpx 18rpx rgba(4, 22, 39, 0.16);
 }
 
 .secondary-action {

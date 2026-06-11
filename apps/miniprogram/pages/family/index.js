@@ -14,6 +14,8 @@ const birthdayCalendarOptions = [
   { label: "农历", value: "lunar" },
 ];
 
+const pageRefreshIntervalMs = 30 * 1000;
+
 const roleLabel = (role) => roleOptions.find((item) => item.value === role)?.label || "家人";
 
 const statusLabel = (invitation) => {
@@ -95,6 +97,9 @@ Page({
     joinPath: "",
     invitations: [],
     loading: false,
+    refreshing: false,
+    lastLoadedAt: 0,
+    currentFamilyId: "",
     inviteMode: false,
     isCurrentMemberAdmin: false,
     roleOptions,
@@ -121,30 +126,54 @@ Page({
     void this.loadFamilyData();
   },
 
-  async loadFamilyData() {
+  async loadFamilyData(options = {}) {
     const family = session.getFamily();
     const currentMember = session.getMember();
 
     if (!family) {
       wx.redirectTo({ url: "/pages/home/index" });
+      return;
+    }
+
+    if (
+      !options.force &&
+      this.data.currentFamilyId === family.id &&
+      this.data.lastLoadedAt > 0 &&
+      Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
+    ) {
+      return;
+    }
+
+    if (this.data.refreshing && !options.force) {
       return;
     }
 
     const members = memberSnapshotFor(family.id, currentMember);
     const isCurrentMemberAdmin = Boolean(currentMember && currentMember.role === "admin");
+    const hasRenderedFamily = this.data.currentFamilyId === family.id && this.data.members.length > 0;
 
     this.setData({
+      currentFamilyId: family.id,
       familyName: family.name,
       isCurrentMemberAdmin,
-      members: members.map(withAvatarText),
-      memberCountText: `${members.length} 位家人`,
+      ...(hasRenderedFamily
+        ? {}
+        : {
+            members: members.map(withAvatarText),
+            memberCountText: `${members.length} 位家人`,
+          }),
       invitations: isCurrentMemberAdmin ? this.data.invitations : [],
+      refreshing: true,
     });
 
-    await Promise.all([this.loadMembers(), this.loadInvitations()]);
+    await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations()]);
+    this.setData({
+      lastLoadedAt: Date.now(),
+      refreshing: false,
+    });
   },
 
-  async loadMembers() {
+  async loadMembers(options = {}) {
     const family = session.getFamily();
     const currentMember = session.getMember();
 
@@ -153,10 +182,12 @@ Page({
       return;
     }
 
+    const shouldShowLoading = options.showLoading ?? this.data.members.length === 0;
+
     this.setData({
       familyName: family.name,
       isCurrentMemberAdmin: Boolean(currentMember && currentMember.role === "admin"),
-      loading: true,
+      loading: shouldShowLoading,
     });
 
     try {
@@ -168,7 +199,7 @@ Page({
         loading: false,
       });
     } catch (error) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, refreshing: false });
       if (error instanceof Error && error.message.includes("status 404")) {
         session.clear();
         wx.showToast({
@@ -229,6 +260,7 @@ Page({
         inviteDigits: response.data.invitation.code.split(""),
         joinPath: response.data.joinPath,
       });
+      this.setData({ lastLoadedAt: 0 });
       await this.loadInvitations();
     } catch (error) {
       wx.hideLoading();
@@ -391,7 +423,7 @@ Page({
         memberEditorVisible: false,
         selectedMember: null,
       });
-      await this.loadFamilyData();
+      await this.loadFamilyData({ force: true, showLoading: false });
       wx.showToast({
         title: "资料已保存",
         icon: "success",
@@ -435,7 +467,7 @@ Page({
             memberEditorVisible: false,
             selectedMember: null,
           });
-          await this.loadFamilyData();
+          await this.loadFamilyData({ force: true, showLoading: false });
           wx.showToast({
             title: "已移除",
             icon: "success",
@@ -461,6 +493,7 @@ Page({
 
     try {
       await api.cancelInvitation(family.id, invitationId);
+      this.setData({ lastLoadedAt: 0 });
       await this.loadInvitations();
       wx.showToast({
         title: "邀请已撤销",

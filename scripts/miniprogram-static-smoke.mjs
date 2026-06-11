@@ -70,7 +70,10 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
   "openMemberEditor",
   "pageScrollTo",
   "memberSnapshotFor",
-  "Promise.all([this.loadMembers(), this.loadInvitations()])",
+  "pageRefreshIntervalMs",
+  "lastLoadedAt",
+  "refreshing",
+  "Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations()])",
   "/pages/reminders/index",
   "/pages/ledger/index",
   "/pages/digital-space/index",
@@ -83,11 +86,15 @@ expectIncludes("apps/miniprogram/pages/family/index.js", [
   "openMemberEditor",
   "pageScrollTo",
   "memberSnapshotFor",
-  "Promise.all([this.loadMembers(), this.loadInvitations()])",
+  "pageRefreshIntervalMs",
+  "lastLoadedAt",
+  "refreshing",
+  "Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations()])",
 ]);
 
 expectExcludes("apps/miniprogram/pages/family/index.ts", ["已打开基础资料"]);
 expectExcludes("apps/miniprogram/pages/family/index.js", ["已打开基础资料"]);
+expectExcludes("apps/miniprogram/pages/family/index.wxss", ["box-shadow"]);
 
 expectIncludes("apps/miniprogram/app.wxss", [
   "align-items: center",
@@ -143,6 +150,8 @@ expectIncludes("apps/miniprogram/pages/reminders/index.ts", [
   "登录已失效，请重新进入家庭",
   "session.getMembers",
   "session.setMembers",
+  "pageRefreshIntervalMs",
+  "loadPage({ force: true, showLoading: false })",
 ]);
 
 expectIncludes("apps/miniprogram/pages/ledger/index.wxml", [
@@ -184,6 +193,8 @@ expectIncludes("apps/miniprogram/pages/ledger/index.ts", [
   "session.setMembers",
   "splitMemberIds",
   "recurrence",
+  "pageRefreshIntervalMs",
+  "showLoading: false",
 ]);
 
 expectIncludes("apps/miniprogram/utils/session.ts", [
@@ -279,6 +290,8 @@ expectIncludes("apps/miniprogram/pages/digital-space/index.ts", [
   "Promise.all([",
   "session.getMembers",
   "session.setMembers",
+  "pageRefreshIntervalMs",
+  "showLoading: false",
 ]);
 
 expectIncludes("apps/miniprogram/pages/activities/index.ts", [
@@ -288,6 +301,8 @@ expectIncludes("apps/miniprogram/pages/activities/index.ts", [
   "Promise.all([",
   "session.getMembers",
   "session.setMembers",
+  "pageRefreshIntervalMs",
+  "showLoading: false",
 ]);
 
 console.log("miniprogram static smoke passed");

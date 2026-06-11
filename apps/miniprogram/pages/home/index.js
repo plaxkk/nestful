@@ -2,10 +2,14 @@ const { api } = require("../../utils/api");
 const { session } = require("../../utils/session");
 const { getWechatIdentity } = require("../../utils/wechat");
 
+const homeRefreshIntervalMs = 30 * 1000;
+
 Page({
   data: {
     hasFamily: false,
     primaryText: "创建我的家庭",
+    restoring: false,
+    lastRestoredAt: 0,
   },
 
   onShow() {
@@ -22,6 +26,16 @@ Page({
   },
 
   async restoreFamilySession() {
+    if (this.data.restoring) {
+      return;
+    }
+
+    if (this.data.lastRestoredAt > 0 && Date.now() - this.data.lastRestoredAt < homeRefreshIntervalMs) {
+      return;
+    }
+
+    this.setData({ restoring: true });
+
     try {
       await getWechatIdentity();
       const response = await api.listMyFamilies();
@@ -29,6 +43,10 @@ Page({
 
       if (!membership) {
         this.syncHomeState();
+        this.setData({
+          restoring: false,
+          lastRestoredAt: Date.now(),
+        });
         return;
       }
 
@@ -38,9 +56,12 @@ Page({
       this.setData({
         hasFamily: true,
         primaryText: "打开我的家庭",
+        restoring: false,
+        lastRestoredAt: Date.now(),
       });
     } catch {
       this.syncHomeState();
+      this.setData({ restoring: false });
     }
   },
 

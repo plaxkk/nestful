@@ -7,6 +7,13 @@ import {
 } from "../../utils/api";
 import { session } from "../../utils/session";
 
+const pageRefreshIntervalMs = 30 * 1000;
+
+type LoadOptions = {
+  force?: boolean;
+  showLoading?: boolean;
+};
+
 const itemKinds: Array<{ label: string; value: DigitalSpaceItemKind }> = [
   { label: "资料", value: "document" },
   { label: "账号", value: "account" },
@@ -81,7 +88,9 @@ Page({
     memberOptions: [] as string[],
     items: [] as DisplayDigitalSpaceItem[],
     visibleItems: [] as DisplayDigitalSpaceItem[],
-    loading: false
+    loading: false,
+    refreshing: false,
+    lastLoadedAt: 0
   },
 
   onShow() {
@@ -147,7 +156,7 @@ Page({
     this.setData({ tagMemberIndex: Number(event.detail.value) });
   },
 
-  async loadPage() {
+  async loadPage(options: LoadOptions = {}) {
     const family = session.getFamily();
 
     if (!family) {
@@ -155,16 +164,33 @@ Page({
       return;
     }
 
+    if (
+      !options.force &&
+      this.data.lastLoadedAt > 0 &&
+      Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
+    ) {
+      return;
+    }
+
+    if (this.data.refreshing && !options.force) {
+      return;
+    }
+
     const cachedMembers = session.getMembers(family.id);
 
-    if (cachedMembers.length > 0) {
+    if (cachedMembers.length > 0 && this.data.members.length === 0) {
       this.setData({
         members: cachedMembers,
         memberOptions: cachedMembers.map((member) => member.displayName)
       });
     }
 
-    this.setData({ loading: true });
+    const shouldShowLoading = options.showLoading ?? this.data.visibleItems.length === 0;
+
+    this.setData({
+      loading: shouldShowLoading,
+      refreshing: true
+    });
 
     try {
       const [membersResponse, itemsResponse] = await Promise.all([
@@ -181,10 +207,12 @@ Page({
         memberOptions: members.map((member) => member.displayName),
         items,
         visibleItems: filterItems(items, filterKind),
-        loading: false
+        loading: false,
+        refreshing: false,
+        lastLoadedAt: Date.now()
       });
     } catch (error) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, refreshing: false });
       wx.showToast({
         title: "数字空间加载失败，请确认 API 已启动",
         icon: "none"
@@ -209,14 +237,16 @@ Page({
         memberOptions: members.map((member) => member.displayName)
       });
     } catch {
-      this.setData({
-        members: [],
-        memberOptions: []
-      });
+      if (this.data.members.length === 0) {
+        this.setData({
+          members: [],
+          memberOptions: []
+        });
+      }
     }
   },
 
-  async loadItems() {
+  async loadItems(options: LoadOptions = {}) {
     const family = session.getFamily();
 
     if (!family) {
@@ -224,7 +254,9 @@ Page({
       return;
     }
 
-    this.setData({ loading: true });
+    const shouldShowLoading = options.showLoading ?? this.data.visibleItems.length === 0;
+
+    this.setData({ loading: shouldShowLoading });
 
     try {
       const response = await api.listDigitalSpaceItems(family.id);
@@ -234,7 +266,8 @@ Page({
       this.setData({
         items,
         visibleItems: filterItems(items, filterKind),
-        loading: false
+        loading: false,
+        lastLoadedAt: Date.now()
       });
     } catch (error) {
       this.setData({ loading: false });
@@ -308,7 +341,7 @@ Page({
         mediaLabelInput: "",
         occurredAtInput: todayDateInput()
       });
-      await this.loadItems();
+      await this.loadItems({ showLoading: false });
       wx.showToast({
         title: "已放入空间",
         icon: "success"

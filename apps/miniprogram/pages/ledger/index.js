@@ -20,6 +20,7 @@ const recurrenceOptions = [
     { label: "每月续费", value: "monthly" },
     { label: "每年续费", value: "yearly" }
 ];
+const pageRefreshIntervalMs = 30 * 1000;
 const pad = (value) => value.toString().padStart(2, "0");
 const formatDate = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const parseDateInput = (value) => {
@@ -136,7 +137,9 @@ Page({
         splitOptions: ["仅自己"],
         ledgerEntries: [],
         summary: emptySummary(),
-        loading: false
+        loading: false,
+        refreshing: false,
+        lastLoadedAt: 0
     },
     onShow() {
         void this.loadLedgerData();
@@ -199,20 +202,32 @@ Page({
             goalDueAtInput: event.detail.value
         });
     },
-    async loadLedgerData() {
+    async loadLedgerData(options = {}) {
         const family = session_1.session.getFamily();
         if (!family) {
             wx.redirectTo({ url: "/pages/home/index" });
             return;
         }
+        if (!options.force &&
+            this.data.lastLoadedAt > 0 &&
+            Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs) {
+            return;
+        }
+        if (this.data.refreshing && !options.force) {
+            return;
+        }
         const cachedMembers = session_1.session.getMembers(family.id);
-        if (cachedMembers.length > 0) {
+        if (cachedMembers.length > 0 && this.data.members.length === 0) {
             this.setData({
                 members: cachedMembers,
                 splitOptions: ["仅自己", ...cachedMembers.map((member) => member.displayName)]
             });
         }
-        this.setData({ loading: true });
+        const shouldShowLoading = options.showLoading ?? this.data.ledgerEntries.length === 0;
+        this.setData({
+            loading: shouldShowLoading,
+            refreshing: true
+        });
         try {
             const [membersResponse, entriesResponse, summaryResponse] = await Promise.all([
                 api_1.api.listMembers(family.id),
@@ -226,11 +241,13 @@ Page({
                 splitOptions: ["仅自己", ...members.map((member) => member.displayName)],
                 ledgerEntries: entriesResponse.data.map((entry) => withLedgerText(entry, members)),
                 summary: withSummaryText(summaryResponse.data, members),
-                loading: false
+                loading: false,
+                refreshing: false,
+                lastLoadedAt: Date.now()
             });
         }
         catch (error) {
-            this.setData({ loading: false });
+            this.setData({ loading: false, refreshing: false });
             wx.showToast({
                 title: "账本加载失败，请确认 API 已启动",
                 icon: "none"
@@ -289,7 +306,7 @@ Page({
                 splitMemberIndex: 0,
                 recurrenceIndex: 0
             });
-            await this.loadLedgerData();
+            await this.loadLedgerData({ force: true, showLoading: false });
             wx.showToast({
                 title: "已记一笔",
                 icon: "success"
@@ -344,7 +361,7 @@ Page({
                 goalCurrentInput: "0",
                 goalDueAtInput: ""
             });
-            await this.loadLedgerData();
+            await this.loadLedgerData({ force: true, showLoading: false });
             wx.showToast({
                 title: "目标已保存",
                 icon: "success"

@@ -28,6 +28,13 @@ const targetScopeOptions: Array<{ label: string; value: ReminderTargetScope }> =
   { label: "指定成员", value: "member" }
 ];
 
+const pageRefreshIntervalMs = 30 * 1000;
+
+type LoadOptions = {
+  force?: boolean;
+  showLoading?: boolean;
+};
+
 const advanceDayOptions = [0, 1, 3, 7, 14, 30].map((value) => ({
   label: value === 0 ? "不提前" : `提前 ${value} 天`,
   value
@@ -169,11 +176,13 @@ Page({
     members: [] as FamilyMember[],
     memberOptions: [] as string[],
     reminders: [] as Array<Reminder & { typeLabel: string; dueAtText: string; statusLabel: string; isCompleted: boolean }>,
-    loading: false
+    loading: false,
+    refreshing: false,
+    lastLoadedAt: 0
   },
 
   onShow() {
-    void Promise.all([this.loadMembers(), this.loadReminders()]);
+    void this.loadPage();
   },
 
   onTypeChange(event: WechatMiniprogram.PickerChange) {
@@ -240,6 +249,30 @@ Page({
     });
   },
 
+  async loadPage(options: LoadOptions = {}) {
+    if (
+      !options.force &&
+      this.data.lastLoadedAt > 0 &&
+      Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
+    ) {
+      return;
+    }
+
+    if (this.data.refreshing && !options.force) {
+      return;
+    }
+
+    this.setData({ refreshing: true });
+    await Promise.all([
+      this.loadMembers(),
+      this.loadReminders({ showLoading: options.showLoading ?? this.data.reminders.length === 0 })
+    ]);
+    this.setData({
+      refreshing: false,
+      lastLoadedAt: Date.now()
+    });
+  },
+
   async loadMembers() {
     const family = session.getFamily();
 
@@ -268,14 +301,16 @@ Page({
         birthdayDateInput: members[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
       });
     } catch {
-      this.setData({
-        members: [],
-        memberOptions: []
-      });
+      if (this.data.members.length === 0) {
+        this.setData({
+          members: [],
+          memberOptions: []
+        });
+      }
     }
   },
 
-  async loadReminders() {
+  async loadReminders(options: LoadOptions = {}) {
     const family = session.getFamily();
 
     if (!family) {
@@ -283,7 +318,9 @@ Page({
       return;
     }
 
-    this.setData({ loading: true });
+    const shouldShowLoading = options.showLoading ?? this.data.reminders.length === 0;
+
+    this.setData({ loading: shouldShowLoading });
 
     try {
       const response = await api.listReminders(family.id);
@@ -301,7 +338,7 @@ Page({
         loading: false
       });
     } catch (error) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, refreshing: false });
       wx.showToast({
         title: "提醒加载失败，请确认 API 已启动",
         icon: "none"
@@ -510,7 +547,7 @@ Page({
         titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
         dueAtInput: defaultDueAtInput()
       });
-      void this.loadReminders();
+      void this.loadPage({ force: true, showLoading: false });
       wx.showToast({
         title: acceptedSubscription ? "提醒已保存，到点会通知" : "提醒已保存",
         icon: "success"
@@ -550,7 +587,7 @@ Page({
       await api.completeReminder(reminderId, {
         actorMemberId: member.id
       });
-      await this.loadReminders();
+      await this.loadPage({ force: true, showLoading: false });
       wx.showToast({
         title: "已标记完成",
         icon: "success"

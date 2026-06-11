@@ -47,7 +47,6 @@
   color: #041627;
   font-size: 42rpx;
   font-weight: 800;
-  box-shadow: 0 16rpx 36rpx rgba(78, 52, 46, 0.08);
 }
 
 .center {
@@ -117,7 +116,6 @@
   border: 2rpx solid #ffe2db;
   border-radius: 24rpx;
   background: #ffffff;
-  box-shadow: 0 6rpx 18rpx rgba(78, 52, 46, 0.04);
 }
 
 .feature-copy {

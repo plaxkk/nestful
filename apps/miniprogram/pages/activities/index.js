@@ -1,6 +1,8 @@
 const { api } = require("../../utils/api");
 const { session } = require("../../utils/session");
 
+const pageRefreshIntervalMs = 30 * 1000;
+
 const pad = (value) => value.toString().padStart(2, "0");
 
 const formatInputTime = (date) =>
@@ -110,12 +112,14 @@ Page({
     memberOptions: [],
     activities: [],
     loading: false,
+    refreshing: false,
+    lastLoadedAt: 0,
     latestShareText: "",
     latestSharePath: "/pages/activities/index",
   },
 
   onShow() {
-    this.loadPage();
+    void this.loadPage();
   },
 
   onTitleInput(event) {
@@ -142,7 +146,7 @@ Page({
     this.setData({ taskAssigneeIndex: Number(event.detail.value) });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
     const family = session.getFamily();
 
     if (!family) {
@@ -150,16 +154,33 @@ Page({
       return;
     }
 
+    if (
+      !options.force &&
+      this.data.lastLoadedAt > 0 &&
+      Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
+    ) {
+      return;
+    }
+
+    if (this.data.refreshing && !options.force) {
+      return;
+    }
+
     const cachedMembers = session.getMembers(family.id);
 
-    if (cachedMembers.length > 0) {
+    if (cachedMembers.length > 0 && this.data.members.length === 0) {
       this.setData({
         members: cachedMembers,
         memberOptions: cachedMembers.map((member) => member.displayName),
       });
     }
 
-    this.setData({ loading: true });
+    const shouldShowLoading = options.showLoading ?? this.data.activities.length === 0;
+
+    this.setData({
+      loading: shouldShowLoading,
+      refreshing: true,
+    });
 
     try {
       const [membersResponse, activitiesResponse] = await Promise.all([
@@ -177,9 +198,11 @@ Page({
         latestShareText: activities[0]?.shareText ?? "",
         latestSharePath: activities[0]?.sharePath ?? "/pages/activities/index",
         loading: false,
+        refreshing: false,
+        lastLoadedAt: Date.now(),
       });
     } catch (error) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, refreshing: false });
       wx.showToast({
         title: "活动加载失败，请确认 API 已启动",
         icon: "none",
@@ -204,14 +227,16 @@ Page({
         memberOptions: members.map((member) => member.displayName),
       });
     } catch {
-      this.setData({
-        members: [],
-        memberOptions: [],
-      });
+      if (this.data.members.length === 0) {
+        this.setData({
+          members: [],
+          memberOptions: [],
+        });
+      }
     }
   },
 
-  async loadActivities() {
+  async loadActivities(options = {}) {
     const family = session.getFamily();
 
     if (!family) {
@@ -219,7 +244,9 @@ Page({
       return;
     }
 
-    this.setData({ loading: true });
+    const shouldShowLoading = options.showLoading ?? this.data.activities.length === 0;
+
+    this.setData({ loading: shouldShowLoading });
 
     try {
       const response = await api.listActivities(family.id);
@@ -230,6 +257,7 @@ Page({
         latestShareText: activities[0]?.shareText ?? "",
         latestSharePath: activities[0]?.sharePath ?? "/pages/activities/index",
         loading: false,
+        lastLoadedAt: Date.now(),
       });
     } catch (error) {
       this.setData({ loading: false });
@@ -297,7 +325,7 @@ Page({
         latestShareText: activity.shareText,
         latestSharePath: activity.sharePath,
       });
-      await this.loadActivities();
+      await this.loadActivities({ showLoading: false });
       wx.showToast({
         title: "活动已发起",
         icon: "success",
@@ -326,7 +354,7 @@ Page({
       memberId: member.id,
       rsvp,
     });
-    await this.loadActivities();
+    await this.loadActivities({ showLoading: false });
   },
 
   async onCreateTask(event) {
@@ -350,7 +378,7 @@ Page({
       assigneeMemberId: assignee.id,
     });
     this.setData({ taskInput: "" });
-    await this.loadActivities();
+    await this.loadActivities({ showLoading: false });
   },
 
   async onUpdateTaskStatus(event) {
@@ -368,7 +396,7 @@ Page({
       actorMemberId: member.id,
       status,
     });
-    await this.loadActivities();
+    await this.loadActivities({ showLoading: false });
   },
 
   async onUpdateActivityStatus(event) {
@@ -385,7 +413,7 @@ Page({
       actorMemberId: member.id,
       status,
     });
-    await this.loadActivities();
+    await this.loadActivities({ showLoading: false });
   },
 
   onCopyShareText(event) {
