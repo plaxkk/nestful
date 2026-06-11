@@ -76,6 +76,22 @@ Response:
 
 Lists known family spaces.
 
+`GET /v1/me/families`
+
+Returns family memberships for the authenticated WeChat/app session. The mini-program uses this after `POST /v1/wechat/session` to restore the current user's family when local storage is missing or stale.
+
+```json
+{
+  "data": [
+    {
+      "family": {},
+      "member": {},
+      "members": []
+    }
+  ]
+}
+```
+
 `POST /v1/families`
 
 Creates a family space and its owner member.

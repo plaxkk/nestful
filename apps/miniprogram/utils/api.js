@@ -67,6 +67,7 @@ const refreshAppSession = async () => {
         data: { code },
       });
       session.setToken(response.data.token, response.data.expiresAt);
+      session.setUser(response.data.user);
 
       return true;
     } catch {
@@ -110,6 +111,13 @@ const api = {
       method: "POST",
       url: "/v1/wechat/session",
       data: body,
+    });
+  },
+
+  listMyFamilies() {
+    return request({
+      method: "GET",
+      url: "/v1/me/families",
     });
   },
 

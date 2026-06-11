@@ -35,6 +35,9 @@ expectIncludes("apps/miniprogram/pages/home/index.wxml", [
 expectIncludes("apps/miniprogram/pages/home/index.ts", [
   "创建我的家庭",
   "打开我的家庭",
+  "restoreFamilySession",
+  "api.listMyFamilies",
+  "session.setMembers",
   "/pages/create-family/index",
   "/pages/join/index",
 ]);
@@ -46,6 +49,7 @@ expectIncludes("apps/miniprogram/pages/create-family/index.wxml", [
 ]);
 
 expectIncludes("apps/miniprogram/pages/create-family/index.ts", [
+  "家庭管理员",
   "session.setMembers",
 ]);
 
@@ -61,6 +65,8 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
   "家庭账本",
   "记忆墙",
   "家庭活动",
+  "displayNameFor",
+  "家庭管理员",
   "openMemberEditor",
   "pageScrollTo",
   "memberSnapshotFor",
@@ -72,6 +78,8 @@ expectIncludes("apps/miniprogram/pages/family/index.ts", [
 ]);
 
 expectIncludes("apps/miniprogram/pages/family/index.js", [
+  "displayNameFor",
+  "家庭管理员",
   "openMemberEditor",
   "pageScrollTo",
   "memberSnapshotFor",
@@ -128,6 +136,9 @@ expectIncludes("apps/miniprogram/pages/reminders/index.ts", [
   "每天两次",
   "daily_twice",
   "notifyOnBirthday",
+  "fanoutFamilyReminder",
+  "familyTargets.map",
+  "Promise.all(createRequests)",
   "isAuthReminderError",
   "登录已失效，请重新进入家庭",
   "session.getMembers",
@@ -177,6 +188,8 @@ expectIncludes("apps/miniprogram/pages/ledger/index.ts", [
 
 expectIncludes("apps/miniprogram/utils/session.ts", [
   "familyMembers",
+  "currentUser",
+  "hasValidToken",
   "getMembers",
   "setMembers",
 ]);
@@ -248,6 +261,7 @@ const runApiAuthRetrySmoke = async () => {
 
   assert(response.data.id === "goal-1", "goal fund request should retry after auth refresh");
   assert(storage.get("appSessionToken") === "fresh-token", "auth refresh should store the new app session token");
+  assert(storage.get("currentUser")?.id === "user-1", "auth refresh should store the current user");
   assert(
     storage.get("appSessionTokenExpiresAt") === "2030-01-01T00:00:00.000Z",
     "auth refresh should store the app session expiry",

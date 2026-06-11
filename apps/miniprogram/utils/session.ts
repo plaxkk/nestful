@@ -1,10 +1,11 @@
-import type { Family, FamilyMember } from "./api";
+import type { AppUser, Family, FamilyMember } from "./api";
 
 const familyKey = "currentFamily";
 const memberKey = "currentMember";
 const membersKey = "familyMembers";
 const tokenKey = "appSessionToken";
 const tokenExpiresAtKey = "appSessionTokenExpiresAt";
+const userKey = "currentUser";
 
 type FamilyMembersCache = Record<string, FamilyMember[]>;
 
@@ -44,6 +45,14 @@ export const session = {
     });
   },
 
+  getUser() {
+    return wx.getStorageSync(userKey) as AppUser | "";
+  },
+
+  setUser(user: AppUser) {
+    wx.setStorageSync(userKey, user);
+  },
+
   getToken() {
     return wx.getStorageSync(tokenKey) as string | "";
   },
@@ -62,11 +71,23 @@ export const session = {
     }
   },
 
+  hasValidToken() {
+    const token = this.getToken();
+    const expiresAt = this.getTokenExpiresAt();
+
+    if (!token) {
+      return false;
+    }
+
+    return !expiresAt || Date.parse(expiresAt) > Date.now() + 60 * 1000;
+  },
+
   clear() {
     wx.removeStorageSync(familyKey);
     wx.removeStorageSync(memberKey);
     wx.removeStorageSync(membersKey);
     wx.removeStorageSync(tokenKey);
     wx.removeStorageSync(tokenExpiresAtKey);
+    wx.removeStorageSync(userKey);
   },
 };

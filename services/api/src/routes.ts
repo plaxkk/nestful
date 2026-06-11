@@ -107,6 +107,26 @@ export async function registerRoutes(server: FastifyInstance) {
     data: await familyStore.listFamilies(),
   }));
 
+  server.get("/v1/me/families", async (request, reply) => {
+    const authUser = await requireAuthenticatedUser(request, reply);
+
+    if (!authUser) {
+      return;
+    }
+
+    const memberships = await familyStore.listFamilyMembershipsForUser(authUser);
+
+    return {
+      data: await Promise.all(
+        memberships.map(async ({ family, member }) => ({
+          family,
+          member: redactMemberForList(member),
+          members: (await familyStore.listMembers(family.id)).map(redactMemberForList),
+        })),
+      ),
+    };
+  });
+
   server.post("/v1/families", async (request, reply) => {
     const authUser = await requireAuthenticatedUser(request, reply);
 

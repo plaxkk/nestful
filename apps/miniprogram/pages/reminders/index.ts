@@ -79,7 +79,15 @@ const nextBirthdayDueAt = (birthdayDate: string, advanceDays: number) => {
   return dueAt.toISOString();
 };
 
-const memberName = (member: FamilyMember | undefined) => member?.displayName ?? "家人";
+const memberName = (member: FamilyMember | undefined) => {
+  const displayName = member?.displayName.trim();
+
+  if (displayName && displayName !== "我") {
+    return displayName;
+  }
+
+  return member?.role === "admin" ? "家庭管理员" : "家人";
+};
 
 const typeLabel = (type: ReminderType) => reminderTypes.find((item) => item.value === type)?.label ?? "提醒";
 
@@ -244,7 +252,7 @@ Page({
     if (cachedMembers.length > 0) {
       this.setData({
         members: cachedMembers,
-        memberOptions: cachedMembers.map((item) => item.displayName),
+        memberOptions: cachedMembers.map(memberName),
         birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
       });
     }
@@ -256,7 +264,7 @@ Page({
 
       this.setData({
         members,
-        memberOptions: members.map((item) => item.displayName),
+        memberOptions: members.map(memberName),
         birthdayDateInput: members[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
       });
     } catch {
@@ -396,18 +404,38 @@ Page({
 
     const isFamilyTarget = targetScope === "family";
 
+    if (isFamilyTarget) {
+      const familyTargets = this.data.members.length > 0 ? this.data.members : [member];
+
+      return familyTargets.map((targetMember) => ({
+        type: "exercise",
+        title,
+        dueAt,
+        createdByMemberId: creatorId,
+        assigneeMemberId: targetMember.id,
+        targetScope: "member",
+        targetMemberIds: [targetMember.id],
+        frequency: frequency.value,
+        schedule: {
+          targetLabel: memberName(targetMember),
+          frequencyLabel: frequency.label,
+          timesOfDay: frequency.timesOfDay
+        }
+      }));
+    }
+
     return [
       {
         type: "exercise",
         title,
         dueAt,
         createdByMemberId: creatorId,
-        assigneeMemberId: isFamilyTarget ? creatorId : member.id,
+        assigneeMemberId: member.id,
         targetScope,
-        targetMemberIds: isFamilyTarget ? this.data.members.map((item) => item.id) : [member.id],
+        targetMemberIds: [member.id],
         frequency: frequency.value,
         schedule: {
-          targetLabel: isFamilyTarget ? "全家" : memberName(member),
+          targetLabel: memberName(member),
           frequencyLabel: frequency.label,
           timesOfDay: frequency.timesOfDay
         }
@@ -450,12 +478,20 @@ Page({
 
     try {
       let acceptedSubscription = false;
+      const fanoutFamilyReminder =
+        reminderBodies.length > 1 &&
+        reminderBodies.every((reminderBody) => reminderBody.type === "exercise") &&
+        targetScopeOptions[this.data.targetScopeIndex]?.value === "family";
+      const createRequests: Array<ReturnType<typeof api.createReminder>> = [];
 
       for (const reminderBody of reminderBodies) {
-        const subscription = await requestReminderSubscription(reminderBody.type);
+        const shouldAttachNotification = !fanoutFamilyReminder || reminderBody.assigneeMemberId === creator.id;
+        const subscription = shouldAttachNotification
+          ? await requestReminderSubscription(reminderBody.type)
+          : undefined;
         acceptedSubscription = acceptedSubscription || subscription?.subscriptionStatus === "accept";
 
-        await api.createReminder(family.id, {
+        createRequests.push(api.createReminder(family.id, {
           ...reminderBody,
           notificationSubscription: subscription
             ? {
@@ -464,15 +500,17 @@ Page({
                 subscriptionStatus: subscription.subscriptionStatus
               }
             : undefined
-        });
+        }));
       }
+
+      await Promise.all(createRequests);
 
       wx.hideLoading();
       this.setData({
         titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
         dueAtInput: defaultDueAtInput()
       });
-      await this.loadReminders();
+      void this.loadReminders();
       wx.showToast({
         title: acceptedSubscription ? "提醒已保存，到点会通知" : "提醒已保存",
         icon: "success"

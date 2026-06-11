@@ -50,9 +50,20 @@ const formatDateTime = (value?: string) => {
   )}`;
 };
 
+const displayNameFor = (member: FamilyMember) => {
+  const displayName = member.displayName.trim();
+
+  if (displayName && displayName !== "我") {
+    return displayName;
+  }
+
+  return member.role === "admin" ? "家庭管理员" : "家人";
+};
+
 const withAvatarText = (member: FamilyMember) => ({
   ...member,
-  avatarText: member.displayName ? member.displayName.slice(0, 1) : "?",
+  displayName: displayNameFor(member),
+  avatarText: displayNameFor(member).slice(0, 1),
   roleLabel: roleLabel(member.role),
   detailText: [member.birthday, member.location].filter(Boolean).join(" · ") || "点开补充资料"
 });

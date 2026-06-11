@@ -924,6 +924,24 @@ export const familyStore = {
     return state.families;
   },
 
+  async listFamilyMembershipsForUser(user: User) {
+    await loadState();
+    const memberships = state.members
+      .filter((member) => member.userId === user.id || (member.wechatOpenId && member.wechatOpenId === user.wechatOpenId))
+      .map((member) => ({
+        family: state.families.find((family) => family.id === member.familyId),
+        member,
+      }))
+      .filter((membership): membership is { family: Family; member: FamilyMember } => Boolean(membership.family));
+
+    return memberships.sort((left, right) => {
+      const leftTime = Date.parse(left.member.joinedAt ?? left.family.createdAt);
+      const rightTime = Date.parse(right.member.joinedAt ?? right.family.createdAt);
+
+      return rightTime - leftTime;
+    });
+  },
+
   async getFamily(familyId: string) {
     await loadState();
     return state.families.find((family) => family.id === familyId);

@@ -7,8 +7,17 @@ export interface WechatIdentity {
   wechatOpenId?: string;
 }
 
-export const getWechatIdentity = (): Promise<WechatIdentity> =>
-  new Promise((resolve) => {
+export const getWechatIdentity = (options?: { forceRefresh?: boolean }): Promise<WechatIdentity> => {
+  const cachedUser = session.getUser();
+
+  if (!options?.forceRefresh && cachedUser && session.hasValidToken()) {
+    return Promise.resolve({
+      userId: cachedUser.id,
+      wechatOpenId: cachedUser.wechatOpenId,
+    });
+  }
+
+  return new Promise((resolve) => {
     wx.login({
       success: async (loginResult) => {
         if (!loginResult.code) {
@@ -19,6 +28,7 @@ export const getWechatIdentity = (): Promise<WechatIdentity> =>
         try {
           const response = await api.createWechatSession({ code: loginResult.code });
           session.setToken(response.data.token, response.data.expiresAt);
+          session.setUser(response.data.user);
           resolve({
             userId: response.data.userId,
             wechatOpenId: response.data.wechatOpenId,
@@ -32,6 +42,7 @@ export const getWechatIdentity = (): Promise<WechatIdentity> =>
       },
     });
   });
+};
 
 export const requestReminderSubscription = async (type: ReminderType) => {
   try {

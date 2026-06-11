@@ -157,6 +157,14 @@ assert(ownerMember.id, "owner member id missing");
 const membersResponse = await request(`/v1/families/${family.id}/members`);
 assert(membersResponse.data.length === 1, "owner member was not created");
 
+const myFamiliesResponse = await request("/v1/me/families", {
+  headers: ownerAuthHeaders,
+});
+const myFamilyMembership = myFamiliesResponse.data.find((membership) => membership.family.id === family.id);
+assert(myFamilyMembership, "my families should include the owner family");
+assert(myFamilyMembership.member.id === ownerMember.id, "my families should include the current member");
+assert(myFamilyMembership.members.some((member) => member.id === ownerMember.id), "my families should hydrate members");
+
 const invitationResponse = await request(`/v1/families/${family.id}/invitations`, {
   method: "POST",
   headers: ownerAuthHeaders,

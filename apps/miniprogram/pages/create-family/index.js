@@ -32,11 +32,13 @@ Page({
 
     try {
       const identity = await getWechatIdentity();
+      const user = session.getUser();
+      const ownerDisplayName = user && user.nickname !== "微信用户" ? user.nickname : "家庭管理员";
       const response = await api.createFamily({
         name: familyName,
         ownerUserId: identity.userId,
         ownerWechatOpenId: identity.wechatOpenId,
-        ownerDisplayName: "我",
+        ownerDisplayName,
       });
 
       session.setFamily(response.data.family);

@@ -43,6 +43,12 @@ export interface WechatSession {
   expiresAt: string;
 }
 
+export interface FamilyMembership {
+  family: Family;
+  member: FamilyMember;
+  members: FamilyMember[];
+}
+
 export interface FamilyInvitation {
   id: string;
   familyId: string;
@@ -350,6 +356,13 @@ export const api = {
       method: "POST",
       url: "/v1/wechat/session",
       data: body,
+    });
+  },
+
+  listMyFamilies() {
+    return request<ApiResponse<FamilyMembership[]>>({
+      method: "GET",
+      url: "/v1/me/families",
     });
   },
 
