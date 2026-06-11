@@ -24,6 +24,7 @@ const exerciseTimeKey = envString(process.env.WECHAT_EXERCISE_TIME_KEY) ?? "thin
 const exercisePlanKey = envString(process.env.WECHAT_EXERCISE_PLAN_KEY) ?? "thing4";
 const exerciseFrequencyKey = envString(process.env.WECHAT_EXERCISE_FREQUENCY_KEY) ?? "thing5";
 const exerciseAmountKey = envString(process.env.WECHAT_EXERCISE_AMOUNT_KEY) ?? "thing6";
+const reminderTimeZone = envString(process.env.REMINDER_TIME_ZONE) ?? "Asia/Shanghai";
 
 interface WeChatErrorResponse {
   errcode?: number;
@@ -128,39 +129,77 @@ export const exchangeWechatCode = async (code: string) => {
   };
 };
 
-const formatReminderTime = (value: string) => {
-  const date = new Date(value);
-  const pad = (item: number) => item.toString().padStart(2, "0");
+const reminderDateTimeFormatter = (() => {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: reminderTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  };
 
+  try {
+    return new Intl.DateTimeFormat("en-CA", options);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", {
+      ...options,
+      timeZone: "Asia/Shanghai",
+    });
+  }
+})();
+
+const reminderDateTimeParts = (value: string) => {
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  const parts = Object.fromEntries(
+    reminderDateTimeFormatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour === "24" ? "00" : parts.hour,
+    minute: parts.minute,
+  };
+};
+
+const formatReminderTime = (value: string) => {
+  const parts = reminderDateTimeParts(value);
+
+  if (!parts) {
     return value.slice(0, 20);
   }
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
-    date.getMinutes(),
-  )}`;
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 };
 
 const formatShortReminderTime = (value: string) => {
-  const date = new Date(value);
-  const pad = (item: number) => item.toString().padStart(2, "0");
+  const parts = reminderDateTimeParts(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!parts) {
     return value.slice(0, 5);
   }
 
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${parts.hour}:${parts.minute}`;
 };
 
 const formatReminderDate = (value: string) => {
-  const date = new Date(value);
-  const pad = (item: number) => item.toString().padStart(2, "0");
+  const parts = reminderDateTimeParts(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!parts) {
     return value.slice(0, 10);
   }
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
 const typeLabel = (type: Reminder["type"]) => {

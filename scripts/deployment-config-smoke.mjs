@@ -8,6 +8,7 @@ const assert = (condition, message) => {
 
 const config = JSON.parse(readFileSync("vercel.json", "utf8"));
 const reminderDispatchWorkflow = readFileSync(".github/workflows/reminder-dispatch.yml", "utf8");
+const wechatSource = readFileSync("services/api/src/wechat.ts", "utf8");
 
 const rewrites = Array.isArray(config.rewrites) ? config.rewrites : [];
 assert(
@@ -39,6 +40,11 @@ const crons = Array.isArray(config.crons) ? config.crons : [];
 assert(
   !crons.some((cron) => cron?.path === "/v1/reminders/dispatch-due" && cron?.schedule !== "0 0 * * *"),
   "Vercel Hobby cannot run sub-daily reminder dispatch cron jobs",
+);
+
+assert(
+  wechatSource.includes('REMINDER_TIME_ZONE') && wechatSource.includes('Asia/Shanghai'),
+  "subscription reminder template times must be formatted in the configured local reminder time zone",
 );
 
 console.log("deployment config smoke passed");
