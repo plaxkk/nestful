@@ -108,14 +108,14 @@ The mini-program selects an API base URL from the WeChat runtime environment:
 
 | WeChat envVersion | Default API |
 | --- | --- |
-| `develop` | `http://127.0.0.1:3100` |
+| `develop` | `https://nestful.kkplayit.online` |
 | `trial` | `https://nestful.kkplayit.online` |
 | `release` | `https://nestful.kkplayit.online` |
 
-For phone previews or LAN testing, override the API URL in WeChat DevTools without editing source:
+For local API development, first start the API with `npm run dev:api`, then override the API URL in WeChat DevTools without editing source:
 
 ```js
-wx.setStorageSync("nestful.apiBaseUrl", "http://<mac-lan-ip>:3100")
+wx.setStorageSync("nestful.apiBaseUrl", "http://127.0.0.1:3100")
 ```
 
 Clear the override with:

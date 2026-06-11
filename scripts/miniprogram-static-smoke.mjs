@@ -205,6 +205,16 @@ expectIncludes("apps/miniprogram/utils/session.ts", [
   "setMembers",
 ]);
 
+expectIncludes("apps/miniprogram/utils/config.ts", [
+  'develop: "https://nestful.kkplayit.online"',
+  "nestful.apiBaseUrl",
+]);
+
+expectIncludes("apps/miniprogram/utils/config.js", [
+  'develop: "https://nestful.kkplayit.online"',
+  "nestful.apiBaseUrl",
+]);
+
 const runApiAuthRetrySmoke = async () => {
   const require = createRequire(import.meta.url);
   const storage = new Map();

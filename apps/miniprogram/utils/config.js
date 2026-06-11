@@ -1,7 +1,7 @@
 const apiBaseUrlOverrideKey = "nestful.apiBaseUrl";
 
 const defaultApiBaseUrls = {
-  develop: "http://127.0.0.1:3100",
+  develop: "https://nestful.kkplayit.online",
   trial: "https://nestful.kkplayit.online",
   release: "https://nestful.kkplayit.online",
 };

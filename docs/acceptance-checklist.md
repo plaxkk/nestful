@@ -72,14 +72,14 @@ Mini Program API base URL selection is now environment-aware:
 
 | WeChat envVersion | Default API |
 | --- | --- |
-| `develop` | `http://127.0.0.1:3100` |
+| `develop` | `https://nestful.kkplayit.online` |
 | `trial` | `https://nestful.kkplayit.online` |
 | `release` | `https://nestful.kkplayit.online` |
 
-If a phone preview or LAN device cannot reach `127.0.0.1`, override the API base URL from the WeChat DevTools console without changing source:
+For local API development, first start the API with `npm run dev:api`, then override the API base URL from the WeChat DevTools console without changing source:
 
 ```js
-wx.setStorageSync("nestful.apiBaseUrl", "http://<mac-lan-ip>:3100")
+wx.setStorageSync("nestful.apiBaseUrl", "http://127.0.0.1:3100")
 ```
 
 Clear the override with:
