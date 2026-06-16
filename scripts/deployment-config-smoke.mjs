@@ -20,8 +20,8 @@ assert(
 );
 
 assert(
-  reminderDispatchWorkflow.includes('cron: "*/5 * * * *"'),
-  "reminder dispatch workflow must run every 5 minutes",
+  reminderDispatchWorkflow.includes('cron: "2-59/5 * * * *"'),
+  "reminder dispatch workflow must run every 5 minutes on an offset schedule",
 );
 assert(
   reminderDispatchWorkflow.includes("workflow_dispatch:"),
