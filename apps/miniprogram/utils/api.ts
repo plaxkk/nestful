@@ -313,6 +313,7 @@ const refreshAppSession = async () => {
         data: { code },
       });
       session.setToken(response.data.token, response.data.expiresAt);
+      session.setUser(response.data.user);
 
       return true;
     } catch {
@@ -335,7 +336,11 @@ const request = async <T>(options: WechatMiniprogram.RequestOption): Promise<T> 
     return await sendRequest<T>(options);
   } catch (error) {
     if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
-      return sendRequest<T>(options);
+      const user = session.getUser();
+      const retryOptions = options.method === "POST" && options.url === "/v1/families" && user
+        ? { ...options, data: { ...(options.data as Record<string, unknown>), ownerUserId: user.id, ownerWechatOpenId: user.wechatOpenId } }
+        : options;
+      return sendRequest<T>(retryOptions);
     }
 
     throw error;

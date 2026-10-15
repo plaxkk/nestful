@@ -90,7 +90,11 @@ const request = async (options) => {
     return await sendRequest(options);
   } catch (error) {
     if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
-      return sendRequest(options);
+      const user = session.getUser();
+      const retryOptions = options.method === "POST" && options.url === "/v1/families" && user
+        ? { ...options, data: { ...options.data, ownerUserId: user.id, ownerWechatOpenId: user.wechatOpenId } }
+        : options;
+      return sendRequest(retryOptions);
     }
 
     throw error;

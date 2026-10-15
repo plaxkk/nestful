@@ -50,7 +50,7 @@ Page({
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: "创建失败，请确认 API 已启动",
+        title: "创建失败，请稍后重试",
         icon: "none"
       });
     }

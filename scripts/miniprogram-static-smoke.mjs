@@ -293,6 +293,56 @@ const runApiAuthRetrySmoke = async () => {
 
 await runApiAuthRetrySmoke();
 
+// A restored database may reject a still-unexpired token from the old instance.
+// Creating a family must retry with the identity returned by the fresh session.
+const runCreateFamilyIdentityRetrySmoke = async () => {
+  const require = createRequire(import.meta.url);
+  const storage = new Map([
+    ["appSessionToken", "stale-token"],
+    ["currentUser", { id: "old-user" }],
+  ]);
+  let creates = 0;
+  global.wx = {
+    getStorageSync: (key) => storage.get(key) ?? "",
+    setStorageSync: (key, value) => storage.set(key, value),
+    removeStorageSync: (key) => storage.delete(key),
+    getAccountInfoSync: () => ({ miniProgram: { envVersion: "develop" } }),
+    login: (options) => options.success({ code: "fresh-code" }),
+    request: (options) => {
+      if (options.url.endsWith("/v1/wechat/session")) {
+        options.success({ statusCode: 200, data: { data: {
+          token: "fresh-token", expiresAt: "2030-01-01T00:00:00.000Z",
+          user: { id: "real-user", wechatOpenId: "real-openid" },
+        } } });
+        return;
+      }
+      assert(options.url.endsWith("/v1/families"), "unexpected identity retry request");
+      creates += 1;
+      if (creates === 1) {
+        options.success({ statusCode: 401, data: { error: "unauthorized" } });
+        return;
+      }
+      assert(options.header.authorization === "Bearer fresh-token", "family retry must use fresh token");
+      assert(options.data.ownerUserId === "real-user", "family retry must use refreshed owner identity");
+      assert(options.data.ownerWechatOpenId === "real-openid", "family retry must use refreshed OpenID");
+      assert(options.data.name === "test family", "family retry must preserve family name");
+      assert(options.data.ownerDisplayName === "owner", "family retry must preserve display name");
+      options.success({ statusCode: 201, data: { data: { family: { id: "created" } } } });
+    },
+  };
+  try {
+    const { api } = require("../apps/miniprogram/utils/api.js");
+    const response = await api.createFamily({
+      name: "test family", ownerUserId: "old-user", ownerWechatOpenId: "old-openid", ownerDisplayName: "owner",
+    });
+    assert(response.data.family.id === "created" && creates === 2, "family must succeed after one identity refresh");
+  } finally {
+    delete global.wx;
+  }
+};
+
+await runCreateFamilyIdentityRetrySmoke();
+
 expectIncludes("apps/miniprogram/pages/digital-space/index.ts", [
   "mediaItems",
   "taggedMemberIds",
