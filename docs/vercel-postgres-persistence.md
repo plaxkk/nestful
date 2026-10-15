@@ -84,6 +84,38 @@ psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_down.sql
 
 The rollback keeps `nestful_app_state` intact.
 
+## Supabase Recovery (2026-10-15)
+
+The replacement project is `qrspwgrkxogbpvrdafnn`. The cluster backup named
+`db_cluster-22-08-2026@03-11-27.backup.gz` contained one Nestful state row,
+last updated at `2026-06-16 08:04:25.17338+00`. Only that business row was
+restored; Supabase system schemas and roles were not imported. A JSONB equality
+query confirmed the restored document exactly matched the backup: 6 families,
+8 members, 3 users, 7 reminder plans, 11 reminders, 10 invitations, and 59 audit
+events. Changes after that snapshot cannot be recovered from this backup.
+
+The schema is recorded in `services/api/migrations/002_private_app_state_up.sql`.
+RLS is enabled and `anon`/`authenticated` table access is revoked because the
+API uses a privileged Postgres connection. The advisor's informational
+"RLS Enabled No Policy" finding is intentional: clients must not access this
+all-family document through the Data API.
+
+Production cutover completed after replacing the direct connection, which
+returned `ENOTFOUND`, and deploying the updated environment. Production API
+verification returned HTTP 200 for all 6 families, all 8 members, and all 11
+reminders; family IDs matched the backup. An unknown invitation returned the
+expected 404. A database update probe succeeded inside a rolled-back transaction,
+leaving the business document unchanged. Mini-program WeChat login and new
+family/invitation/reminder creation still require an authenticated device check;
+old sessions may have expired and require login again.
+
+Use the **Transaction pooler**
+connection string from the project's **Connect** dialog (normally port 6543),
+including its pooler hostname and `postgres.<project-ref>` username. Do not
+derive the pooler hostname from the region. Keep the password secret and retain
+`NESTFUL_STORAGE=postgres` and `PGSSL=require`, then redeploy and verify API
+reads and writes. Updating the variable alone does not update a deployment.
+
 ## Vercel CLI Setup
 
 After the database exists, add the variables:
