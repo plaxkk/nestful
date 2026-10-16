@@ -327,6 +327,8 @@ const loginCode = (): Promise<string | undefined> =>
 let sessionRefresh: Promise<boolean> | undefined;
 
 const wireBody = (options: WechatMiniprogram.RequestOption) => {
+  // WeChat sends writes as JSON; an action without fields still needs a JSON body.
+  if(["POST","PUT","PATCH","DELETE"].includes(options.method??"") && options.data === undefined)return {};
   if (!options.data || typeof options.data !== "object" || Array.isArray(options.data)) return options.data;
   const data = { ...options.data } as Record<string, unknown>;
   for (const key of ["ownerUserId", "ownerWechatOpenId", "userId", "wechatOpenId", "createdByMemberId", "actorMemberId"]) delete data[key];
@@ -336,13 +338,14 @@ const wireBody = (options: WechatMiniprogram.RequestOption) => {
 
 const sendRequest = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
+    const data = wireBody(options);
     wx.request({
       ...options,
       url: `${getApiBaseUrl()}${options.url}`,
-      data: wireBody(options),
+      data,
       timeout: 8000,
       header: {
-        ...(options.data === undefined ? {} : { "content-type": "application/json" }),
+        ...(data === undefined ? {} : { "content-type": "application/json" }),
         ...authHeaders(),
         ...(options.header ?? {}),
       },
@@ -664,7 +667,7 @@ export const api = {
     return request<ApiResponse<DigitalSpaceItem>>({
       method: "POST",
       url: `/v1/families/${familyId}/digital-space-items`,
-      data: body,
+      data: {...body,summary:body.summary?.trim()||undefined,url:body.url?.trim()||undefined,place:body.place?.trim()||undefined},
     });
   },
 
@@ -687,7 +690,7 @@ export const api = {
     return request<ApiResponse<Activity>>({
       method: "POST",
       url: `/v1/families/${familyId}/activities`,
-      data: body,
+      data: {...body,location:body.location?.trim()||undefined,description:body.description?.trim()||undefined},
     });
   },
 
@@ -775,13 +778,13 @@ export const api = {
     return request<ApiResponse<ReminderPlan>>({method:'GET',url:`/v1/families/${familyId}/reminder-plans/${id}`});
   },
   updateReminderPlan(familyId: string, id: string, body:ReminderPlan) {
-    return request<ApiResponse<{id:string;version:number}>>({method:'PUT',url:`/v1/families/${familyId}/reminder-plans/${id}`,data:body});
+    return request<ApiResponse<{id:string;version:number}>>({method:'PUT',url:`/v1/families/${familyId}/reminder-plans/${id}`,data:{...body,assigneeMemberId:body.assigneeMemberId??undefined}});
   },
   pauseReminderPlan(familyId: string, id: string, version:number) {
     return request<ApiResponse<{id:string;version:number}>>({method:'POST',url:`/v1/families/${familyId}/reminder-plans/${id}/pause`,data:{version}});
   },
   updateLedgerEntry(familyId:string,id:string,body:Omit<LedgerEntry,'id'|'familyId'>) {
-    return request<ApiResponse<LedgerEntry>>({method:'PUT',url:`/v1/families/${familyId}/ledger-entries/${id}`,data:body});
+    return request<ApiResponse<LedgerEntry>>({method:'PUT',url:`/v1/families/${familyId}/ledger-entries/${id}`,data:{...body,recurrence:body.recurrence??undefined}});
   },
   voidLedgerEntry(familyId:string,id:string,version:number) {
     return request<ApiResponse<{id:string}>>({method:'DELETE',url:`/v1/families/${familyId}/ledger-entries/${id}`,data:{version}});

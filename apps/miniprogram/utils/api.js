@@ -48,6 +48,9 @@ const loginCode = () => new Promise((resolve) => {
 });
 let sessionRefresh;
 const wireBody = (options) => {
+    // WeChat sends writes as JSON; an action without fields still needs a JSON body.
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(options.method ?? "") && options.data === undefined)
+        return {};
     if (!options.data || typeof options.data !== "object" || Array.isArray(options.data))
         return options.data;
     const data = { ...options.data };
@@ -58,13 +61,14 @@ const wireBody = (options) => {
     return data;
 };
 const sendRequest = (options) => new Promise((resolve, reject) => {
+    const data = wireBody(options);
     wx.request({
         ...options,
         url: `${(0, config_1.getApiBaseUrl)()}${options.url}`,
-        data: wireBody(options),
+        data,
         timeout: 8000,
         header: {
-            ...(options.data === undefined ? {} : { "content-type": "application/json" }),
+            ...(data === undefined ? {} : { "content-type": "application/json" }),
             ...authHeaders(),
             ...(options.header ?? {}),
         },
@@ -288,7 +292,7 @@ exports.api = {
         return request({
             method: "POST",
             url: `/v1/families/${familyId}/digital-space-items`,
-            data: body,
+            data: { ...body, summary: body.summary?.trim() || undefined, url: body.url?.trim() || undefined, place: body.place?.trim() || undefined },
         });
     },
     listActivities(familyId) {
@@ -298,7 +302,7 @@ exports.api = {
         return request({
             method: "POST",
             url: `/v1/families/${familyId}/activities`,
-            data: body,
+            data: { ...body, location: body.location?.trim() || undefined, description: body.description?.trim() || undefined },
         });
     },
     getActivity(familyId, activityId) {
@@ -364,13 +368,13 @@ exports.api = {
         return request({ method: 'GET', url: `/v1/families/${familyId}/reminder-plans/${id}` });
     },
     updateReminderPlan(familyId, id, body) {
-        return request({ method: 'PUT', url: `/v1/families/${familyId}/reminder-plans/${id}`, data: body });
+        return request({ method: 'PUT', url: `/v1/families/${familyId}/reminder-plans/${id}`, data: { ...body, assigneeMemberId: body.assigneeMemberId ?? undefined } });
     },
     pauseReminderPlan(familyId, id, version) {
         return request({ method: 'POST', url: `/v1/families/${familyId}/reminder-plans/${id}/pause`, data: { version } });
     },
     updateLedgerEntry(familyId, id, body) {
-        return request({ method: 'PUT', url: `/v1/families/${familyId}/ledger-entries/${id}`, data: body });
+        return request({ method: 'PUT', url: `/v1/families/${familyId}/ledger-entries/${id}`, data: { ...body, recurrence: body.recurrence ?? undefined } });
     },
     voidLedgerEntry(familyId, id, version) {
         return request({ method: 'DELETE', url: `/v1/families/${familyId}/ledger-entries/${id}`, data: { version } });

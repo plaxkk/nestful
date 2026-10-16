@@ -1,28 +1,32 @@
 <view class="page ledger-page">
   <view class="header">
+    <text class="family-context">{{familyName}}</text>
     <text class="eyebrow">家庭的钱，慢慢记清楚</text>
     <text class="page-title">家庭账本</text>
     <text class="page-subtitle">像写家庭小账本一样记录，不算复杂账，只帮家里人看清每一笔。</text>
   </view>
 
+  <button class="primary-action" wx:if="{{!formVisible && !goalFormVisible && !editingEntry}}" bindtap="onToggleForm" data-qa="onToggleForm">＋ 记一笔</button>
+  <view class="error-state" wx:if="{{error}}"><text>{{error}}</text><button class="text-button" bindtap="onRetry" data-qa="onRetry">重新加载</button></view>
+  <text class="loading-state" wx:if="{{loading}}">正在整理账本…</text>
   <view class="panel form-panel" wx:if="{{editingEntry}}">
     <text class="section-title">修改这笔记录</text>
-    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" /></view>
-    <view class="field"><text class="label">金额（元）</text><input class="input" type="digit" value="{{editAmountInput}}" bindinput="onEditAmountInput" /></view>
-    <view class="field"><text class="label">日期</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
-    <view class="field"><text class="label">分类</text><picker range="{{categories}}" range-key="label" value="{{editCategoryIndex}}" bindchange="onEditCategoryChange"><view class="picker-value">{{categories[editCategoryIndex].label}}</view></picker></view>
+    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" data-qa="onEditTitleInput" /></view>
+    <view class="field"><text class="label">金额（元）</text><input class="input" type="digit" value="{{editAmountInput}}" bindinput="onEditAmountInput" data-qa="onEditAmountInput" /></view>
+    <view class="field"><text class="label">日期</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange" data-qa="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
+    <view class="field"><text class="label">分类</text><picker range="{{categories}}" range-key="label" value="{{editCategoryIndex}}" bindchange="onEditCategoryChange" data-qa="onEditCategoryChange"><view class="picker-value">{{categories[editCategoryIndex].label}}</view></picker></view>
     <text class="helper-text">保留原来的付款人、分摊成员和收支类型。已有续费提醒独立管理，不随此处修改。</text>
-    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSaveEntryEdit">保存修改</button>
-    <button class="text-button" bindtap="onCancelEntryEdit">取消修改</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSaveEntryEdit" data-qa="onSaveEntryEdit">保存修改</button>
+    <button class="text-button" bindtap="onCancelEntryEdit" data-qa="onCancelEntryEdit">取消修改</button>
   </view>
 
-  <view class="summary-grid">
+  <view class="summary-grid" wx:if="{{!loading && !error && !formVisible && !goalFormVisible && !editingEntry}}">
     <view class="summary-card primary">
       <text class="summary-label">{{summary.month}} 结余</text>
       <text class="summary-value">{{summary.balanceText}}</text>
       <text class="summary-helper">收入减去支出</text>
     </view>
-    <view class="summary-card">
+    <view class="summary-totals"><view class="summary-card">
       <text class="summary-label">支出</text>
       <text class="summary-value expense">{{summary.expenseText}}</text>
       <text class="summary-helper">已记录 {{summary.recordCountText}}</text>
@@ -31,97 +35,104 @@
       <text class="summary-label">收入</text>
       <text class="summary-value income">{{summary.incomeText}}</text>
       <text class="summary-helper">家庭内部可见</text>
-    </view>
+    </view></view>
   </view>
 
-  <view class="section summary-section">
-    <view class="section-heading">
-      <text class="section-title">本月分类</text>
-      <text class="section-note">支出分类会自动按金额排序。</text>
-    </view>
-    <text class="empty-text" wx:if="{{summary.categoryTotals.length === 0}}">本月还没有支出分类。</text>
-    <view class="mini-list">
-      <view class="mini-row" wx:for="{{summary.categoryTotals}}" wx:key="category">
-        <view class="mini-main">
-          <text class="mini-title">{{item.label}}</text>
-          <text class="mini-meta">{{item.entryCountText}}</text>
-        </view>
-        <text class="mini-amount expense">{{item.amountText}}</text>
-      </view>
-    </view>
-  </view>
 
-  <view class="panel form-panel">
+
+  <view class="panel form-panel" wx:if="{{formVisible}}">
     <view class="section-heading">
       <text class="section-title">记一笔</text>
       <text class="section-note">分摊成员会进入本月分摊视图，会员和住房支出可以生成续费提醒。</text>
     </view>
     <view class="field">
       <text class="label">类型</text>
-      <picker mode="selector" range="{{entryTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
+      <picker mode="selector" range="{{entryTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange" data-qa="onTypeChange">
         <view class="picker-value">{{entryTypes[typeIndex].label}}</view>
       </picker>
     </view>
     <view class="field">
       <text class="label">分类</text>
-      <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+      <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange" data-qa="onCategoryChange">
         <view class="picker-value">{{categories[categoryIndex].label}}</view>
       </picker>
     </view>
     <view class="field">
       <text class="label">标题</text>
-      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：买菜、药费、会员费" />
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" data-qa="onTitleInput" placeholder="例如：买菜、药费、会员费" />
     </view>
     <view class="field">
       <text class="label">金额（元）</text>
-      <input class="input" type="digit" value="{{amountInput}}" bindinput="onAmountInput" placeholder="例如：20" />
+      <input class="input" type="digit" value="{{amountInput}}" bindinput="onAmountInput" data-qa="onAmountInput" placeholder="例如：20" />
     </view>
     <view class="field">
       <text class="label">日期</text>
-      <input class="input" value="{{occurredAtInput}}" bindinput="onOccurredAtInput" placeholder="例如：2026-05-21" />
+      <picker mode="date" value="{{occurredAtInput}}" bindchange="onOccurredDateChange" data-qa="onOccurredDateChange"><view class="picker-value">{{occurredAtInput}}</view></picker>
     </view>
     <view class="field">
       <text class="label">分摊</text>
-      <picker mode="selector" range="{{splitOptions}}" value="{{splitMemberIndex}}" bindchange="onSplitMemberChange">
+      <picker mode="selector" range="{{splitOptions}}" value="{{splitMemberIndex}}" bindchange="onSplitMemberChange" data-qa="onSplitMemberChange">
         <view class="picker-value">{{splitOptions[splitMemberIndex]}}</view>
       </picker>
     </view>
     <view class="field">
       <text class="label">续费提醒</text>
-      <picker mode="selector" range="{{recurrenceOptions}}" range-key="label" value="{{recurrenceIndex}}" bindchange="onRecurrenceChange">
+      <picker mode="selector" range="{{recurrenceOptions}}" range-key="label" value="{{recurrenceIndex}}" bindchange="onRecurrenceChange" data-qa="onRecurrenceChange">
         <view class="picker-value">{{recurrenceOptions[recurrenceIndex].label}}</view>
       </picker>
     </view>
-    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateLedgerEntry">保存这一笔</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateLedgerEntry" data-qa="onCreateLedgerEntry">保存这一笔</button>
+    <button class="text-button" disabled="{{busy}}" bindtap="onToggleForm" data-qa="onToggleForm">暂不填写</button>
   </view>
 
-  <view class="panel form-panel">
+  <view class="panel form-panel" wx:if="{{goalFormVisible}}">
     <view class="section-heading">
       <text class="section-title">目标基金</text>
       <text class="section-note">把旅行、装修、年度会员这些共同目标先放进家庭视野。</text>
     </view>
     <view class="field">
       <text class="label">目标</text>
-      <input class="input" value="{{goalTitleInput}}" bindinput="onGoalTitleInput" placeholder="例如：家庭旅行基金" />
+      <input class="input" value="{{goalTitleInput}}" bindinput="onGoalTitleInput" data-qa="onGoalTitleInput" placeholder="例如：家庭旅行基金" />
     </view>
     <view class="field">
       <text class="label">目标金额（元）</text>
-      <input class="input" type="digit" value="{{goalTargetInput}}" bindinput="onGoalTargetInput" placeholder="例如：1000" />
+      <input class="input" type="digit" value="{{goalTargetInput}}" bindinput="onGoalTargetInput" data-qa="onGoalTargetInput" placeholder="例如：1000" />
     </view>
     <view class="field">
       <text class="label">已准备（元）</text>
-      <input class="input" type="digit" value="{{goalCurrentInput}}" bindinput="onGoalCurrentInput" placeholder="例如：200" />
+      <input class="input" type="digit" value="{{goalCurrentInput}}" bindinput="onGoalCurrentInput" data-qa="onGoalCurrentInput" placeholder="例如：200" />
     </view>
     <view class="field">
       <text class="label">目标日期</text>
-      <input class="input" value="{{goalDueAtInput}}" bindinput="onGoalDueAtInput" placeholder="例如：2026-10-01" />
+      <picker mode="date" value="{{goalDueAtInput}}" bindchange="onGoalDateChange" data-qa="onGoalDateChange"><view class="picker-value">{{goalDueAtInput || '选择日期（可选）'}}</view></picker>
     </view>
-    <button class="secondary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateGoalFund">保存目标</button>
+    <button class="secondary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateGoalFund" data-qa="onCreateGoalFund">保存目标</button>
+    <button class="text-button" disabled="{{busy}}" bindtap="onToggleGoalForm" data-qa="onToggleGoalForm">暂不填写</button>
   </view>
 
-  <view class="section">
+  <view class="section" wx:if="{{!formVisible && !goalFormVisible && !editingEntry}}">
     <view class="section-heading">
-      <text class="section-title">目标进度</text>
+      <text class="section-title">最近记录</text>
+      <text class="section-note">每一笔都给家里留个交代。</text>
+    </view>
+    <text class="empty-text" wx:if="{{!loading && !error && ledgerEntries.length === 0}}">还没有记录。先记一笔家庭支出或收入。</text>
+    <view class="ledger-list">
+      <view class="ledger-row" wx:for="{{ledgerEntries}}" wx:key="id">
+        <view class="ledger-mark {{item.isIncome ? 'income' : 'expense'}}">{{item.typeLabel}}</view>
+        <view class="ledger-main">
+          <text class="ledger-title">{{item.title}}</text>
+          <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>
+          <text class="ledger-meta">付款 {{item.paidByText}} · 分摊 {{item.splitText}}</text>
+          <text class="ledger-meta" wx:if="{{item.recurrenceText}}">{{item.recurrenceText}} · 已安排提醒</text>
+          <view class="action-row" wx:if="{{item.canManage}}"><button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onEditEntry" data-qa="onEditEntry">修改记录</button><button class="text-button danger" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onVoidEntry" data-qa="onVoidEntry">作废</button></view>
+        </view>
+        <text class="ledger-amount {{item.isIncome ? 'income' : 'expense'}}">{{item.amountText}}</text>
+      </view>
+    </view>
+  </view>
+  <view class="section" wx:if="{{!formVisible && !goalFormVisible && !editingEntry}}">
+    <view class="section-heading">
+      <text class="section-title">共同目标</text><button class="small-action" bindtap="onToggleGoalForm" data-qa="onToggleGoalForm">添加目标</button>
       <text class="section-note">目标基金会跟着月度汇总一起展示。</text>
     </view>
     <text class="empty-text" wx:if="{{summary.goalFunds.length === 0}}">还没有家庭目标基金。</text>
@@ -135,7 +146,7 @@
     </view>
   </view>
 
-  <view class="section">
+  <view class="section" wx:if="{{analysisVisible && !formVisible && !goalFormVisible && !editingEntry}}">
     <view class="section-heading">
       <text class="section-title">本月分摊</text>
       <text class="section-note">正数表示这个月垫付更多，负数表示应补给家人。</text>
@@ -152,23 +163,21 @@
     </view>
   </view>
 
-  <view class="section">
+
+  <button class="text-button" wx:if="{{!formVisible && !goalFormVisible && !editingEntry}}" bindtap="onToggleAnalysis" data-qa="onToggleAnalysis">{{analysisVisible ? '收起分类与分摊' : '查看本月分类与分摊'}}</button>
+  <view class="section summary-section" wx:if="{{analysisVisible && !formVisible && !goalFormVisible && !editingEntry}}">
     <view class="section-heading">
-      <text class="section-title">最近记录</text>
-      <text class="section-note">每一笔都给家里留个交代。</text>
+      <text class="section-title">本月分类</text>
+      <text class="section-note">支出分类会自动按金额排序。</text>
     </view>
-    <text class="empty-text" wx:if="{{!loading && ledgerEntries.length === 0}}">还没有记录。先记一笔家庭支出或收入。</text>
-    <view class="ledger-list">
-      <view class="ledger-row" wx:for="{{ledgerEntries}}" wx:key="id">
-        <view class="ledger-mark {{item.isIncome ? 'income' : 'expense'}}">{{item.typeLabel}}</view>
-        <view class="ledger-main">
-          <text class="ledger-title">{{item.title}}</text>
-          <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>
-          <text class="ledger-meta">付款 {{item.paidByText}} · 分摊 {{item.splitText}}</text>
-          <text class="ledger-meta" wx:if="{{item.recurrenceText}}">{{item.recurrenceText}} · 已安排提醒</text>
-          <view class="action-row" wx:if="{{item.canManage}}"><button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onEditEntry">修改记录</button><button class="text-button danger" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onVoidEntry">作废</button></view>
+    <text class="empty-text" wx:if="{{summary.categoryTotals.length === 0}}">本月还没有支出分类。</text>
+    <view class="mini-list">
+      <view class="mini-row" wx:for="{{summary.categoryTotals}}" wx:key="category">
+        <view class="mini-main">
+          <text class="mini-title">{{item.label}}</text>
+          <text class="mini-meta">{{item.entryCountText}}</text>
         </view>
-        <text class="ledger-amount {{item.isIncome ? 'income' : 'expense'}}">{{item.amountText}}</text>
+        <text class="mini-amount expense">{{item.amountText}}</text>
       </view>
     </view>
   </view>

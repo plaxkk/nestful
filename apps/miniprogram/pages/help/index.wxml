@@ -22,12 +22,12 @@
     <text class="page-subtitle">如需导出个人资料、申请删除账号或恢复归档，请通过下方微信意见反馈提交申请。为避免误删他人资料，需人工核验身份与处理范围；已提交的家庭协作记录可能需要在移除个人身份后保留。</text>
     <text class="helper-text">可复制以下定位信息附在反馈中，请勿附上密码、邀请码或健康细节。</text>
     <text class="helper-text" selectable="{{true}}">{{reference}}</text>
-    <button class="secondary-action" bindtap="onCopyReference">复制反馈定位信息</button>
+    <button class="secondary-action" bindtap="onCopyReference" data-qa="onCopyReference">复制反馈定位信息</button>
     <button class="primary-action" open-type="feedback">意见反馈 / 数据处理申请</button>
   </view>
   <view class="panel help-section">
     <text class="section-title">下次从哪里打开</text>
     <text class="page-subtitle">从微信群里的活动卡片，可以直接打开对应安排；已有家庭成员无需重复加入。也可以通过微信右上角菜单，添加到“我的小程序”。</text>
   </view>
-  <button class="secondary-action" disabled="{{busy}}" bindtap="onLogout">退出本机登录</button>
+  <button class="secondary-action" disabled="{{busy}}" bindtap="onLogout" data-qa="onLogout">退出本机登录</button>
 </view>

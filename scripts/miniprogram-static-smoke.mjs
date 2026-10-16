@@ -22,6 +22,11 @@ global.wx={
    assert.equal(o.data.ownerUserId,undefined);assert.equal(o.data.ownerWechatOpenId,undefined);
    assert.equal(o.data.name,'test family');return o.success({statusCode:201,data:{data:{family:{id:'created'}}}});
   }
+  if(url.pathname.endsWith('/save-memory')||url.pathname==='/v1/wechat/logout'||url.pathname.endsWith('/invitations/invite')){assert.deepEqual(o.data,{});assert.equal(o.header['content-type'],'application/json');return o.success({statusCode:200,data:{data:{ok:true}}});}
+  if(url.pathname.endsWith('/reminder-plans/plan')&&o.method==='PUT'){assert.equal(o.data.assigneeMemberId,undefined);return o.success({statusCode:200,data:{data:{id:'plan'}}});}
+  if(url.pathname.endsWith('/ledger-entries/entry')){assert.equal(o.data.recurrence,undefined);assert.equal(o.data.createdByMemberId,undefined);return o.success({statusCode:200,data:{data:{id:'entry'}}});}
+  if(url.pathname.endsWith('/digital-space-items')&&o.method==='POST'){assert.equal(o.data.url,undefined);assert.equal(o.data.summary,undefined);assert.equal(o.data.place,undefined);return o.success({statusCode:201,data:{data:{id:'record'}}});}
+  if(url.pathname.endsWith('/activities')&&o.method==='POST'){assert.equal(o.data.location,undefined);assert.equal(o.data.description,undefined);return o.success({statusCode:201,data:{data:{id:'activity'}}});}
   if(url.pathname.endsWith('/activities'))return o.success({statusCode:200,data:url.searchParams.has('cursor')?{data:[{id:'second'}]}:{data:[{id:'first'}],nextCursor:'next'}});
   throw new Error(`Unexpected request ${url.pathname}`);
  }
@@ -31,6 +36,13 @@ const created=await api.createFamily({name:'test family',ownerUserId:'old-user',
 assert.equal(created.data.family.id,'created');assert.equal(familyCalls,2);
 assert.equal(storage.get('currentUser').id,'real-user');
 assert.deepEqual((await api.listActivities('family')).data.map(a=>a.id),['first','second']);
+await api.saveActivityMemory('family','activity');
+await api.logout();
+await api.cancelInvitation('family','invite');
+await api.updateReminderPlan('family','plan',{assigneeMemberId:null});
+await api.createDigitalSpaceItem('family',{kind:'memory',title:'记忆',summary:'',url:'',place:''});
+await api.createActivity('family',{title:'散步',startsAt:'2027-01-01T10:00:00Z',location:'',description:''});
+await api.updateLedgerEntry('family','entry',{title:'买菜',recurrence:null,createdByMemberId:'old-actor'});
 const {getWechatIdentity}=require('../apps/miniprogram/utils/wechat.js');
 global.wx.login=o=>o.fail({errMsg:'login failed'});
 await assert.rejects(getWechatIdentity({forceRefresh:true}),/微信登录失败/);

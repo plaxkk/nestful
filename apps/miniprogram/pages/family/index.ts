@@ -99,7 +99,7 @@ const memberSnapshotFor = (familyId: string, currentMember: FamilyMember | "") =
 
 Page({
   data: {
-    busy:false,
+    todayDate:formatDateTime(new Date().toISOString()).slice(0,10),error:"",busy:false,inviteFormVisible:false,invitationHistoryVisible:false,settingsVisible:false,
     invitationModeIndex:1,
     invitationModeOptions:['单独邀请一人（24 小时）','家庭群邀请（7 天，最多 20 人）'],
     approvalRequired:true,
@@ -142,8 +142,6 @@ Page({
     canRemoveSelected: false,
     nextActions: [
       { title: "生日和健康", desc: "生日、吃药、运动都放这里", page: "reminders" },
-      { title: "家庭活动", desc: "约吃饭、散步或视频聊天", page: "activities" },
-      { title: "家庭记录", desc: "保存文字、资料链接和家庭记忆", page: "digital-space" },
       { title: "家庭账本", desc: "把家里的钱慢慢记清楚", page: "ledger" }
     ]
   },
@@ -153,6 +151,12 @@ Page({
     void this.loadFamilyData({force:true,showLoading:false});
   },
 
+  onRetry(){void this.loadFamilyData({force:true,showLoading:true});},
+  onToggleInvite(){this.setData({inviteFormVisible:!this.data.inviteFormVisible},()=>{if(this.data.inviteFormVisible)wx.pageScrollTo({selector:this.data.inviteCode?".invite-card":".invite-form",duration:200});});},
+  onToggleHistory(){this.setData({invitationHistoryVisible:!this.data.invitationHistoryVisible});},
+  onToggleSettings(){this.setData({settingsVisible:!this.data.settingsVisible});},
+  onClearBirthday(){this.setData({editBirthdayInput:""});},
+  onEditBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({editBirthdayInput:String(e.detail.value)});},
   onOpenFamilyList() {
     wx.reLaunch({ url: "/pages/home/index?switch=1" });
   },
@@ -184,7 +188,7 @@ Page({
     const hasRenderedFamily = this.data.currentFamilyId === family.id && this.data.members.length > 0;
 
     this.setData({
-      ...(this.data.currentFamilyId !== family.id ? { inviteCode: "", inviteDigits: [], joinPath: "", activeInvitationId: "", invitations: [], joinRequests: [] } : {}),
+      ...(this.data.currentFamilyId !== family.id ? { inviteFormVisible:false,invitationHistoryVisible:false,settingsVisible:false,inviteCode: "", inviteDigits: [], joinPath: "", activeInvitationId: "", invitations: [], joinRequests: [] } : {}),
       currentFamilyId: family.id,
       familyName: family.name,
       isCurrentMemberAdmin,
@@ -195,7 +199,7 @@ Page({
             memberCountText: `${members.length} 位家人`
           }),
       invitations: isCurrentMemberAdmin && this.data.currentFamilyId === family.id ? this.data.invitations : [],
-      refreshing: true
+      refreshing: true,error:""
     });
 
     await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations(), this.loadJoinRequests()]);
@@ -236,7 +240,7 @@ Page({
       });
     } catch (error) {
       if (!session.isFamily(family.id)) return;
-      this.setData({ loading: false, refreshing: false });
+      this.setData({ loading: false, refreshing: false,error:"家人资料暂时加载失败，请检查网络后重试。" });
       if (error instanceof ApiRequestError && [401,403,404].includes(error.statusCode)) {
         session.clearFamily();
         this.setData({members:[],todos:[],upcoming:[],joinRequests:[],invitations:[],inviteCode:'',joinPath:'',memberEditorVisible:false,selectedMember:null});
@@ -264,6 +268,7 @@ Page({
 
     try {
       const response = await api.listInvitations(family.id);
+      if(!session.isFamily(family.id))return;
       this.setData({
         invitations: response.data.map(withInvitationText)
       });

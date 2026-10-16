@@ -1,48 +1,24 @@
-.join-page {
-  display: flex;
-  flex-direction: column;
-  gap: 34rpx;
-  background: #fff8f6;
-}
-
 .join-hero {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 22rpx;
-  padding: 42rpx 0 20rpx;
-  text-align: center;
+  align-items: flex-start;
+  gap: 16rpx;
 }
-
 .invite-icon {
+  width: 88rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 136rpx;
-  height: 136rpx;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #041627;
-  font-size: 42rpx;
-  font-weight: 800;
-  box-shadow: 0 16rpx 36rpx rgba(78, 52, 46, 0.08);
+  border-radius: 26rpx;
+  background: var(--soft-green);
+  color: var(--brand);
+  font-size: 36rpx;
 }
-
-.form-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 26rpx;
-}
-
-.status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
 .status {
-  color: #041627;
-  font-size: 34rpx;
-  font-weight: 800;
+  display: block;
+  color: var(--brand);
+  font-size: 29rpx;
+  line-height: 1.8;
+  word-break: break-all;
 }

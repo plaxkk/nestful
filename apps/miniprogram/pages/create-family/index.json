@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "创建家庭"
+  "navigationBarTitleText": "创建家庭",
+  "navigationBarBackgroundColor": "#faf7f1",
+  "backgroundColor": "#faf7f1"
 }

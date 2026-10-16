@@ -132,6 +132,8 @@ const reminderMeta = (reminder: Reminder) => {
 const withReminderText = (reminder: Reminder, hasNextOccurrence: boolean) => ({
   ...reminder,
   typeLabel: typeLabel(reminder.type),
+  stateLabel:!reminder.enabled?"已停止":reminder.completedAt?"已完成":Date.parse(reminder.dueAt)<Date.now()?"已到期":"待提醒",
+  notificationText:notificationLabel(reminder).replace(/^ · /,""),
   dueAtText: formatInputTime(new Date(reminder.dueAt)),
   statusLabel: `${!reminder.enabled?'已取消':reminder.completedAt ? "已完成" : Date.parse(reminder.dueAt)<Date.now()?'已到期，待确认':"待提醒"}${hasNextOccurrence ? " · 下次已安排" : ""}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
   isCompleted: Boolean(reminder.completedAt),
@@ -169,7 +171,7 @@ const isAuthReminderError = (error: unknown) => {
 
 Page({
   data: {
-    busy:false,
+    todayDate:formatDateInput(new Date()),busy:false, familyName:"", error:"", dateInput:defaultDueAtInput().slice(0,10),timeInput:"08:00",
     editingPlan:null as ReminderPlan|null,
     editTitleInput:'',editDateInput:'',editTimeInput:'08:00',editBirthdayInput:'',editFrequencyIndex:0,
     formVisible:false,
@@ -184,7 +186,7 @@ Page({
     advanceDayIndex: 3,
     titleInput: "提醒吃药",
     dueAtInput: defaultDueAtInput(),
-    birthdayDateInput: formatDateInput(new Date()),
+    birthdayDateInput: "",
     notifyOnBirthday: true,
     members: [] as FamilyMember[],
     memberOptions: [] as string[],
@@ -194,20 +196,29 @@ Page({
     lastLoadedAt: 0
   },
 
-  onShow() {
-    void this.loadPage();
+  currentFamilyId:"",loadEpoch:0,loadedRevision:-1,
+  onShow(){
+    const family=session.getFamily();if(!family){wx.redirectTo({url:'/pages/home/index'});return;}
+    if(this.currentFamilyId!==family.id){this.loadEpoch++;this.setData({members:[],memberOptions:[],reminders:[],lastLoadedAt:0,refreshing:false,formVisible:false,editingPlan:null});this.currentFamilyId=family.id;}
+    this.setData({familyName:family.name});void this.loadPage();
   },
-  onToggleForm(){this.setData({formVisible:!this.data.formVisible});},
+  onHide(){this.loadEpoch++;this.setData({refreshing:false,loading:false});},
+  onDueDateChange(e:WechatMiniprogram.PickerChange){const date=String(e.detail.value);this.setData({dateInput:date,dueAtInput:`${date} ${this.data.timeInput}`});},
+  onDueTimeChange(e:WechatMiniprogram.PickerChange){const time=String(e.detail.value);this.setData({timeInput:time,dueAtInput:`${this.data.dateInput} ${time}`});},
+  onBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({birthdayDateInput:String(e.detail.value)});},
+  onRetry(){void this.loadPage({force:true,showLoading:true});},
+  onToggleForm(){if(this.data.busy)return;this.setData({formVisible:!this.data.formVisible,editingPlan:null});wx.pageScrollTo({scrollTop:0,duration:200});},
   onEditTitleInput(e:WechatMiniprogram.Input){this.setData({editTitleInput:e.detail.value});},
   onEditDateChange(e:WechatMiniprogram.PickerChange){this.setData({editDateInput:String(e.detail.value)});},
   onEditTimeChange(e:WechatMiniprogram.PickerChange){this.setData({editTimeInput:String(e.detail.value)});},
+  onEditBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({editBirthdayInput:String(e.detail.value)});},
   onEditBirthdayInput(e:WechatMiniprogram.Input){this.setData({editBirthdayInput:e.detail.value});},
   onEditFrequencyChange(e:WechatMiniprogram.PickerChange){this.setData({editFrequencyIndex:Number(e.detail.value)});},
   onCancelPlanEdit(){this.setData({editingPlan:null});},
   async onEditPlan(e:WechatMiniprogram.TouchEvent){
     const family=session.getFamily();if(!family||this.data.busy)return;this.setData({busy:true});
     try{const p=(await api.getReminderPlan(family.id,String(e.currentTarget.dataset.planId))).data;const date=formatInputTime(new Date(p.dueAt));
-      this.setData({editingPlan:p,editTitleInput:p.title,editDateInput:date.slice(0,10),editTimeInput:date.slice(11),editBirthdayInput:p.schedule.birthdayDate??'',editFrequencyIndex:Math.max(0,frequencyOptions.findIndex(f=>f.value===p.frequency))});wx.pageScrollTo({scrollTop:0,duration:200});
+      this.setData({formVisible:false,editingPlan:p,editTitleInput:p.title,editDateInput:date.slice(0,10),editTimeInput:date.slice(11),editBirthdayInput:p.schedule.birthdayDate??'',editFrequencyIndex:Math.max(0,frequencyOptions.findIndex(f=>f.value===p.frequency))});wx.pageScrollTo({scrollTop:0,duration:200});
     }catch(error){wx.showToast({title:errorMessage(error),icon:'none'});}finally{this.setData({busy:false});}
   },
   async onSavePlan(){
@@ -246,7 +257,7 @@ Page({
 
     this.setData({
       memberIndex,
-      birthdayDateInput: member?.birthday ?? this.data.birthdayDateInput
+      birthdayDateInput: member?.birthday ?? ""
     });
   },
 
@@ -294,7 +305,7 @@ Page({
 
   async loadPage(options: LoadOptions = {}) {
     if (
-      !options.force &&
+      !options.force && this.loadedRevision===session.getHomeRevision() &&
       this.data.lastLoadedAt > 0 &&
       Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
     ) {
@@ -305,11 +316,14 @@ Page({
       return;
     }
 
-    this.setData({ refreshing: true });
+    const epoch=++this.loadEpoch,revision=session.getHomeRevision();
+    this.setData({ refreshing: true, error:"" });
     await Promise.all([
       this.loadMembers(),
       this.loadReminders({ showLoading: options.showLoading ?? this.data.reminders.length === 0 })
     ]);
+    if(epoch!==this.loadEpoch)return;
+    this.loadedRevision=revision;
     this.setData({
       refreshing: false,
       lastLoadedAt: Date.now()
@@ -317,7 +331,7 @@ Page({
   },
 
   async loadMembers() {
-    const family = session.getFamily();
+    const family = session.getFamily(),epoch=this.loadEpoch;
 
     if (!family) {
       return;
@@ -329,21 +343,23 @@ Page({
       this.setData({
         members: cachedMembers,
         memberOptions: cachedMembers.map(memberName),
-        birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
+        birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? ""
       });
     }
 
     try {
       const response = await api.listMembers(family.id);
+      if(epoch!==this.loadEpoch||!session.isFamily(family.id))return;
       const members = response.data;
       session.setMembers(family.id, members);
 
       this.setData({
         members,
         memberOptions: members.map(memberName),
-        birthdayDateInput: members[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
+        birthdayDateInput: members[this.data.memberIndex]?.birthday ?? ""
       });
     } catch {
+      if(epoch!==this.loadEpoch||!session.isFamily(family.id))return;
       if (this.data.members.length === 0) {
         this.setData({
           members: [],
@@ -354,7 +370,7 @@ Page({
   },
 
   async loadReminders(options: LoadOptions = {}) {
-    const family = session.getFamily();
+    const family = session.getFamily(),epoch=this.loadEpoch;
 
     if (!family) {
       wx.redirectTo({ url: "/pages/home/index" });
@@ -367,6 +383,7 @@ Page({
 
     try {
       const response = await api.listReminders(family.id);
+      if(epoch!==this.loadEpoch||!session.isFamily(family.id))return;
       const pendingPlanIds = new Set(
         response.data
           .filter((reminder) => reminder.planId && !reminder.completedAt)
@@ -381,7 +398,8 @@ Page({
         loading: false
       });
     } catch (error) {
-      this.setData({ loading: false, refreshing: false });
+      if(epoch!==this.loadEpoch||!session.isFamily(family.id))return;
+      this.setData({ loading: false, refreshing: false, error:"提醒暂时加载失败，请检查网络后重试。" });
       wx.showToast({
         title: "提醒加载失败，请检查网络后重试",
         icon: "none"
@@ -405,7 +423,7 @@ Page({
     const targetScope = type === "exercise" ? targetScopeOptions[this.data.targetScopeIndex]?.value ?? "member" : "member";
     return [{ type, title, dueAt, createdByMemberId: creatorId, assigneeMemberId: member.id,
       targetScope, targetMemberIds: targetScope === "member" ? [member.id] : undefined,
-      frequency: frequency.value, schedule: { timesOfDay: frequency.timesOfDay, frequencyLabel: frequency.label,
+      frequency: frequency.value, schedule: { timesOfDay: frequency.value==="daily_once"?[this.data.dueAtInput.slice(11,16)]:frequency.timesOfDay, frequencyLabel: frequency.label,
         targetLabel: targetScope === "family" ? "全家" : memberName(member) } }];
   },
 
@@ -476,7 +494,7 @@ Page({
       wx.hideLoading();
       this.setData({
         titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
-        dueAtInput: defaultDueAtInput()
+        formVisible:false, dueAtInput: defaultDueAtInput(), dateInput:defaultDueAtInput().slice(0,10),timeInput:"08:00"
       });
       void this.loadPage({ force: true, showLoading: false });
       wx.showToast({

@@ -3,7 +3,8 @@ import { session } from '../../utils/session';
 import { getWechatIdentity } from '../../utils/wechat';
 
 Page({
-  data:{code:'',codeInput:'',displayName:'',invitationStatus:'正在检查邀请',familyName:'',pending:false,busy:false,requiresApproval:false,fromCard:false,agreed:false},
+  invitationEpoch:0,
+  data:{valid:false,checking:false,code:'',codeInput:'',displayName:'',invitationStatus:'正在检查邀请',familyName:'',pending:false,busy:false,requiresApproval:false,fromCard:false,agreed:false},
   targetActivityId:'',
   onLoad(query:Record<string,string|undefined>){
     this.targetActivityId=query.activityId??'';
@@ -11,16 +12,21 @@ Page({
     this.setData({code,codeInput:code,fromCard:Boolean(code)});
     if(code)void this.loadInvitation(code);else this.setData({invitationStatus:'请填写管理员发来的邀请码'});
   },
-  onCodeInput(e:WechatMiniprogram.Input){this.setData({codeInput:e.detail.value,code:e.detail.value.trim(),pending:false,invitationStatus:'请检查新邀请码'});},
+  onCodeInput(e:WechatMiniprogram.Input){this.invitationEpoch++;this.setData({valid:false,checking:false,familyName:'',requiresApproval:false,codeInput:e.detail.value,code:e.detail.value.trim(),pending:false,invitationStatus:'请检查新邀请码'});},
   onDisplayNameInput(e:WechatMiniprogram.Input){this.setData({displayName:e.detail.value});},
   onAgreementChange(e:WechatMiniprogram.CheckboxGroupChange){this.setData({agreed:e.detail.value.includes('agree')});},
   onOpenHelp(){wx.navigateTo({url:'/pages/help/index'});},
-  onCheckInvitation(){const code=this.data.codeInput.trim();if(code)void this.loadInvitation(code);},
+  onCheckInvitation(){const code=this.data.codeInput.trim();if(code)return this.loadInvitation(code);wx.showToast({title:'请先填写邀请码',icon:'none'});},
   async loadInvitation(code:string){
+    const epoch=++this.invitationEpoch;this.setData({checking:true,valid:false,invitationStatus:'正在检查邀请…'});
     try{
       const r=(await api.getInvitation(code)).data;
-      this.setData({familyName:r.familyName,requiresApproval:Boolean(r.requiresApproval),invitationStatus:r.status==='active'?`邀请你加入「${r.familyName}」`:r.status==='full'?'邀请人数已满，请联系管理员':'邀请已失效或已使用，请联系管理员'});
-    }catch(error){this.setData({invitationStatus:errorMessage(error,'邀请暂不可用，请检查后重试')});}
+      if(epoch!==this.invitationEpoch||this.data.codeInput.trim()!==code)return false;
+      const valid=r.status==='active';
+      this.setData({valid,familyName:r.familyName,requiresApproval:Boolean(r.requiresApproval),invitationStatus:valid?`邀请你加入「${r.familyName}」`:r.status==='full'?'邀请人数已满，请联系管理员':'邀请已失效或已使用，请联系管理员'});
+      return valid;
+    }catch(error){if(epoch===this.invitationEpoch)this.setData({invitationStatus:errorMessage(error,'邀请暂不可用，请检查后重试')});return false;}
+    finally{if(epoch===this.invitationEpoch)this.setData({checking:false});}
   },
   async enterFamily(family:Family,member:FamilyMember){
     session.setFamily(family);session.setMember(member);session.setMembers(family.id,[member]);
@@ -43,9 +49,11 @@ Page({
     if(!this.data.agreed){wx.showToast({title:'请先阅读并同意隐私说明',icon:'none'});return;}
     this.setData({busy:true});
     try{
+      if(!this.data.valid&&!(await this.loadInvitation(code)))return;
+      if(this.data.codeInput.trim()!==code)return;
       const identity=await getWechatIdentity();
       const r=(await api.acceptInvitation(code,{displayName,userId:identity.userId})).data;
-      if(r.status==='pending'){this.setData({pending:true,invitationStatus:'申请已提交，请让管理员在家庭首页同意'});return;}
+      if(r.status==='pending'){this.setData({pending:true,invitationStatus:'申请已提交，请让管理员在“家庭”的加入申请中同意'});return;}
       await this.enterFamily(r.family,r.member);
     }catch(error){wx.showToast({title:errorMessage(error,'加入暂未完成，请检查网络后重试'),icon:'none'});}
     finally{this.setData({busy:false});}

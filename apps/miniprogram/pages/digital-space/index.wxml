@@ -1,73 +1,81 @@
 <view class="page digital-page">
   <view class="header">
+    <text class="family-context">{{familyName}}</text>
     <text class="eyebrow">家里的东西，有地方放</text>
-    <text class="page-title">家庭记录与链接</text>
-    <text class="page-subtitle">先用文字和链接整理资料、账号说明和记忆。密码和真实文件上传以后再接。</text>
+    <text class="page-title">家庭记录</text>
+    <text class="page-subtitle">把有用的资料、共同的记忆，留在家人找得到的地方。</text>
   </view>
 
-  <view class="panel form-panel">
+  <button class="primary-action" wx:if="{{!formVisible}}" bindtap="onToggleForm" data-qa="onToggleForm">＋ 新增记录</button>
+  <view class="error-state" wx:if="{{error}}"><text>{{error}}</text><button class="text-button" bindtap="onRetry" data-qa="onRetry">重新加载</button></view>
+  <text class="loading-state" wx:if="{{loading}}">正在整理家庭记录…</text>
+  <view class="panel form-panel" wx:if="{{formVisible}}">
     <view class="section-heading">
-      <text class="section-title">放入一个条目</text>
+      <text class="section-title">新增家庭记录</text>
       <text class="section-note">先记清楚是什么，家人就能找得到。</text>
     </view>
     <view class="field">
       <text class="label">类型</text>
-      <picker mode="selector" range="{{itemKinds}}" range-key="label" value="{{kindIndex}}" bindchange="onKindChange">
+      <picker mode="selector" range="{{itemKinds}}" range-key="label" value="{{kindIndex}}" bindchange="onKindChange" data-qa="onKindChange">
         <view class="picker-value">{{itemKinds[kindIndex].label}}</view>
       </picker>
     </view>
     <view class="field">
       <text class="label">标题</text>
-      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：医保资料、视频会员、春节照片" />
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" data-qa="onTitleInput" placeholder="例如：医保资料、视频会员、春节照片" />
     </view>
     <view class="field">
-      <text class="label">说明</text>
-      <input class="input" value="{{summaryInput}}" bindinput="onSummaryInput" placeholder="写给家人看的说明" />
+      <text class="label">说明（可选）</text>
+      <textarea class="textarea" maxlength="2000" value="{{summaryInput}}" bindinput="onSummaryInput" data-qa="onSummaryInput" placeholder="写给家人看的说明" />
     </view>
     <view class="field">
       <text class="label">链接（可选）</text>
-      <input class="input" value="{{urlInput}}" bindinput="onUrlInput" placeholder="网盘、相册或资料链接" />
+      <input class="input" value="{{urlInput}}" bindinput="onUrlInput" data-qa="onUrlInput" placeholder="网盘、相册或资料链接" />
     </view>
-    <view class="field">
+    <button class="text-button" bindtap="onToggleDetails" data-qa="onToggleDetails">{{detailsVisible ? '收起补充信息' : '补充日期、人物或链接说明'}}</button>
+    <block wx:if="{{detailsVisible}}">    <view class="field">
       <text class="label">媒体类型</text>
-      <picker mode="selector" range="{{mediaKindOptions}}" range-key="label" value="{{mediaKindIndex}}" bindchange="onMediaKindChange">
+      <picker mode="selector" range="{{mediaKindOptions}}" range-key="label" value="{{mediaKindIndex}}" bindchange="onMediaKindChange" data-qa="onMediaKindChange">
         <view class="picker-value">{{mediaKindOptions[mediaKindIndex].label}}</view>
       </picker>
     </view>
     <view class="field">
       <text class="label">媒体名称</text>
-      <input class="input" value="{{mediaLabelInput}}" bindinput="onMediaLabelInput" placeholder="例如：春节合照、体检报告 PDF" />
+      <input class="input" value="{{mediaLabelInput}}" bindinput="onMediaLabelInput" data-qa="onMediaLabelInput" placeholder="例如：春节合照、体检报告 PDF" />
     </view>
     <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
       <text class="label">发生日期</text>
-      <input class="input" value="{{occurredAtInput}}" bindinput="onOccurredAtInput" placeholder="例如：2026-06-09" />
+      <picker mode="date" value="{{occurredAtInput}}" bindchange="onOccurredDateChange" data-qa="onOccurredDateChange"><view class="picker-value">{{occurredAtInput}}</view></picker>
     </view>
     <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
       <text class="label">地点</text>
-      <input class="input" value="{{placeInput}}" bindinput="onPlaceInput" placeholder="例如：上海、家里、公园" />
+      <input class="input" value="{{placeInput}}" bindinput="onPlaceInput" data-qa="onPlaceInput" placeholder="例如：上海、家里、公园" />
     </view>
     <view class="field" wx:if="{{itemKinds[kindIndex].value === 'memory'}}">
       <text class="label">人物</text>
-      <picker mode="selector" range="{{memberOptions}}" value="{{tagMemberIndex}}" bindchange="onTagMemberChange">
+      <picker mode="selector" range="{{memberOptions}}" value="{{tagMemberIndex}}" bindchange="onTagMemberChange" data-qa="onTagMemberChange">
         <view class="picker-value">{{memberOptions[tagMemberIndex] || '选择家人'}}</view>
       </picker>
     </view>
+    </block>
     <text class="warning-text" wx:if="{{itemKinds[kindIndex].value === 'account'}}">账号说明只能记录用途、归属和找回线索，不要保存密码、验证码、密保答案或恢复密钥。</text>
-    <button class="primary-action" bindtap="onCreateItem">放入家庭空间</button>
+    <text class="helper-text">这里只保存文字和链接，不上传或托管真实文件。</text>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateItem" data-qa="onCreateItem">保存记录</button>
+    <button class="text-button" disabled="{{busy}}" bindtap="onToggleForm" data-qa="onToggleForm">暂不填写</button>
   </view>
 
-  <view class="section">
+  <view class="section" wx:if="{{!formVisible}}">
     <view class="section-heading">
-      <text class="section-title">已经放好的东西</text>
+      <text class="section-title">家里的记录</text>
       <text class="section-note">资料、账号说明和记忆分开查看；记忆按发生时间形成时间线。</text>
     </view>
     <view class="field">
       <text class="label">查看</text>
-      <picker mode="selector" range="{{filterKinds}}" range-key="label" value="{{filterIndex}}" bindchange="onFilterChange">
+      <picker mode="selector" range="{{filterKinds}}" range-key="label" value="{{filterIndex}}" bindchange="onFilterChange" data-qa="onFilterChange">
         <view class="picker-value">{{filterKinds[filterIndex].label}}</view>
       </picker>
     </view>
-    <text class="empty-text" wx:if="{{!loading && visibleItems.length === 0}}">还没有条目。先放一份家庭资料、账号说明或记忆。</text>
+    <text class="empty-text" wx:if="{{!loading && !error && visibleItems.length === 0}}">还没有条目。先放一份家庭资料、账号说明或记忆。</text>
     <view class="item-list">
       <view class="item-row" wx:for="{{visibleItems}}" wx:key="id">
         <view class="item-mark">{{item.kindLabel}}</view>
@@ -79,7 +87,7 @@
           <text class="item-meta" wx:if="{{item.peopleText}}">{{item.peopleText}}</text>
           <text class="item-meta" wx:if="{{item.mediaText}}">{{item.mediaText}}</text>
           <text class="warning-text compact-warning" wx:if="{{item.warningText}}">{{item.warningText}}</text>
-          <button wx:if="{{item.url}}" class="text-button" data-url="{{item.url}}" bindtap="onCopyLink">复制资料链接</button>
+          <button wx:if="{{item.url}}" class="text-button" data-url="{{item.url}}" bindtap="onCopyLink" data-qa="onCopyLink">复制资料链接</button>
         </view>
       </view>
     </view>

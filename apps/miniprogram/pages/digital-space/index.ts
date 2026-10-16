@@ -1,5 +1,5 @@
 import {
-  api,
+  api, errorMessage,
   type DigitalSpaceItem,
   type DigitalSpaceItemKind,
   type DigitalSpaceMediaKind,
@@ -16,8 +16,8 @@ type LoadOptions = {
 
 const itemKinds: Array<{ label: string; value: DigitalSpaceItemKind }> = [
   { label: "资料", value: "document" },
-  { label: "账号", value: "account" },
-  { label: "记忆", value: "memory" }
+  { label: "账号说明", value: "account" },
+  { label: "家庭记忆", value: "memory" }
 ];
 const filterKinds: Array<{ label: string; value: DigitalSpaceItemKind | "all" }> = [
   { label: "全部", value: "all" },
@@ -40,13 +40,13 @@ const formatDate = (value: string | undefined) => {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? "" : `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 };
 
 const withItemText = (item: DigitalSpaceItem, members: FamilyMember[]) => ({
   ...item,
   kindLabel: kindLabel(item.kind),
-  createdAtText: new Date(item.createdAt).toLocaleDateString(),
+  createdAtText: formatDate(item.createdAt),
   occurredAtText: formatDate(item.occurredAt),
   summaryText: item.summary || "还没有补充说明",
   placeText: item.place ? `地点：${item.place}` : "",
@@ -67,10 +67,11 @@ const filterItems = (
   filterKind: DigitalSpaceItemKind | "all",
 ) => (filterKind === "all" ? items : items.filter((item) => item.kind === filterKind));
 
-const todayDateInput = () => new Date().toISOString().slice(0, 10);
+const todayDateInput = () => formatDate(new Date().toISOString());
 
 Page({
   data: {
+    busy:false, formVisible:false, detailsVisible:false, familyName:"", error:"",
     itemKinds,
     filterKinds,
     mediaKindOptions,
@@ -78,8 +79,8 @@ Page({
     filterIndex: 0,
     mediaKindIndex: 3,
     tagMemberIndex: 0,
-    titleInput: "家庭资料",
-    summaryInput: "放一份家里人常用的资料说明",
+    titleInput: "",
+    summaryInput: "",
     urlInput: "",
     occurredAtInput: todayDateInput(),
     placeInput: "",
@@ -93,17 +94,22 @@ Page({
     lastLoadedAt: 0
   },
 
-  loadEpoch: 0,
+  loadEpoch: 0,loadedRevision:-1,
   currentFamilyId: "",
   onShow() {
     const family = session.getFamily();
     if (!family || family.id !== this.currentFamilyId) {
-      this.setData({ members: [], memberOptions: [], items: [], visibleItems: [], lastLoadedAt: 0, refreshing: false });
+      this.setData({ members: [], memberOptions: [], items: [], visibleItems: [], lastLoadedAt: 0, refreshing: false, formVisible:false, titleInput:"", summaryInput:"", urlInput:"", placeInput:"" });
       this.currentFamilyId = family ? family.id : "";
     }
+    this.setData({familyName:family?family.name:""});
     void this.loadPage();
   },
   onHide() { this.loadEpoch++; this.setData({ refreshing: false, loading: false }); },
+  onToggleForm(){if(this.data.busy)return;this.setData({formVisible:!this.data.formVisible});wx.pageScrollTo({scrollTop:0,duration:200});},
+  onToggleDetails(){this.setData({detailsVisible:!this.data.detailsVisible});},
+  onOccurredDateChange(e:WechatMiniprogram.PickerChange){this.setData({occurredAtInput:String(e.detail.value)});},
+  onRetry(){void this.loadPage({force:true,showLoading:true});},
   onCopyLink(e:WechatMiniprogram.TouchEvent){const url=e.currentTarget.dataset.url as string;if(url)wx.setClipboardData({data:url});},
 
   onKindChange(event: WechatMiniprogram.PickerChange) {
@@ -112,13 +118,6 @@ Page({
 
     this.setData({
       kindIndex,
-      titleInput: kind === "account" ? "视频会员账号" : kind === "memory" ? "一次家庭出行" : "家庭资料",
-      summaryInput:
-        kind === "account"
-          ? "这里只记录账号说明，不保存密码"
-          : kind === "memory"
-            ? "写下这段记忆发生了什么"
-            : "放一份家里人常用的资料说明",
       mediaKindIndex: kind === "memory" ? 0 : kind === "document" ? 2 : 3
     });
   },
@@ -174,7 +173,7 @@ Page({
     }
 
     if (
-      !options.force &&
+      !options.force && this.loadedRevision===session.getHomeRevision() &&
       this.data.lastLoadedAt > 0 &&
       Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
     ) {
@@ -185,13 +184,13 @@ Page({
       return;
     }
 
-    const epoch = ++this.loadEpoch;
+    const epoch = ++this.loadEpoch,revision=session.getHomeRevision();
     const cachedMembers = session.getMembers(family.id);
 
     if (cachedMembers.length > 0 && this.data.members.length === 0) {
       this.setData({
         members: cachedMembers,
-        memberOptions: cachedMembers.map((member) => member.displayName)
+        memberOptions: ["不标记人物", ...cachedMembers.map((member) => member.displayName)]
       });
     }
 
@@ -199,7 +198,7 @@ Page({
 
     this.setData({
       loading: shouldShowLoading,
-      refreshing: true
+      refreshing: true, error:""
     });
 
     try {
@@ -208,6 +207,7 @@ Page({
         api.listDigitalSpaceItems(family.id)
       ]);
       if (epoch !== this.loadEpoch || !session.isFamily(family.id)) return;
+      this.loadedRevision=revision;
       const members = membersResponse.data;
       const items = itemsResponse.data.map((item) => withItemText(item, members));
       const filterKind = filterKinds[this.data.filterIndex]?.value ?? "all";
@@ -215,7 +215,7 @@ Page({
 
       this.setData({
         members,
-        memberOptions: members.map((member) => member.displayName),
+        memberOptions: ["不标记人物", ...members.map((member) => member.displayName)],
         items,
         visibleItems: filterItems(items, filterKind),
         loading: false,
@@ -224,7 +224,7 @@ Page({
       });
     } catch (error) {
       if (epoch !== this.loadEpoch || !session.isFamily(family.id)) return;
-      this.setData({ loading: false, refreshing: false });
+      this.setData({ loading: false, refreshing: false, error:"家庭记录暂时加载失败，请检查网络后重试。" });
       wx.showToast({
         title: "数字空间加载失败，请检查网络后重试",
         icon: "none"
@@ -246,7 +246,7 @@ Page({
 
       this.setData({
         members,
-        memberOptions: members.map((member) => member.displayName)
+        memberOptions: ["不标记人物", ...members.map((member) => member.displayName)]
       });
     } catch {
       if (this.data.members.length === 0) {
@@ -291,6 +291,7 @@ Page({
   },
 
   async onCreateItem() {
+    if(this.data.busy)return;
     const family = session.getFamily();
     const member = session.getMember();
     const kind = itemKinds[this.data.kindIndex]?.value;
@@ -298,10 +299,11 @@ Page({
     const summary = this.data.summaryInput.trim();
     const url = this.data.urlInput.trim();
     const occurredAtInput = this.data.occurredAtInput.trim();
-    const occurredAt =
-      kind === "memory" && occurredAtInput ? new Date(`${occurredAtInput}T00:00:00`).toISOString() : undefined;
+    const occurredDate=kind==='memory'&&occurredAtInput?new Date(`${occurredAtInput}T00:00:00`):undefined;
+    if(occurredDate&&Number.isNaN(occurredDate.getTime())){wx.showToast({title:'请选择有效日期',icon:'none'});return;}
+    const occurredAt=occurredDate?.toISOString();
     const place = this.data.placeInput.trim();
-    const taggedMember = this.data.members[this.data.tagMemberIndex];
+    const taggedMember = this.data.members[this.data.tagMemberIndex - 1];
     const mediaKind = mediaKindOptions[this.data.mediaKindIndex]?.value ?? "link";
     const mediaLabel = this.data.mediaLabelInput.trim() || title;
 
@@ -321,6 +323,8 @@ Page({
       return;
     }
 
+    if(url&&!/^https?:\/\//i.test(url)){wx.showToast({title:'链接请以 http:// 或 https:// 开头',icon:'none'});return;}
+    this.setData({busy:true});
     wx.showLoading({ title: "保存中" });
 
     try {
@@ -346,7 +350,7 @@ Page({
 
       wx.hideLoading();
       this.setData({
-        titleInput: kind === "account" ? "视频会员账号" : kind === "memory" ? "一次家庭出行" : "家庭资料",
+        titleInput: "", formVisible:false, detailsVisible:false, tagMemberIndex:0,
         summaryInput: "",
         urlInput: "",
         placeInput: "",
@@ -355,15 +359,15 @@ Page({
       });
       await this.loadItems({ showLoading: false });
       wx.showToast({
-        title: "已放入空间",
+        title: "已保存记录",
         icon: "success"
       });
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: "保存失败，请检查网络后重试",
+        title: errorMessage(error,"保存失败，请检查网络后重试"),
         icon: "none"
       });
-    }
+    } finally { this.setData({busy:false}); }
   }
 });

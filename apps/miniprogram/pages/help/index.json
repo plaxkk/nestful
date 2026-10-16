@@ -1,1 +1,5 @@
-{"navigationBarTitleText":"隐私与帮助"}
+{
+  "navigationBarTitleText": "隐私与帮助",
+  "navigationBarBackgroundColor": "#faf7f1",
+  "backgroundColor": "#faf7f1"
+}

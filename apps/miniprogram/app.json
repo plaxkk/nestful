@@ -12,9 +12,9 @@
   ],
   "window": {
     "navigationBarTitleText": "Nestful",
-    "navigationBarBackgroundColor": "#fff8f6",
+    "navigationBarBackgroundColor": "#faf7f1",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fff8f6"
+    "backgroundColor": "#faf7f1"
   },
   "usingComponents": {
     "family-nav": "/components/family-nav/index"

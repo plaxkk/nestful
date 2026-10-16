@@ -3,14 +3,14 @@
   <view class="panel form-panel">
     <text class="status">{{invitationStatus}}</text>
     <block wx:if="{{!pending}}">
-      <view class="field" wx:if="{{!fromCard}}"><text class="label">邀请码</text><input class="input" value="{{codeInput}}" bindinput="onCodeInput" placeholder="粘贴管理员发来的邀请码" /></view>
-      <button wx:if="{{!fromCard}}" class="secondary-action" bindtap="onCheckInvitation">检查邀请码</button>
-      <view class="field"><text class="label">你的称呼</text><input class="input" maxlength="60" value="{{displayName}}" bindinput="onDisplayNameInput" placeholder="例如：妈妈、哥哥、外婆" /></view>
+      <view class="field" wx:if="{{!fromCard || (!valid && !checking)}}"><text class="label">邀请码</text><input class="input" value="{{codeInput}}" bindinput="onCodeInput" data-qa="onCodeInput" placeholder="粘贴管理员发来的邀请码" /></view>
+      <button wx:if="{{!fromCard || (!valid && !checking)}}" disabled="{{checking || busy}}" loading="{{checking}}" class="secondary-action" bindtap="onCheckInvitation" data-qa="onCheckInvitation">检查邀请码</button>
+      <block wx:if="{{valid}}"><view class="field"><text class="label">你的称呼</text><input class="input" maxlength="60" value="{{displayName}}" bindinput="onDisplayNameInput" data-qa="onDisplayNameInput" placeholder="例如：妈妈、哥哥、外婆" /></view>
       <text class="helper-text">{{requiresApproval ? '加入需要管理员同意，通过后即可继续查看活动。' : '加入后，你会成为这个家庭的普通成员。'}}</text>
-      <checkbox-group bindchange="onAgreementChange"><label class="helper-text"><checkbox value="agree" checked="{{agreed}}" />我已阅读并同意隐私说明，愿意加入这个家庭</label></checkbox-group>
-      <button class="text-button" bindtap="onOpenHelp">阅读隐私说明</button>
-      <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onJoinFamily">{{requiresApproval ? '申请加入家庭' : '确认加入家庭'}}</button>
+      <checkbox-group bindchange="onAgreementChange" data-qa="onAgreementChange"><label class="agreement"><checkbox color="#365b44" value="agree" checked="{{agreed}}" />我已阅读并同意隐私说明，愿意加入这个家庭</label></checkbox-group>
+      <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onJoinFamily" data-qa="onJoinFamily">{{requiresApproval ? '申请加入家庭' : '确认加入家庭'}}</button></block>
     </block>
-    <button class="secondary-action" disabled="{{busy}}" bindtap="onRefreshStatus">{{pending ? '管理员同意后，点此继续' : '我已加入，直接打开'}}</button>
+    <button class="secondary-action" disabled="{{busy}}" bindtap="onRefreshStatus" data-qa="onRefreshStatus">{{pending ? '管理员同意后，点此继续' : '我已加入，直接打开'}}</button>
   </view>
+  <button class="text-button" bindtap="onOpenHelp" data-qa="onOpenHelp">隐私说明与帮助</button>
 </view>

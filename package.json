@@ -28,7 +28,9 @@
     "test": "corepack pnpm -r test",
     "miniprogram:build": "node scripts/build-miniprogram-js.mjs",
     "miniprogram:check-js": "node scripts/build-miniprogram-js.mjs --check",
-    "test:postgres": "node scripts/postgres-tests.mjs"
+    "test:postgres": "node scripts/postgres-tests.mjs",
+    "miniprogram:design-flows": "node scripts/design-miniprogram-flows.mjs",
+    "design:fixture": "corepack pnpm --filter @nestful/api exec tsx scripts/design-fixture.ts"
   },
   "workspaces": [
     "apps/*",

@@ -1,101 +1,103 @@
 <view class="page reminders-page">
-  <view class="panel header">
-    <text class="page-title">生日和健康提醒</text>
-    <text class="page-subtitle">吃药要指定到人；运动可以给一个人，也可以给全家；生日可以提前提醒，也可以当天推送。</text>
-  </view>
+  <view class="header"><text class="family-context">{{familyName}}</text><text class="eyebrow">把关心放进日常</text><text class="page-title">家里的提醒</text><text class="page-subtitle">记住生日，也照顾好每天的小事。</text></view>
+  <button class="primary-action" wx:if="{{!formVisible && !editingPlan}}" bindtap="onToggleForm" data-qa="onToggleForm">＋ 新增提醒</button>
+  <view class="error-state" wx:if="{{error}}"><text>{{error}}</text><button class="text-button" bindtap="onRetry" data-qa="onRetry">重新加载</button></view>
+  <text class="loading-state" wx:if="{{loading}}">正在整理提醒…</text>
 
   <view class="panel form-panel" wx:if="{{editingPlan}}">
     <text class="section-title">修改提醒计划</text>
-    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" /></view>
-    <view class="field"><text class="label">{{editingPlan.type === 'birthday' ? '本轮生日计算起点' : '第一次提醒日期'}}</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
-    <view class="field"><text class="label">时间</text><picker mode="time" value="{{editTimeInput}}" bindchange="onEditTimeChange"><view class="picker-value">{{editTimeInput}}</view></picker></view>
-    <view class="field" wx:if="{{editingPlan.type === 'birthday'}}"><text class="label">出生日期（保留原阳历/农历设置）</text><input class="input" value="{{editBirthdayInput}}" bindinput="onEditBirthdayInput" placeholder="例如：1965-03-12" /></view>
-    <view class="field" wx:else><text class="label">频次</text><picker range="{{frequencyOptions}}" range-key="label" value="{{editFrequencyIndex}}" bindchange="onEditFrequencyChange"><view class="picker-value">{{frequencyOptions[editFrequencyIndex].label}}</view></picker></view>
+    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" data-qa="onEditTitleInput" /></view>
+    <view class="field"><text class="label">{{editingPlan.type === 'birthday' ? '本轮生日计算起点' : '第一次提醒日期'}}</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange" data-qa="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
+    <view class="field"><text class="label">时间</text><picker mode="time" value="{{editTimeInput}}" bindchange="onEditTimeChange" data-qa="onEditTimeChange"><view class="picker-value">{{editTimeInput}}</view></picker></view>
+    <view class="field" wx:if="{{editingPlan.type === 'birthday'}}"><text class="label">出生日期（保留原阳历/农历设置）</text><picker mode="date" start="1900-01-01" end="{{todayDate}}" value="{{editBirthdayInput}}" bindchange="onEditBirthdayDateChange" data-qa="onEditBirthdayDateChange"><view class="picker-value">{{editBirthdayInput || '选择出生日期'}}</view></picker></view>
+    <view class="field" wx:else><text class="label">频次</text><picker range="{{frequencyOptions}}" range-key="label" value="{{editFrequencyIndex}}" bindchange="onEditFrequencyChange" data-qa="onEditFrequencyChange"><view class="picker-value">{{frequencyOptions[editFrequencyIndex].label}}</view></picker></view>
     <text class="helper-text">保留原来的提醒对象。修改后，未发生的提醒重新安排，每位接收人需重新授权本次通知。</text>
-    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSavePlan">保存修改</button>
-    <button class="text-button" bindtap="onCancelPlanEdit">取消修改</button>
-  </view>
-  <view class="panel form-panel">
-    <text class="helper-text">保存计划不等于微信通知已授权。每位家人需自己订阅；一次授权对应一次通知，未确认不代表没有吃药或发生异常。</text>
-    <button class="secondary-action" bindtap="onToggleForm">{{formVisible ? '收起新增提醒' : '＋ 新增提醒'}}</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSavePlan" data-qa="onSavePlan">保存修改</button>
+    <button class="text-button" bindtap="onCancelPlanEdit" data-qa="onCancelPlanEdit">取消修改</button>
   </view>
   <view class="panel form-panel" wx:if="{{formVisible}}">
     <text class="section-title">新增一个提醒</text>
     <view class="field">
       <text class="label">提醒类型</text>
-      <picker mode="selector" range="{{reminderTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange">
+      <picker mode="selector" range="{{reminderTypes}}" range-key="label" value="{{typeIndex}}" bindchange="onTypeChange" data-qa="onTypeChange">
         <view class="picker-value">{{reminderTypes[typeIndex].label}}</view>
       </picker>
     </view>
 
     <view class="field">
       <text class="label">{{reminderTypes[typeIndex].value === 'exercise' && targetScopeOptions[targetScopeIndex].value === 'family' ? '负责人' : '提醒对象'}}</text>
-      <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange">
+      <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" data-qa="onMemberChange">
         <view class="picker-value">{{memberOptions[memberIndex] || '还没有家庭成员'}}</view>
       </picker>
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'exercise'}}">
       <text class="label">运动范围</text>
-      <picker mode="selector" range="{{targetScopeOptions}}" range-key="label" value="{{targetScopeIndex}}" bindchange="onTargetScopeChange">
+      <picker mode="selector" range="{{targetScopeOptions}}" range-key="label" value="{{targetScopeIndex}}" bindchange="onTargetScopeChange" data-qa="onTargetScopeChange">
         <view class="picker-value">{{targetScopeOptions[targetScopeIndex].label}}</view>
       </picker>
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
       <text class="label">提醒内容</text>
-      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：降压药、散步 20 分钟" />
+      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" data-qa="onTitleInput" placeholder="例如：降压药、散步 20 分钟" />
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
       <text class="label">频次</text>
-      <picker mode="selector" range="{{frequencyOptions}}" range-key="label" value="{{frequencyIndex}}" bindchange="onFrequencyChange">
+      <picker mode="selector" range="{{frequencyOptions}}" range-key="label" value="{{frequencyIndex}}" bindchange="onFrequencyChange" data-qa="onFrequencyChange">
         <view class="picker-value">{{frequencyOptions[frequencyIndex].label}}</view>
       </picker>
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value !== 'birthday'}}">
-      <text class="label">第一次提醒时间</text>
-      <input class="input" value="{{dueAtInput}}" bindinput="onDueAtInput" placeholder="例如：2026-06-09 08:00" />
+      <text class="label">开始日期与时间</text><text class="helper-text" wx:if="{{frequencyIndex === 2 || frequencyIndex === 3}}">{{frequencyIndex === 2 ? '每天固定 08:00、20:00 提醒；所选时间是计划开始时间。' : '每天固定 08:00、13:00、20:00 提醒；所选时间是计划开始时间。'}}</text>
+      <view class="date-time-row"><picker mode="date" value="{{dateInput}}" bindchange="onDueDateChange" data-qa="onDueDateChange"><view class="picker-value">{{dateInput}}</view></picker><picker mode="time" value="{{timeInput}}" bindchange="onDueTimeChange" data-qa="onDueTimeChange"><view class="picker-value">{{timeInput}}</view></picker></view>
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
       <text class="label">出生日期</text>
-      <input class="input" value="{{birthdayDateInput}}" bindinput="onBirthdayDateInput" placeholder="例如：1965-03-12" />
+      <picker mode="date" start="1900-01-01" end="{{todayDate}}" value="{{birthdayDateInput}}" bindchange="onBirthdayDateChange" data-qa="onBirthdayDateChange"><view class="picker-value">{{birthdayDateInput || '选择出生日期'}}</view></picker>
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
       <text class="label">提前多久提醒</text>
-      <picker mode="selector" range="{{advanceDayOptions}}" range-key="label" value="{{advanceDayIndex}}" bindchange="onAdvanceDayChange">
+      <picker mode="selector" range="{{advanceDayOptions}}" range-key="label" value="{{advanceDayIndex}}" bindchange="onAdvanceDayChange" data-qa="onAdvanceDayChange">
         <view class="picker-value">{{advanceDayOptions[advanceDayIndex].label}}</view>
       </picker>
     </view>
 
     <view class="switch-row" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
       <text class="label">生日当天也推送</text>
-      <switch checked="{{notifyOnBirthday}}" bindchange="onNotifyOnBirthdayChange" />
+      <switch checked="{{notifyOnBirthday}}" bindchange="onNotifyOnBirthdayChange" data-qa="onNotifyOnBirthdayChange" />
     </view>
 
-    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateReminder">保存提醒</button>
+    <text class="helper-text">保存计划后，接收人需自己订阅本次微信通知。一次授权对应一次通知。</text>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateReminder" data-qa="onCreateReminder">保存提醒</button>
+    <button class="text-button" disabled="{{busy}}" bindtap="onToggleForm" data-qa="onToggleForm">暂不填写</button>
   </view>
 
-  <view class="section">
-    <text class="section-title">家里的提醒</text>
-    <text class="empty-text" wx:if="{{!loading && reminders.length === 0}}">还没有提醒。先新增一个生日、吃药或运动提醒。</text>
+  <view class="section" wx:if="{{!formVisible && !editingPlan}}">
+    <text class="section-title">提醒清单</text>
+    <text class="empty-text" wx:if="{{!loading && !error && reminders.length === 0}}">还没有提醒。先新增一个生日、吃药或运动提醒。</text>
     <view class="reminder-list">
       <view class="reminder-row {{item.isCompleted ? 'completed' : ''}}" wx:for="{{reminders}}" wx:key="id">
         <view class="reminder-main">
           <text class="reminder-title">{{item.title}}</text>
           <text class="reminder-meta">{{item.completionText}}</text>
-          <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}} · {{item.statusLabel}}</text>
+          <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}}</text>
+          <text class="helper-text" wx:if="{{item.schedule.targetLabel || item.schedule.frequencyLabel}}">{{item.schedule.targetLabel}} {{item.schedule.frequencyLabel}}</text><text class="status-pill">{{item.stateLabel}}</text><text class="helper-text">{{item.notificationText}}</text>
         </view>
-        <button wx:if="{{!item.isCompleted && item.canComplete}}" disabled="{{busy}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">我已完成</button>
-        <button wx:if="{{item.canSubscribe && !item.isCompleted}}" class="complete-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onSubscribeReminder">订阅本次通知</button>
-        <view wx:if="{{item.canManage && item.planId && item.enabled}}">
-          <button class="text-button" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onEditPlan">修改计划</button>
-          <button class="text-button danger" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onPausePlan">停止计划</button>
+        <view class="action-row">
+        <button wx:if="{{!item.isCompleted && item.canComplete}}" disabled="{{busy}}" class="small-action" data-id="{{item.id}}" bindtap="onCompleteReminder" data-qa="onCompleteReminder">我已完成</button>
+        <button wx:if="{{item.canSubscribe && !item.isCompleted}}" class="small-action" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onSubscribeReminder" data-qa="onSubscribeReminder">订阅本次通知</button>
+        </view>
+        <view class="action-row" wx:if="{{item.canManage && item.planId && item.enabled}}">
+          <button class="text-button" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onEditPlan" data-qa="onEditPlan">修改计划</button>
+          <button class="text-button danger" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onPausePlan" data-qa="onPausePlan">停止计划</button>
         </view>
       </view>
     </view>
   </view>
+  <text class="helper-text">未确认不代表家人发生异常。请勿将提醒作为唯一的用药或紧急照护方式。</text>
 </view>

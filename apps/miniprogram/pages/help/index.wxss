@@ -1,1 +1,13 @@
-.help-page,.help-section{display:flex;flex-direction:column;gap:26rpx}.help-section{margin-top:12rpx}.help-section text{display:block}
+.help-section {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+.help-section .page-subtitle {
+  color: var(--ink);
+  font-size: 29rpx;
+  line-height: 1.9;
+}
+.help-page>.helper-text {
+  margin-top: -20rpx;
+}

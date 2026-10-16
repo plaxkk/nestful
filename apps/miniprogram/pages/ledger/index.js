@@ -120,7 +120,7 @@ const handleAuthLedgerError = () => {
 };
 Page({
     data: {
-        busy: false,
+        busy: false, formVisible: false, goalFormVisible: false, analysisVisible: false, familyName: "", error: "",
         editingEntry: null,
         editTitleInput: '', editAmountInput: '', editDateInput: '', editCategoryIndex: 0,
         entryTypes,
@@ -130,11 +130,11 @@ Page({
         categoryIndex: 0,
         splitMemberIndex: 0,
         recurrenceIndex: 0,
-        titleInput: "家庭日常支出",
-        amountInput: "20",
+        titleInput: "",
+        amountInput: "",
         occurredAtInput: formatDate(new Date()),
-        goalTitleInput: "家庭旅行基金",
-        goalTargetInput: "1000",
+        goalTitleInput: "",
+        goalTargetInput: "",
         goalCurrentInput: "0",
         goalDueAtInput: "",
         members: [],
@@ -145,14 +145,35 @@ Page({
         refreshing: false,
         lastLoadedAt: 0
     },
+    currentFamilyId: "", loadEpoch: 0, loadedRevision: -1,
     onShow() {
+        const family = session_1.session.getFamily();
+        if (!family) {
+            wx.redirectTo({ url: '/pages/home/index' });
+            return;
+        }
+        if (this.currentFamilyId !== family.id) {
+            this.loadEpoch++;
+            this.setData({ members: [], ledgerEntries: [], summary: emptySummary(), lastLoadedAt: 0, refreshing: false, editingEntry: null, formVisible: false, goalFormVisible: false, titleInput: '', amountInput: '' });
+            this.currentFamilyId = family.id;
+        }
+        this.setData({ familyName: family.name });
         void this.loadLedgerData();
     },
+    onHide() { this.loadEpoch++; this.setData({ refreshing: false, loading: false }); },
+    onToggleForm() { if (this.data.busy)
+        return; this.setData({ formVisible: !this.data.formVisible, editingEntry: null, goalFormVisible: false }); wx.pageScrollTo({ scrollTop: 0, duration: 200 }); },
+    onToggleGoalForm() { if (this.data.busy)
+        return; this.setData({ goalFormVisible: !this.data.goalFormVisible, formVisible: false, editingEntry: null }); wx.pageScrollTo({ scrollTop: 0, duration: 200 }); },
+    onToggleAnalysis() { this.setData({ analysisVisible: !this.data.analysisVisible }); },
+    onOccurredDateChange(e) { this.setData({ occurredAtInput: String(e.detail.value) }); },
+    onGoalDateChange(e) { this.setData({ goalDueAtInput: String(e.detail.value) }); },
+    onRetry() { void this.loadLedgerData({ force: true, showLoading: true }); },
     onEditEntry(e) {
         const entry = this.data.ledgerEntries.find(r => r.id === e.currentTarget.dataset.id);
         if (!entry)
             return;
-        this.setData({ editingEntry: entry, editTitleInput: entry.title, editAmountInput: (entry.amountCents / 100).toFixed(2), editDateInput: formatDate(new Date(entry.occurredAt)), editCategoryIndex: Math.max(0, categories.findIndex(c => c.value === entry.category)) });
+        this.setData({ formVisible: false, goalFormVisible: false, editingEntry: entry, editTitleInput: entry.title, editAmountInput: (entry.amountCents / 100).toFixed(2), editDateInput: formatDate(new Date(entry.occurredAt)), editCategoryIndex: Math.max(0, categories.findIndex(c => c.value === entry.category)) });
         wx.pageScrollTo({ scrollTop: 0, duration: 200 });
     },
     onCancelEntryEdit() { this.setData({ editingEntry: null }); },
@@ -208,7 +229,7 @@ Page({
         this.setData({
             typeIndex,
             recurrenceIndex: entryTypes[typeIndex]?.value === "income" ? 0 : this.data.recurrenceIndex,
-            titleInput: entryTypes[typeIndex]?.value === "income" ? "家庭收入" : "家庭日常支出"
+            titleInput: ""
         });
     },
     onCategoryChange(event) {
@@ -267,7 +288,7 @@ Page({
             wx.redirectTo({ url: "/pages/home/index" });
             return;
         }
-        if (!options.force &&
+        if (!options.force && this.loadedRevision === session_1.session.getHomeRevision() &&
             this.data.lastLoadedAt > 0 &&
             Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs) {
             return;
@@ -275,6 +296,7 @@ Page({
         if (this.data.refreshing && !options.force) {
             return;
         }
+        const epoch = ++this.loadEpoch, revision = session_1.session.getHomeRevision();
         const cachedMembers = session_1.session.getMembers(family.id);
         if (cachedMembers.length > 0 && this.data.members.length === 0) {
             this.setData({
@@ -285,7 +307,7 @@ Page({
         const shouldShowLoading = options.showLoading ?? this.data.ledgerEntries.length === 0;
         this.setData({
             loading: shouldShowLoading,
-            refreshing: true
+            refreshing: true, error: ""
         });
         try {
             const [membersResponse, entriesResponse, summaryResponse] = await Promise.all([
@@ -293,6 +315,9 @@ Page({
                 api_1.api.listLedgerEntries(family.id),
                 api_1.api.getLedgerSummary(family.id)
             ]);
+            if (epoch !== this.loadEpoch || !session_1.session.isFamily(family.id))
+                return;
+            this.loadedRevision = revision;
             const members = membersResponse.data;
             session_1.session.setMembers(family.id, members);
             this.setData({
@@ -306,7 +331,9 @@ Page({
             });
         }
         catch (error) {
-            this.setData({ loading: false, refreshing: false });
+            if (epoch !== this.loadEpoch || !session_1.session.isFamily(family.id))
+                return;
+            this.setData({ loading: false, refreshing: false, error: "账本暂时加载失败，请检查网络后重试。" });
             wx.showToast({
                 title: "账本加载失败，请检查网络后重试",
                 icon: "none"
@@ -362,8 +389,8 @@ Page({
             });
             wx.hideLoading();
             this.setData({
-                titleInput: entryType === "income" ? "家庭收入" : "家庭日常支出",
-                amountInput: "20",
+                titleInput: "", formVisible: false,
+                amountInput: "",
                 occurredAtInput: formatDate(new Date()),
                 splitMemberIndex: 0,
                 recurrenceIndex: 0
@@ -424,10 +451,10 @@ Page({
             });
             wx.hideLoading();
             this.setData({
-                goalTitleInput: "家庭旅行基金",
-                goalTargetInput: "1000",
+                goalTitleInput: "",
+                goalTargetInput: "",
                 goalCurrentInput: "0",
-                goalDueAtInput: ""
+                goalDueAtInput: "", goalFormVisible: false
             });
             await this.loadLedgerData({ force: true, showLoading: false });
             wx.showToast({

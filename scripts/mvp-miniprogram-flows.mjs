@@ -70,7 +70,7 @@ api.listMembers=async()=>{throw new ApiRequestError(403,{error:'forbidden'});};
 await p.loadMembers();assert.equal(session.getFamily(),'');assert.deepEqual(p.data.members,[]);assert.deepEqual(p.data.todos,[]);assert.equal(p.data.inviteCode,'');
 console.log('PASS revoked family access clears cached content and invitations');
 
-reset();p=page('ledger');p.loadLedgerData=async()=>{};
+reset();p=page('ledger');p.setData({titleInput:'买菜',amountInput:'20'});p.loadLedgerData=async()=>{};
 let creations=0,finishCreate;
 api.createLedgerEntry=()=>{creations++;return new Promise(resolve=>finishCreate=resolve);};
 const saving=p.onCreateLedgerEntry();await p.onCreateLedgerEntry();assert.equal(creations,1);assert.equal(p.data.busy,true);

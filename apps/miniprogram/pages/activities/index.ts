@@ -13,6 +13,7 @@ const present=(a:Activity,members:FamilyMember[])=>{
   const open=a.status==='draft'||a.status==='scheduled';
   const name=(id?:string)=>members.find(m=>m.id===id)?.displayName??'家人';
   return {...a,startsAtText:localTime(a.startsAt),statusText:statusText[a.status],canManage,open,
+    myRsvpValue:a.participants?.find(p=>me&&p.memberId===me.id)?.rsvp??'pending',
     myRsvp:rsvpText[a.participants?.find(p=>me&&p.memberId===me.id)?.rsvp??'pending'],
     participantsText:a.participants?.map(p=>`${name(p.memberId)}：${rsvpText[p.rsvp]}`).join(' · ')||'等待家人回应',
     updatedText:a.version>1?'安排有更新，请确认当前时间和地点':'',
@@ -21,7 +22,7 @@ const present=(a:Activity,members:FamilyMember[])=>{
 
 Page({
   data:{
-    activities:[] as ReturnType<typeof present>[],members:[] as FamilyMember[],memberOptions:[] as string[],
+    familyName:'',managerActivityId:'',activities:[] as ReturnType<typeof present>[],members:[] as FamilyMember[],memberOptions:[] as string[],
     loading:false,busy:false,error:'',entryError:false,focused:false,isAdmin:false,
     formVisible:false,detailsVisible:false,editingId:'',editingVersion:0,
     titleInput:'',startsAtInput:defaultTime(),dateInput:defaultTime().slice(0,10),timeInput:'18:00',
@@ -50,6 +51,7 @@ Page({
       }
       const family=session.getFamily();
       if(!family){wx.redirectTo({url:'/pages/home/index'});return;}
+      this.setData({familyName:family.name});
       const [memberResponse,response]=await Promise.all([api.listMembers(family.id),this.targetActivityId
         ?api.getActivity(family.id,this.targetActivityId).then(r=>({data:[r.data]})):api.listActivities(family.id)]);
       if(epoch!==this.loadEpoch)return;
@@ -65,6 +67,8 @@ Page({
       this.setData({activities:[],loading:false,error:errorMessage(error,'暂时加载不到活动，请检查网络后重试'),entryError:Boolean(this.targetActivityId)});
     }
   },
+  onOpenActivity(e:WechatMiniprogram.TouchEvent){const family=session.getFamily();if(family)wx.navigateTo({url:`/pages/activities/index?familyId=${family.id}&activityId=${encodeURIComponent(String(e.currentTarget.dataset.id))}`});},
+  onToggleManager(e:WechatMiniprogram.TouchEvent){const id=String(e.currentTarget.dataset.id);this.setData({managerActivityId:this.data.managerActivityId===id?'':id});},
   onRetry(){void this.loadPage();},
   onJoinFromEntry(){wx.navigateTo({url:`/pages/join/index?activityId=${encodeURIComponent(this.targetActivityId)}`});},
   onAllActivities(){this.targetActivityId='';this.inviteCode='';this.setData({focused:false});void this.loadPage();},

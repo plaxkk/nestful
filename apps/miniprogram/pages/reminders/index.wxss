@@ -1,111 +1,37 @@
-.reminders-page {
-  display: flex;
-  flex-direction: column;
-  gap: 30rpx;
-  background: #fff8f6;
-}
-
-.header,
-.form-panel {
+.reminder-list {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
 }
-
-.section {
+.reminder-row {
+  padding: 28rpx;
+  background: var(--surface);
+  border: 1rpx solid var(--line);
+  border-radius: 26rpx;
+}
+.reminder-main {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-}
-
-.switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 104rpx;
-  padding: 0 8rpx;
-}
-
-.section-title {
-  color: #2b1611;
-  font-size: 38rpx;
-  font-weight: 800;
-}
-
-.picker-value {
-  min-height: 104rpx;
-  padding: 0 24rpx;
-  border: 2rpx solid #c4c6cd;
-  border-radius: 24rpx;
-  background: #ffffff;
-  color: #2b1611;
-  font-size: 36rpx;
-  line-height: 104rpx;
-}
-
-.empty-text {
-  padding: 30rpx;
-  border: 2rpx solid #ffe2db;
-  border-radius: 24rpx;
-  background: #ffffff;
-  color: #44474c;
-  font-size: 32rpx;
-  line-height: 1.6;
-}
-
-.reminder-list {
-  display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: 12rpx;
 }
-
-.reminder-row {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  padding: 30rpx;
-  border: 2rpx solid #ffe2db;
-  border-radius: 24rpx;
-  background: #ffffff;
-}
-
-.reminder-row.completed {
-  background: #f4f7f5;
-}
-
-.reminder-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
 .reminder-title {
-  color: #2b1611;
-  font-size: 36rpx;
-  font-weight: 800;
+  font-size: 33rpx;
+  font-weight: 500;
+  word-break: break-all;
 }
-
 .reminder-meta {
-  color: #44474c;
-  font-size: 30rpx;
-  line-height: 1.5;
+  font-size: 26rpx;
+  color: var(--muted-ink);
+  line-height: 1.75;
 }
-
-.complete-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 144rpx;
-  min-height: 96rpx;
-  margin: 0;
-  padding: 0 18rpx;
-  border-radius: 24rpx;
-  background: #fff8f6;
-  color: #041627;
-  border: 2rpx solid #041627;
-  font-size: 32rpx;
-  font-weight: 800;
-  line-height: 1.2;
+.reminder-row>.action-row {
+  margin-top: 16rpx;
+}
+.completed .reminder-title {
+  color: var(--muted-ink);
+}
+.date-time-row>picker {
+  flex: 1;
+  min-width: 180rpx;
 }
