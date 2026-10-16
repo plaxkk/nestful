@@ -1,5 +1,10 @@
 # Release Quality Gate
 
+The 2026-10-16 MVP follow-up has 30 PostgreSQL/Fastify regressions and 10 emitted-JS
+page flow checks (`npm run miniprogram:flows`). The local gate includes the latter.
+See [MVP execution evidence](mvp-optimization-2026-10-16.md) for the additive schema
+extension, deployed API and preview boundaries.
+
 Updated 2026-10-16 for relational v2. Earlier June file-mode and DevTools results
 are historical and do not count as v2 phone acceptance.
 

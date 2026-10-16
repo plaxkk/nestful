@@ -6,6 +6,7 @@ import { activitiesRepository } from './repositories/activities.js';
 import { spaceRepository } from './repositories/space.js';
 import { remindersRepository } from './repositories/reminders.js';
 import { ledgerRepository } from './repositories/ledger.js';
+import { dashboardRepository } from './repositories/dashboard.js';
 import { pageWindow,pageResult } from './repositories/pagination.js';
 import { exchangeWechatCode,getReminderSubscriptionConfig,sendReminderSubscriptionMessage } from './wechat.js';
 
@@ -76,6 +77,9 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
   });
   // No global GET /v1/families directory and no direct member-creation endpoint.
   server.get('/v1/families/:familyId',async r=>({data:await familyRepository.get(params(r).familyId,(await user(r)).id)}));
+  server.get('/v1/families/:familyId/dashboard',async r=>({data:await dashboardRepository.get(params(r).familyId,(await user(r)).id)}));
+  server.put('/v1/families/:familyId',async r=>{const u=await user(r),b=body(r);return {data:await familyRepository.rename(params(r).familyId,u.id,text(b,'name',true)!,version(b))};});
+  server.post('/v1/families/:familyId/archive',async r=>({data:await familyRepository.archive(params(r).familyId,(await user(r)).id,version(body(r)))}));
   server.get('/v1/families/:familyId/members',async r=>({data:await familyRepository.members(params(r).familyId,(await user(r)).id)}));
   server.get('/v1/families/:familyId/members/:memberId',async r=>({data:await familyRepository.member(params(r).familyId,params(r).memberId,(await user(r)).id)}));
   server.put('/v1/families/:familyId/members/:memberId',async r=>{
@@ -90,11 +94,14 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
   server.post('/v1/families/:familyId/invitations',async(r,reply)=>{
     const u=await user(r),b=body(r);forbiddenIdentity(b);
     if(b.role!==undefined&&b.role!=='member')throw new DomainError(400,'invitation_role_must_be_member');
-    return reply.code(201).send({data:await familyRepository.invite(params(r).familyId,u.id,text(b,'expiresAt'))});
+    return reply.code(201).send({data:await familyRepository.invite(params(r).familyId,u.id,text(b,'expiresAt'),{mode:text(b,'mode'),maxUses:b.maxUses,requiresApproval:b.requiresApproval})});
   });
   server.get('/v1/families/:familyId/invitations',async r=>({data:await familyRepository.invitations(params(r).familyId,(await user(r)).id)}));
+  server.get('/v1/families/:familyId/join-requests',async r=>({data:await familyRepository.joinRequests(params(r).familyId,(await user(r)).id)}));
+  server.post('/v1/families/:familyId/join-requests/:requestId/decision',async r=>({data:await familyRepository.decideJoin(params(r).familyId,params(r).requestId,(await user(r)).id,text(body(r),'decision',true)!)}));
   server.delete('/v1/families/:familyId/invitations/:invitationId',async r=>({data:await familyRepository.cancelInvitation(params(r).familyId,params(r).invitationId,(await user(r)).id)}));
   server.get('/v1/invitations/:code',async r=>({data:await familyRepository.invitation(params(r).code)}));
+  server.get('/v1/invitations/:code/status',async r=>({data:await familyRepository.joinStatus(params(r).code,(await user(r)).id)}));
   server.post('/v1/invitations/:code/accept',async r=>{
     const u=await user(r),b=body(r);forbiddenIdentity(b);return {data:await familyRepository.accept(params(r).code,u.id,text(b,'displayName',true)!)};
   });
@@ -111,6 +118,8 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
   server.put('/v1/families/:familyId/reminder-plans/:planId',async r=>{
     const u=await user(r),b=body(r);return {data:await remindersRepository.updatePlan(params(r).familyId,params(r).planId,u.id,{...reminderInput(b),version:version(b),enabled:b.enabled})};
   });
+  server.get('/v1/families/:familyId/reminder-plans/:planId',async r=>({data:await remindersRepository.plan(params(r).familyId,params(r).planId,(await user(r)).id)}));
+  server.post('/v1/families/:familyId/reminder-plans/:planId/pause',async r=>({data:await remindersRepository.pause(params(r).familyId,params(r).planId,(await user(r)).id,version(body(r)))}));
   server.post('/v1/reminders/:reminderId/complete',async r=>{
     const u=await user(r),id=assertUuid(params(r).reminderId);
     const row=(await query("select family_id from nestful.reminder_occurrences where id=$1",[id]))[0];
@@ -128,7 +137,13 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
   };
   server.get('/v1/reminders/dispatch-due',dispatch);server.post('/v1/reminders/dispatch-due',dispatch);
   server.get('/v1/families/:familyId/activities',async r=>activitiesRepository.list(params(r).familyId,(await user(r)).id,pagination(r)));
+  server.get('/v1/activities/:activityId/entry',async r=>({data:await activitiesRepository.entry(params(r).activityId,(await user(r)).id,text((r.query??{}) as Record<string,any>,'code'))}));
   server.get('/v1/families/:familyId/activities/:activityId',async r=>({data:await activitiesRepository.get(params(r).familyId,params(r).activityId,(await user(r)).id)}));
+  server.put('/v1/families/:familyId/activities/:activityId',async r=>{
+    const u=await user(r),b=body(r);forbiddenIdentity(b);
+    if(b.location!==undefined&&typeof b.location!=='string'||b.description!==undefined&&typeof b.description!=='string')throw new DomainError(400,'invalid_activity');
+    return {data:await activitiesRepository.update(params(r).familyId,params(r).activityId,u.id,{title:text(b,'title',true)!,startsAt:text(b,'startsAt',true)!,location:b.location,description:b.description,version:version(b)})};
+  });
   server.post('/v1/families/:familyId/activities',async(r,reply)=>{
     const u=await user(r),b=body(r);forbiddenIdentity(b);
     if(b.tasks!==undefined&&(!Array.isArray(b.tasks)||b.tasks.length>100))throw new DomainError(400,'invalid_tasks');

@@ -5,6 +5,17 @@
     <text class="page-subtitle">像写家庭小账本一样记录，不算复杂账，只帮家里人看清每一笔。</text>
   </view>
 
+  <view class="panel form-panel" wx:if="{{editingEntry}}">
+    <text class="section-title">修改这笔记录</text>
+    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" /></view>
+    <view class="field"><text class="label">金额（元）</text><input class="input" type="digit" value="{{editAmountInput}}" bindinput="onEditAmountInput" /></view>
+    <view class="field"><text class="label">日期</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
+    <view class="field"><text class="label">分类</text><picker range="{{categories}}" range-key="label" value="{{editCategoryIndex}}" bindchange="onEditCategoryChange"><view class="picker-value">{{categories[editCategoryIndex].label}}</view></picker></view>
+    <text class="helper-text">保留原来的付款人、分摊成员和收支类型。已有续费提醒独立管理，不随此处修改。</text>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSaveEntryEdit">保存修改</button>
+    <button class="text-button" bindtap="onCancelEntryEdit">取消修改</button>
+  </view>
+
   <view class="summary-grid">
     <view class="summary-card primary">
       <text class="summary-label">{{summary.month}} 结余</text>
@@ -81,7 +92,7 @@
         <view class="picker-value">{{recurrenceOptions[recurrenceIndex].label}}</view>
       </picker>
     </view>
-    <button class="primary-action" bindtap="onCreateLedgerEntry">保存这一笔</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateLedgerEntry">保存这一笔</button>
   </view>
 
   <view class="panel form-panel">
@@ -105,7 +116,7 @@
       <text class="label">目标日期</text>
       <input class="input" value="{{goalDueAtInput}}" bindinput="onGoalDueAtInput" placeholder="例如：2026-10-01" />
     </view>
-    <button class="secondary-action" bindtap="onCreateGoalFund">保存目标</button>
+    <button class="secondary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateGoalFund">保存目标</button>
   </view>
 
   <view class="section">
@@ -155,6 +166,7 @@
           <text class="ledger-meta">{{item.typeLabel}} · {{item.categoryLabel}} · {{item.occurredAtText}}</text>
           <text class="ledger-meta">付款 {{item.paidByText}} · 分摊 {{item.splitText}}</text>
           <text class="ledger-meta" wx:if="{{item.recurrenceText}}">{{item.recurrenceText}} · 已安排提醒</text>
+          <view class="action-row" wx:if="{{item.canManage}}"><button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onEditEntry">修改记录</button><button class="text-button danger" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onVoidEntry">作废</button></view>
         </view>
         <text class="ledger-amount {{item.isIncome ? 'income' : 'expense'}}">{{item.amountText}}</text>
       </view>

@@ -9,12 +9,14 @@
       <view class="field">
         <text class="label">给家庭起个名字</text>
         <input class="input" value="{{familyNameInput}}" bindinput="onFamilyNameInput" placeholder="例如：幸福的一家" />
-        <text class="helper-text">随时可以在设置中修改。</text>
+        <text class="helper-text">名称会出现在邀请里，管理员可在家庭设置修改。</text>
       </view>
     </view>
+    <checkbox-group bindchange="onAgreementChange"><label class="helper-text"><checkbox value="agree" checked="{{agreed}}" />我已阅读并同意隐私说明</label></checkbox-group>
+    <button class="text-button" bindtap="onOpenHelp">阅读隐私说明</button>
   </view>
 
   <view class="bottom-action">
-    <button class="primary-action" bindtap="onCreateFamily">完成创建</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateFamily">完成创建</button>
   </view>
 </view>

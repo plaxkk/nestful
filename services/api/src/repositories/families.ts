@@ -24,10 +24,34 @@ export const requireActiveMembers=async(tx:Transaction,familyId:string,ids:strin
   const rows=(await tx.query("select id from nestful.family_members where family_id=$1 and id=any($2::uuid[]) and status='active'",[familyId,distinct])).rows;
   if(rows.length!==distinct.length)throw new DomainError(400,'invalid_family_member');return distinct;
 };
+const invitationStatus = (r:Record<string,any>) => r.canceled_at?'canceled':
+  r.mode!=='group'&&r.accepted_at?'accepted':new Date(r.expires_at).getTime()<=Date.now()?'expired':
+  r.mode==='group'&&r.use_count>=r.max_uses?'full':'active';
 const invitationDto = (r:Record<string,any>) => ({id:r.id as string,familyId:r.family_id as string,role:"member" as const,
+  mode:r.mode as 'single'|'group',maxUses:r.max_uses as number,useCount:r.use_count as number,requiresApproval:r.requires_approval as boolean,
   createdByMemberId:r.created_by_member_id as string,createdAt:iso(r.created_at)!,expiresAt:iso(r.expires_at),
   canceledAt:iso(r.canceled_at),acceptedAt:iso(r.accepted_at),acceptedByMemberId:r.accepted_by_member_id as string|undefined,
-  status:r.accepted_at?"accepted":r.canceled_at?"canceled":new Date(r.expires_at).getTime()<Date.now()?"expired":"active"});
+  status:invitationStatus(r)});
+
+const lockedInvitation=async(tx:Transaction,code:string)=>{
+  const found=await one(tx,'select family_id from nestful.family_invitations where code_hash=$1',[hash(code)]);
+  if(!found)throw new DomainError(404,'invitation_not_found');
+  const family=await one(tx,'select * from nestful.families where id=$1 and archived_at is null for update',[found.family_id]);
+  if(!family)throw new DomainError(409,'invitation_unavailable');
+  const invitation=(await one(tx,'select * from nestful.family_invitations where code_hash=$1 for update',[hash(code)]))!;
+  return {family,invitation};
+};
+const joinRequestDto=(r:Record<string,any>)=>({id:r.id as string,displayName:r.display_name as string,
+  status:r.status as 'pending'|'approved'|'rejected',createdAt:iso(r.created_at),available:invitationStatus(r)==='active'});
+const admit=async(tx:Transaction,f:Record<string,any>,i:Record<string,any>,userId:string,displayName:string)=>{
+  const member=(await one(tx,`insert into nestful.family_members(family_id,user_id,display_name) values($1,$2,$3)
+    on conflict(family_id,user_id) do update set status='active',role='member',display_name=$3,
+    version=nestful.family_members.version+1,updated_at=now() returning *`,[f.id,assertUuid(userId),displayName]))!;
+  if(i.mode==='group')await tx.query('update nestful.family_invitations set use_count=use_count+1 where id=$1',[i.id]);
+  else await tx.query('update nestful.family_invitations set accepted_at=now(),accepted_by_member_id=$2,use_count=1 where id=$1',[i.id,member.id]);
+  await audit(tx,f.id,member.id,'invitation.accepted','member',member.id);
+  return member;
+};
 
 export const familyRepository = {
   async create(userId:string,input:{name:string;ownerDisplayName:string}) {
@@ -64,6 +88,14 @@ export const familyRepository = {
   async get(familyId:string,userId:string) {
     return transaction(async tx=>{await activeMember(tx,familyId,userId);return familyDto((await one(tx,"select * from nestful.families where id=$1",[familyId]))!);});
   },
+  async rename(familyId:string,userId:string,name:string,version:number){return transaction(async tx=>{
+    const f=await one(tx,'select * from nestful.families where id=$1 for update',[assertUuid(familyId)]);
+    const actor=await activeMember(tx,familyId,userId,true);
+    if(!name.trim()||name.trim().length>100)throw new DomainError(400,'invalid_family');
+    if(f!.version!==version)throw new DomainError(409,'version_conflict');
+    const updated=(await one(tx,'update nestful.families set name=$2,version=version+1,updated_at=now() where id=$1 returning *',[familyId,name.trim()]))!;
+    await audit(tx,familyId,actor.id,'family.renamed','family',familyId);return familyDto(updated);
+  });},
   async members(familyId:string,userId:string) {
     return transaction(async tx=>{await activeMember(tx,familyId,userId);return (await tx.query("select * from nestful.family_members where family_id=$1 and status='active' order by joined_at,id",[familyId])).rows.map(r=>memberDto(r));});
   },
@@ -111,17 +143,23 @@ export const familyRepository = {
           on conflict(member_id) do update set emergency_contact=coalesce($3,nestful.member_private_profiles.emergency_contact),
           notes=coalesce($4,nestful.member_private_profiles.notes),updated_at=now()`,[familyId,memberId,input.emergencyContact??null,input.privateNotes??null]);
       }
-      if(status==='inactive')await tx.query("update nestful.notification_deliveries set status='canceled',updated_at=now() where family_id=$1 and member_id=$2 and status='pending'",[familyId,memberId]);
+      if(status==='inactive'){
+        await tx.query("update nestful.notification_deliveries set status='canceled',updated_at=now() where family_id=$1 and member_id=$2 and status in ('pending','skipped','processing')",[familyId,memberId]);
+      }
+      if(status==='inactive'||role!=='admin')await tx.query("update nestful.family_invitations set canceled_at=now() where family_id=$1 and created_by_member_id=$2 and accepted_at is null and canceled_at is null",[familyId,memberId]);
       await audit(tx,familyId,actor.id,"member.updated","member",memberId);
       return memberDto(updated);
     });
   },
-  async invite(familyId:string,userId:string,expiresAt?:string) {
+  async invite(familyId:string,userId:string,expiresAt?:string,options:{mode?:string;maxUses?:number;requiresApproval?:boolean}={}) {
     return transaction(async tx=>{
+      await tx.query('select id from nestful.families where id=$1 for update',[assertUuid(familyId)]);
       const actor=await activeMember(tx,familyId,userId,true),code=randomBytes(24).toString('base64url');
-      const expiry=expiresAt??new Date(Date.now()+24*60*60*1000).toISOString();
-      if(!Number.isFinite(Date.parse(expiry))||Date.parse(expiry)<=Date.now())throw new DomainError(400,"invalid_expires_at");
-      const row=(await one(tx,"insert into nestful.family_invitations(family_id,code_hash,created_by_member_id,expires_at) values($1,$2,$3,$4) returning *",[familyId,hash(code),actor.id,expiry]))!;
+      const mode=options.mode??'single',maxUses=mode==='group'?(options.maxUses??20):1,approval=mode==='group'?(options.requiresApproval??true):false;
+      if(!['single','group'].includes(mode)||!Number.isInteger(maxUses)||maxUses<1||maxUses>100||typeof approval!=='boolean')throw new DomainError(400,'invalid_invitation');
+      const expiry=expiresAt??new Date(Date.now()+(mode==='group'?7:1)*86400000).toISOString();
+      if(!Number.isFinite(Date.parse(expiry))||Date.parse(expiry)<=Date.now()||Date.parse(expiry)>Date.now()+7*86400000+1000)throw new DomainError(400,"invalid_expires_at");
+      const row=(await one(tx,"insert into nestful.family_invitations(family_id,code_hash,created_by_member_id,expires_at,mode,max_uses,requires_approval) values($1,$2,$3,$4,$5,$6,$7) returning *",[familyId,hash(code),actor.id,expiry,mode,maxUses,approval]))!;
       await audit(tx,familyId,actor.id,"invitation.created","invitation",row.id);
       return {...invitationDto(row),code,joinPath:`/pages/join/index?code=${code}`};
     });
@@ -131,8 +169,9 @@ export const familyRepository = {
   },
   async cancelInvitation(familyId:string,id:string,userId:string) {
     return transaction(async tx=>{
+      await tx.query('select id from nestful.families where id=$1 for update',[assertUuid(familyId)]);
       const actor=await activeMember(tx,familyId,userId,true);
-      const row=await one(tx,"update nestful.family_invitations set canceled_at=now() where family_id=$1 and id=$2 and accepted_at is null returning *",[familyId,assertUuid(id)]);
+      const row=await one(tx,"update nestful.family_invitations set canceled_at=coalesce(canceled_at,now()) where family_id=$1 and id=$2 and accepted_at is null returning *",[familyId,assertUuid(id)]);
       if(!row)throw new DomainError(409,"invitation_unavailable");
       await audit(tx,familyId,actor.id,"invitation.canceled","invitation",id);return invitationDto(row);
     });
@@ -142,26 +181,70 @@ export const familyRepository = {
       where i.code_hash=$1 and f.archived_at is null`,[hash(code)]))[0];
     if(!r)throw new DomainError(404,"invitation_not_found");
     // A bearer invite only exposes the minimum join preview, never members/private records.
-    return {familyName:r.family_name as string,status:invitationDto(r).status,expiresAt:iso(r.expires_at)};
+    return {familyName:r.family_name as string,status:invitationDto(r).status,expiresAt:iso(r.expires_at),mode:r.mode,requiresApproval:r.requires_approval};
   },
   async accept(code:string,userId:string,displayName:string) {
-    if(!displayName.trim())throw new DomainError(400,"display_name_required");
+    if(!displayName.trim()||displayName.trim().length>60)throw new DomainError(400,"display_name_required");
     return transaction(async tx=>{
-      const i=await one(tx,"select * from nestful.family_invitations where code_hash=$1 for update",[hash(code)]);
-      if(!i)throw new DomainError(404,"invitation_not_found");
-      if(i.accepted_at){
-        const m=await one(tx,"select * from nestful.family_members where id=$1 and user_id=$2 and status='active'",[i.accepted_by_member_id,userId]);
-        if(m)return {member:memberDto(m),invitation:invitationDto(i)};
+      const {family:f,invitation:i}=await lockedInvitation(tx,code);
+      const existing=await one(tx,"select * from nestful.family_members where family_id=$1 and user_id=$2 and status='active'",[f.id,assertUuid(userId)]);
+      if(existing)return {status:'joined' as const,family:familyDto(f),member:memberDto(existing),invitation:invitationDto(i)};
+      if(invitationStatus(i)!=='active')throw new DomainError(409,'invitation_unavailable');
+      const creator=await one(tx,"select id from nestful.family_members where id=$1 and status='active' and role='admin'",[i.created_by_member_id]);
+      if(!creator)throw new DomainError(409,'invitation_unavailable');
+      const previous=await one(tx,'select * from nestful.family_join_requests where invitation_id=$1 and user_id=$2 for update',[i.id,userId]);
+      if(previous?.status==='rejected'||previous?.status==='approved')throw new DomainError(409,'invitation_unavailable');
+      if(i.requires_approval){
+        const request=previous??(await one(tx,'insert into nestful.family_join_requests(family_id,invitation_id,user_id,display_name) values($1,$2,$3,$4) returning *',[f.id,i.id,userId,displayName.trim()]))!;
+        return {status:'pending' as const,requestId:request.id as string,familyName:f.name as string};
       }
-      if(i.accepted_at||i.canceled_at||new Date(i.expires_at).getTime()<=Date.now())throw new DomainError(409,"invitation_unavailable");
-      const f=await one(tx,"select * from nestful.families where id=$1 and archived_at is null for update",[i.family_id]);
-      if(!f)throw new DomainError(404,"family_not_found");
-      const member=(await one(tx,`insert into nestful.family_members(family_id,user_id,display_name) values($1,$2,$3)
-        on conflict(family_id,user_id) do update set status='active',role=case when nestful.family_members.status='active' then nestful.family_members.role else 'member' end,
-        version=nestful.family_members.version+1,updated_at=now() returning *`,[i.family_id,assertUuid(userId),displayName.trim()]))!;
-      const accepted=(await one(tx,"update nestful.family_invitations set accepted_at=now(),accepted_by_member_id=$2 where id=$1 returning *",[i.id,member.id]))!;
-      await audit(tx,i.family_id,member.id,"invitation.accepted","member",member.id);
-      return {family:familyDto(f),member:memberDto(member),invitation:invitationDto(accepted)};
+      const member=await admit(tx,f,i,userId,displayName.trim());
+      await tx.query("insert into nestful.family_join_requests(family_id,invitation_id,user_id,display_name,status,decided_at) values($1,$2,$3,$4,'approved',now())",[f.id,i.id,userId,displayName.trim()]);
+      const accepted=(await one(tx,'select * from nestful.family_invitations where id=$1',[i.id]))!;
+      return {status:'joined' as const,family:familyDto(f),member:memberDto(member),invitation:invitationDto(accepted)};
     });
   },
+  async joinStatus(code:string,userId:string){return transaction(async tx=>{
+    const i=await one(tx,`select i.*,to_jsonb(f) family from nestful.family_invitations i
+      join nestful.families f on f.id=i.family_id where code_hash=$1 and f.archived_at is null`,[hash(code)]);
+    if(!i)throw new DomainError(404,'invitation_not_found');
+    const member=await one(tx,"select * from nestful.family_members where family_id=$1 and user_id=$2 and status='active'",[i.family_id,userId]);
+    if(member)return {status:'joined' as const,family:familyDto(i.family),member:memberDto(member)};
+    const request=await one(tx,'select status from nestful.family_join_requests where invitation_id=$1 and user_id=$2',[i.id,userId]);
+    return {status:invitationStatus(i)!=='active'?'unavailable':request?.status==='approved'?'unavailable':request?.status??'new'};
+  });},
+  async joinRequests(familyId:string,userId:string){return transaction(async tx=>{
+    await activeMember(tx,familyId,userId,true);
+    return (await tx.query(`select r.*,i.mode,i.use_count,i.max_uses,i.canceled_at,i.accepted_at,i.expires_at
+      from nestful.family_join_requests r join nestful.family_invitations i on i.id=r.invitation_id
+      where r.family_id=$1 and r.status='pending' order by r.created_at,r.id limit 100`,[familyId])).rows.map(joinRequestDto);
+  });},
+  async decideJoin(familyId:string,id:string,userId:string,decision:string){return transaction(async tx=>{
+    const f=await one(tx,'select * from nestful.families where id=$1 for update',[assertUuid(familyId)]);
+    const actor=await activeMember(tx,familyId,userId,true);
+    const request=await one(tx,'select * from nestful.family_join_requests where family_id=$1 and id=$2 for update',[familyId,assertUuid(id)]);
+    if(!request)throw new DomainError(404,'request_not_found');
+    if(!['approved','rejected'].includes(decision))throw new DomainError(400,'invalid_decision');
+    if(request.status!=='pending')throw new DomainError(409,'request_already_decided');
+    const i=(await one(tx,'select * from nestful.family_invitations where id=$1 for update',[request.invitation_id]))!;
+    if(decision==='approved'){
+      if(invitationStatus(i)!=='active')throw new DomainError(409,'invitation_unavailable');
+      const existing=await one(tx,"select id from nestful.family_members where family_id=$1 and user_id=$2 and status='active'",[familyId,request.user_id]);
+      if(!existing)await admit(tx,f!,i,request.user_id,request.display_name);
+    }
+    await tx.query('update nestful.family_join_requests set status=$2,decided_at=now(),decided_by_member_id=$3 where id=$1',[id,decision,actor.id]);
+    await audit(tx,familyId,actor.id,`invitation.request.${decision}`,'join_request',id);
+    return {id,status:decision};
+  });},
+  async archive(familyId:string,userId:string,version:number){return transaction(async tx=>{
+    const f=await one(tx,'select * from nestful.families where id=$1 for update',[assertUuid(familyId)]);
+    const actor=await activeMember(tx,familyId,userId,true);
+    if(f!.version!==version)throw new DomainError(409,'version_conflict');
+    await tx.query('update nestful.families set archived_at=now(),updated_at=now(),version=version+1 where id=$1',[familyId]);
+    await tx.query('update nestful.family_invitations set canceled_at=now() where family_id=$1 and accepted_at is null and canceled_at is null',[familyId]);
+    await tx.query('update nestful.reminder_plans set enabled=false,next_generation_at=null where family_id=$1',[familyId]);
+    await tx.query("update nestful.notification_deliveries set status='canceled' where family_id=$1 and status in ('pending','skipped','processing')",[familyId]);
+    await audit(tx,familyId,actor.id,'family.archived','family',familyId);
+    return {id:familyId,archived:true};
+  });},
 };

@@ -1,5 +1,13 @@
 # Nestful relational data model v2
 
+MVP extension (2026-10-16): migration 006 adds `nestful.family_join_requests`,
+bringing the private schema to 23 business tables. Invitations now distinguish
+single/group mode, admission limit/count and approval requirement. Requests have
+family/invitation/user identity, display name, pending/approved/rejected state and
+decision metadata; a composite FK prevents cross-family invitation references.
+See [collaboration release evidence](mvp-optimization-2026-10-16.md). The original
+22-table cutover description below is retained as historical design context.
+
 Status: implemented and deployed on 2026-10-16. Production health confirms
 `relational-v2`. The early-data reset retains the legacy JSONB row and a private
 backup; new runtime records start in the separate `nestful` schema. The phone

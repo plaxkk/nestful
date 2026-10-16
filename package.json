@@ -11,6 +11,7 @@
     "migration:smoke": "node scripts/migration-sql-smoke.mjs",
     "deployment:smoke": "node scripts/deployment-config-smoke.mjs",
     "miniprogram:smoke": "node scripts/miniprogram-static-smoke.mjs",
+    "miniprogram:flows": "node scripts/mvp-miniprogram-flows.mjs",
     "miniprogram:devtools-smoke": "node scripts/miniprogram-devtools-smoke.mjs",
     "experience:upload-plan": "node scripts/experience-upload-plan.mjs",
     "experience:record-draft": "node scripts/experience-validation-record-draft.mjs",

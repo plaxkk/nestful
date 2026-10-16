@@ -1,5 +1,11 @@
 # Product Requirements
 
+> This document includes longer-term product ideas. The current launch scope is
+> defined by [MVP Plan](mvp-plan.md) and the
+> [2026-10-16 collaboration execution record](mvp-optimization-2026-10-16.md).
+> Do not treat caregiver escalation, real media uploads or other future ideas as
+> implemented or as current product promises.
+
 ## Product Name
 
 Working name: Nestful / 家庭管家.

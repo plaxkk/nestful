@@ -1,82 +1,83 @@
 <view class="page activities-page">
   <view class="header">
-    <text class="eyebrow">把家人重新约到一起</text>
-    <text class="page-title">家庭活动日</text>
-    <text class="page-subtitle">发起一次吃饭、散步、视频聊天或家庭小会，让家人知道什么时候一起出现。</text>
+    <text class="eyebrow">从一句约定，到家人一起完成</text>
+    <text class="page-title">{{focused ? '这次家庭活动' : '家庭活动'}}</text>
+    <text class="page-subtitle">时间、地点和回应放在一起，不用在群消息里反复找。</text>
+  </view>
+  <view class="panel" wx:if="{{error}}">
+    <text class="helper-text">{{error}}</text>
+    <button class="secondary-action" bindtap="onRetry">重新加载</button>
+    <button wx:if="{{entryError}}" class="secondary-action" bindtap="onJoinFromEntry">输入管理员发来的邀请码</button>
+    <button class="text-button" bindtap="onOpenHelp">隐私与帮助</button>
+  </view>
+  <text class="helper-text" wx:if="{{loading}}">正在打开活动…</text>
+
+  <view class="panel form-panel" wx:if="{{formVisible && !error}}">
+    <text class="section-title">{{editingId ? '修改安排' : '发起一次活动'}}</text>
+    <view class="field"><text class="label">做什么</text><input class="input" maxlength="100" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：周六一起吃晚饭" /></view>
+    <view class="field"><text class="label">哪一天</text><picker mode="date" value="{{dateInput}}" bindchange="onDateChange"><view class="picker-value">{{dateInput}}</view></picker></view>
+    <view class="field"><text class="label">几点</text><picker mode="time" value="{{timeInput}}" bindchange="onTimeChange"><view class="picker-value">{{timeInput}}</view></picker></view>
+    <button class="text-button" bindtap="onToggleDetails">{{detailsVisible ? '收起补充信息' : '补充地点、说明或分工（可选）'}}</button>
+    <block wx:if="{{detailsVisible}}">
+      <view class="field"><text class="label">地点</text><input class="input" value="{{locationInput}}" bindinput="onLocationInput" placeholder="例如：家里、线上视频" /></view>
+      <view class="field"><text class="label">说明</text><input class="input" value="{{descriptionInput}}" bindinput="onDescriptionInput" placeholder="想告诉家人的话" /></view>
+      <block wx:if="{{!editingId}}">
+        <view class="field"><text class="label">一件准备事项</text><input class="input" value="{{taskInput}}" bindinput="onTaskInput" placeholder="例如：订餐（可不填）" /></view>
+        <view class="field" wx:if="{{taskInput}}"><text class="label">谁来负责</text><picker range="{{memberOptions}}" value="{{taskAssigneeIndex}}" bindchange="onTaskAssigneeChange"><view class="picker-value">{{memberOptions[taskAssigneeIndex] || '我来负责'}}</view></picker></view>
+      </block>
+    </block>
+    <text class="helper-text" wx:if="{{editingId}}">修改名称、时间或地点后，其他家人的回应会重置为待确认。请把更新后的卡片发回群里。</text>
+    <button class="primary-action" loading="{{busy}}" disabled="{{busy}}" bindtap="onCreateActivity">{{editingId ? '保存修改' : '创建活动'}}</button>
+    <button class="text-button" disabled="{{busy}}" bindtap="onCancelEdit">暂不填写</button>
   </view>
 
-  <view class="panel form-panel">
-    <view class="section-heading">
-      <text class="section-title">发起活动</text>
-      <text class="section-note">先把时间、地点和一句说明写清楚。</text>
-    </view>
-    <view class="field">
-      <text class="label">活动名称</text>
-      <input class="input" value="{{titleInput}}" bindinput="onTitleInput" placeholder="例如：周末家庭聚会" />
-    </view>
-    <view class="field">
-      <text class="label">时间</text>
-      <input class="input" value="{{startsAtInput}}" bindinput="onStartsAtInput" placeholder="例如：2026-05-24 10:00" />
-    </view>
-    <view class="field">
-      <text class="label">地点</text>
-      <input class="input" value="{{locationInput}}" bindinput="onLocationInput" placeholder="例如：家里、小区门口、线上视频" />
-    </view>
-    <view class="field">
-      <text class="label">说明</text>
-      <input class="input" value="{{descriptionInput}}" bindinput="onDescriptionInput" placeholder="例如：一起吃饭、聊聊近况" />
-    </view>
-    <view class="field">
-      <text class="label">协作任务</text>
-      <input class="input" value="{{taskInput}}" bindinput="onTaskInput" placeholder="例如：准备水果、订餐、带相机" />
-    </view>
-    <view class="field">
-      <text class="label">任务负责人</text>
-      <picker mode="selector" range="{{memberOptions}}" value="{{taskAssigneeIndex}}" bindchange="onTaskAssigneeChange">
-        <view class="picker-value">{{memberOptions[taskAssigneeIndex] || '我来负责'}}</view>
-      </picker>
-    </view>
-    <button class="primary-action" bindtap="onCreateActivity">发起家庭活动</button>
-  </view>
-
-  <view class="section">
-    <view class="section-heading">
-      <text class="section-title">已经发起的活动</text>
-      <text class="section-note">复制说明发到家庭群，家人更容易看懂。</text>
-    </view>
-    <text class="empty-text" wx:if="{{!loading && activities.length === 0}}">还没有活动。先发起一次家庭聚会、散步或视频聊天。</text>
+  <view class="section" wx:if="{{!error}}">
+    <text class="empty-text" wx:if="{{!loading && activities.length === 0}}">还没有活动。先约一次吃饭、散步或视频聊天。</text>
     <view class="activity-list">
-      <view class="activity-row" wx:for="{{activities}}" wx:key="id">
-        <view class="activity-mark">活动</view>
-        <view class="activity-main">
-          <text class="activity-title">{{item.title}}</text>
-          <text class="activity-meta">{{item.startsAtText}} · {{item.locationText}} · {{item.statusLabel}}</text>
-          <text class="activity-desc">{{item.descriptionText}}</text>
-          <text class="activity-desc">{{item.participantSummaryText}}</text>
-          <text class="activity-desc">{{item.taskSummaryText}}</text>
-          <text class="activity-desc" wx:if="{{item.memoryText}}">{{item.memoryText}}</text>
-          <view class="action-row">
-            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="accepted" bindtap="onRsvpActivity">确认参加</button>
-            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="tentative" bindtap="onRsvpActivity">待定</button>
-            <button class="secondary-action compact" data-id="{{item.id}}" data-rsvp="declined" bindtap="onRsvpActivity">无法参加</button>
-          </view>
-          <view class="action-row">
-            <button class="secondary-action compact" data-id="{{item.id}}" bindtap="onCreateTask">加任务</button>
-            <button class="secondary-action compact" data-text="{{item.shareText}}" bindtap="onCopyShareText">复制说明</button>
-          </view>
-          <view class="task-list" wx:if="{{item.tasks.length > 0}}">
-            <view class="task-row" wx:for="{{item.tasks}}" wx:for-item="task" wx:key="id">
-              <text class="task-title">{{task.title}}</text>
-              <button wx:if="{{task.status !== 'done'}}" class="secondary-action compact" data-id="{{item.id}}" data-task-id="{{task.id}}" data-status="done" bindtap="onUpdateTaskStatus">完成任务</button>
-            </view>
-          </view>
-          <view class="action-row" wx:if="{{item.canFinish}}">
-            <button class="secondary-action compact" data-id="{{item.id}}" data-status="completed" bindtap="onUpdateActivityStatus">完成活动</button>
-            <button class="secondary-action compact danger" data-id="{{item.id}}" data-status="cancelled" bindtap="onUpdateActivityStatus">取消活动</button>
-          </view>
-          <button wx:if="{{item.status === 'completed'}}" class="secondary-action compact" data-id="{{item.id}}" bindtap="onSaveActivityMemory">保存为家庭记忆</button>
+      <view class="panel activity-card" wx:for="{{activities}}" wx:key="id">
+        <text class="section-title">{{item.title}}</text>
+        <text class="activity-meta">{{item.startsAtText}} · {{item.statusText}}</text>
+        <text class="activity-desc">{{item.location || '地点待定'}}</text>
+        <text class="activity-desc" wx:if="{{item.description}}">{{item.description}}</text>
+        <text class="helper-text" wx:if="{{item.updatedText}}">{{item.updatedText}}</text>
+        <text class="activity-desc">{{item.participantsText}}</text>
+        <text class="helper-text" wx:if="{{item.open}}">我的回应：{{item.myRsvp}}</text>
+        <view class="action-row" wx:if="{{item.open}}">
+          <button class="secondary-action compact" disabled="{{busy}}" data-id="{{item.id}}" data-rsvp="accepted" bindtap="onRsvpActivity">参加</button>
+          <button class="secondary-action compact" disabled="{{busy}}" data-id="{{item.id}}" data-rsvp="tentative" bindtap="onRsvpActivity">待定</button>
+          <button class="secondary-action compact" disabled="{{busy}}" data-id="{{item.id}}" data-rsvp="declined" bindtap="onRsvpActivity">不参加</button>
         </view>
+        <view class="task-row" wx:for="{{item.tasks}}" wx:for-item="task" wx:key="id">
+          <text class="helper-text">{{task.status === 'done' ? '已完成' : '待完成'}}：{{task.title}} · {{task.assigneeText}}</text>
+          <button wx:if="{{task.canComplete}}" class="text-button" disabled="{{busy}}" data-id="{{item.id}}" data-task-id="{{task.id}}" bindtap="onUpdateTaskStatus">{{task.status === 'done' ? '撤回完成' : '我已完成'}}</button>
+        </view>
+        <button class="primary-action" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onPrepareShare">发到家庭群</button>
+        <view class="form-panel" wx:if="{{taskActivityId === item.id}}">
+          <view class="field"><text class="label">准备事项</text><input class="input" value="{{newTaskTitle}}" bindinput="onNewTaskTitle" placeholder="例如：订餐、带水果" /></view>
+          <view class="field"><text class="label">交给谁</text><picker range="{{memberOptions}}" value="{{newTaskAssigneeIndex}}" bindchange="onNewTaskAssignee"><view class="picker-value">{{memberOptions[newTaskAssigneeIndex]}}</view></picker></view>
+          <button class="secondary-action" disabled="{{busy}}" bindtap="onSaveTask">保存准备事项</button><button class="text-button" bindtap="onCancelTask">取消</button>
+        </view>
+        <view class="action-row" wx:if="{{item.canManage && item.open}}">
+          <button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onAddTask">添加准备事项</button>
+          <button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onEditActivity">修改安排</button>
+          <button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" data-status="completed" bindtap="onUpdateActivityStatus">标记完成</button>
+          <button class="text-button danger" disabled="{{busy}}" data-id="{{item.id}}" data-status="cancelled" bindtap="onUpdateActivityStatus">取消活动</button>
+        </view>
+        <button wx:if="{{item.canManage && item.status === 'completed'}}" class="text-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onSaveActivityMemory">保存为家庭记忆</button>
       </view>
+    </view>
+    <button wx:if="{{!formVisible && !focused}}" class="primary-action" bindtap="onBeginCreate">＋ 发起活动</button>
+    <button wx:if="{{focused}}" class="secondary-action" bindtap="onAllActivities">查看这个家庭的全部活动</button>
+    <button class="text-button" bindtap="onGoFamily">返回家庭首页</button>
+  </view>
+
+  <view class="share-overlay" wx:if="{{shareReadyId}}">
+    <view class="panel share-sheet">
+      <text class="section-title">{{shareTitle}}</text>
+      <text class="helper-text">{{shareNotice}}</text>
+      <text class="helper-text">卡片包含活动名称，请只发给希望邀请的家人。</text>
+      <button class="primary-action" open-type="share">选择微信群发送</button>
+      <button class="text-button" bindtap="onCloseShare">关闭</button>
     </view>
   </view>
 </view>

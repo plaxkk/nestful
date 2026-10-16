@@ -96,6 +96,7 @@ Page({
   onShow() {
     void this.loadPage();
   },
+  onCopyLink(e:WechatMiniprogram.TouchEvent){const url=e.currentTarget.dataset.url as string;if(url)wx.setClipboardData({data:url});},
 
   onKindChange(event: WechatMiniprogram.PickerChange) {
     const kindIndex = Number(event.detail.value);
@@ -214,7 +215,7 @@ Page({
     } catch (error) {
       this.setData({ loading: false, refreshing: false });
       wx.showToast({
-        title: "数字空间加载失败，请确认 API 已启动",
+        title: "数字空间加载失败，请检查网络后重试",
         icon: "none"
       });
     }
@@ -272,7 +273,7 @@ Page({
     } catch (error) {
       this.setData({ loading: false });
       wx.showToast({
-        title: "数字空间加载失败，请确认 API 已启动",
+        title: "数字空间加载失败，请检查网络后重试",
         icon: "none"
       });
     }
@@ -349,7 +350,7 @@ Page({
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: "保存失败，请确认 API 已启动",
+        title: "保存失败，请检查网络后重试",
         icon: "none"
       });
     }

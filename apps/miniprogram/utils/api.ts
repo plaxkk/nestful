@@ -56,6 +56,10 @@ export interface FamilyMembership {
 }
 
 export interface FamilyInvitation {
+  mode?: 'single' | 'group';
+  maxUses?: number;
+  useCount?: number;
+  requiresApproval?: boolean;
   id: string;
   familyId: string;
   code: string;
@@ -66,7 +70,7 @@ export interface FamilyInvitation {
   canceledAt?: string;
   acceptedAt?: string;
   acceptedByMemberId?: string;
-  status?: "active" | "accepted" | "expired" | "canceled";
+  status?: "active" | "accepted" | "expired" | "canceled" | "full";
   joinPath?: string;
 }
 
@@ -137,6 +141,7 @@ export type DigitalSpaceItemKind = "document" | "account" | "memory";
 export type DigitalSpaceMediaKind = "image" | "video" | "file" | "link";
 
 export interface LedgerEntry {
+  createdByMemberId?: string;
   version: number;
   id: string;
   familyId: string;
@@ -219,6 +224,7 @@ export interface DigitalSpaceMediaItem {
 }
 
 export interface Activity {
+  updatedAt?: string;
   version: number;
   id: string;
   familyId: string;
@@ -260,13 +266,24 @@ export interface ActivityTask {
 export type RsvpStatus = "accepted" | "declined" | "tentative" | "pending";
 export type ActivityTaskStatus = "open" | "done";
 
+export interface DashboardItem { id: string; title: string; at: string; activityId?: string }
+export interface FamilyDashboard { activities: DashboardItem[]; tasks: DashboardItem[]; reminders: DashboardItem[]; upcoming: DashboardItem[] }
+export interface JoinRequest { id: string; displayName: string; status: string; createdAt?: string; available: boolean }
+export interface ReminderPlan {
+  id: string; version: number; type: ReminderType; title: string; dueAt: string;
+  frequency: ReminderFrequency; targetScope: ReminderTargetScope; assigneeMemberId?: string;
+  targetMemberIds: string[]; schedule: ReminderSchedule; enabled: boolean;
+}
+export type JoinResult = { status: 'pending'; requestId: string; familyName: string } |
+  { status: 'joined'; invitation: FamilyInvitation; family: Family; member: FamilyMember };
+
 const authHeaders = () => {
   const token = session.getToken();
 
   return token ? { authorization: `Bearer ${token}` } : {};
 };
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
   constructor(
     readonly statusCode: number,
     readonly data: unknown,
@@ -274,6 +291,19 @@ class ApiRequestError extends Error {
     super(`Request failed with status ${statusCode}`);
   }
 }
+
+export const errorMessage = (error: unknown, fallback = '暂时无法完成，请稍后重试') => {
+  if (!(error instanceof ApiRequestError)) return fallback;
+  const code = (error.data as { error?: string } | undefined)?.error;
+  if (code === 'last_admin_required') return '请先把另一位家人设为管理员，再退出';
+  if (code === 'version_conflict') return '内容已被更新，请刷新后再试';
+  if (code === 'invitation_unavailable') return '邀请已失效、已满或已撤销，请联系管理员';
+  if (code === 'request_already_decided') return '申请已处理，请刷新查看';
+  if (error.statusCode === 403) return '暂无操作权限，请确认家庭成员身份';
+  if (error.statusCode === 401) return '登录未完成，请重新打开后重试';
+  if (error.statusCode === 404) return '内容已不存在或暂不可访问';
+  return fallback;
+};
 
 const loginCode = (): Promise<string | undefined> =>
   new Promise((resolve) => {
@@ -455,7 +485,7 @@ export const api = {
     });
   },
 
-  createInvitation(familyId: string, body: { createdByMemberId: string; role: FamilyMember["role"] }) {
+  createInvitation(familyId: string, body: { createdByMemberId?: string; role?: FamilyMember["role"]; mode?: 'single'|'group'; maxUses?: number; requiresApproval?: boolean }) {
     return request<ApiResponse<FamilyInvitation>>({
       method: "POST",
       url: `/v1/families/${familyId}/invitations`,
@@ -478,14 +508,17 @@ export const api = {
   },
 
   getInvitation(code: string) {
-    return request<ApiResponse<{ familyName: string; status: "active" | "accepted" | "expired" | "canceled"; expiresAt?: string }>>({
+    return request<ApiResponse<{ familyName: string; status: "active" | "accepted" | "expired" | "canceled" | "full"; expiresAt?: string; mode?: string; requiresApproval?: boolean }>>({
       method: "GET",
       url: `/v1/invitations/${code}`,
     });
   },
+  getJoinStatus(code:string) {
+    return request<ApiResponse<{status:string;family?:Family;member?:FamilyMember}>>({method:'GET',url:`/v1/invitations/${code}/status`});
+  },
 
   acceptInvitation(code: string, body: { displayName: string; userId: string; wechatOpenId?: string }) {
-    return request<ApiResponse<{ invitation: FamilyInvitation; member: FamilyMember }>>({
+    return request<ApiResponse<JoinResult>>({
       method: "POST",
       url: `/v1/invitations/${code}/accept`,
       data: body,
@@ -705,4 +738,39 @@ export const api = {
   subscribeReminder(familyId: string, reminderId: string, body: { templateId: string; subscriptionStatus: ReminderNotification["subscriptionStatus"] }) {
     return request<ApiResponse<Reminder>>({ method: "POST", url: `/v1/families/${familyId}/reminders/${reminderId}/subscription`, data: body });
   },
+  getDashboard(familyId: string) {
+    return request<ApiResponse<FamilyDashboard>>({ method: 'GET', url: `/v1/families/${familyId}/dashboard` });
+  },
+  listJoinRequests(familyId: string) {
+    return request<ApiResponse<JoinRequest[]>>({ method: 'GET', url: `/v1/families/${familyId}/join-requests` });
+  },
+  decideJoinRequest(familyId: string, id: string, decision: 'approved'|'rejected') {
+    return request<ApiResponse<{id: string; status: string}>>({ method:'POST', url:`/v1/families/${familyId}/join-requests/${id}/decision`, data:{decision} });
+  },
+  archiveFamily(familyId: string, version: number) {
+    return request<ApiResponse<{archived: boolean}>>({ method:'POST', url:`/v1/families/${familyId}/archive`, data:{version} });
+  },
+  renameFamily(familyId:string,name:string,version:number){return request<ApiResponse<Family>>({method:'PUT',url:`/v1/families/${familyId}`,data:{name,version}});},
+  getActivityEntry(id: string, code?: string) {
+    return request<ApiResponse<{access:'member'|'invitation';familyId:string;family?:Family;member?:FamilyMember;title?:string;startsAt?:string}>>({method:'GET',url:`/v1/activities/${id}/entry${code?`?code=${encodeURIComponent(code)}`:''}`});
+  },
+  updateActivity(familyId: string, id: string, body:{version:number;title:string;startsAt:string;location?:string;description?:string}) {
+    return request<ApiResponse<Activity>>({method:'PUT',url:`/v1/families/${familyId}/activities/${id}`,data:body});
+  },
+  getReminderPlan(familyId: string, id: string) {
+    return request<ApiResponse<ReminderPlan>>({method:'GET',url:`/v1/families/${familyId}/reminder-plans/${id}`});
+  },
+  updateReminderPlan(familyId: string, id: string, body:ReminderPlan) {
+    return request<ApiResponse<{id:string;version:number}>>({method:'PUT',url:`/v1/families/${familyId}/reminder-plans/${id}`,data:body});
+  },
+  pauseReminderPlan(familyId: string, id: string, version:number) {
+    return request<ApiResponse<{id:string;version:number}>>({method:'POST',url:`/v1/families/${familyId}/reminder-plans/${id}/pause`,data:{version}});
+  },
+  updateLedgerEntry(familyId:string,id:string,body:Omit<LedgerEntry,'id'|'familyId'>) {
+    return request<ApiResponse<LedgerEntry>>({method:'PUT',url:`/v1/families/${familyId}/ledger-entries/${id}`,data:body});
+  },
+  voidLedgerEntry(familyId:string,id:string,version:number) {
+    return request<ApiResponse<{id:string}>>({method:'DELETE',url:`/v1/families/${familyId}/ledger-entries/${id}`,data:{version}});
+  },
+  logout() { return request<ApiResponse<{ok:boolean}>>({method:'POST',url:'/v1/wechat/logout'}); },
 };

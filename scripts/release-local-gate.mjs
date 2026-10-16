@@ -13,6 +13,7 @@ const checks = [
   ["migration smoke", npmBin, ["run", "migration:smoke"]],
   ["deployment config smoke", npmBin, ["run", "deployment:smoke"]],
   ["mini-program static smoke", npmBin, ["run", "miniprogram:smoke"]],
+  ["mini-program MVP flows", npmBin, ["run", "miniprogram:flows"]],
   ["experience preflight", npmBin, ["run", "experience:preflight"]],
   ["experience record template check", npmBin, ["run", "experience:record-check"]],
   ["experience tooling smoke", npmBin, ["run", "experience:tooling-smoke"]],

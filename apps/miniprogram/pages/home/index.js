@@ -14,10 +14,13 @@ Page({
         lastRestoredAt: 0
     },
     restoreEpoch: 0,
+    skipInitialRestore: false,
+    onLoad(query) { this.skipInitialRestore = query.loggedOut === '1'; },
     onShow() {
         this.restoreEpoch += 1;
         this.syncHomeState();
-        void this.restoreFamilySession();
+        if (!this.skipInitialRestore)
+            void this.restoreFamilySession();
     },
     onHide() {
         this.restoreEpoch += 1;
@@ -57,8 +60,9 @@ Page({
             const currentFamily = session_1.session.getFamily();
             const membership = response.data.find(item => currentFamily && item.family.id === currentFamily.id) ?? response.data[0];
             if (!membership) {
-                this.syncHomeState();
+                session_1.session.clearFamily();
                 this.setData({
+                    hasFamily: false, families: [], currentFamilyId: '', primaryText: '创建我的家庭',
                     restoring: false,
                     lastRestoredAt: Date.now()
                 });
@@ -96,6 +100,7 @@ Page({
         wx.navigateTo({ url: "/pages/family/index" });
     },
     onPrimaryAction() {
+        this.skipInitialRestore = false;
         if (this.data.hasFamily) {
             wx.navigateTo({ url: "/pages/family/index" });
             return;
@@ -104,5 +109,6 @@ Page({
     },
     onJoinFamily() {
         wx.navigateTo({ url: "/pages/join/index" });
-    }
+    },
+    onOpenHelp() { wx.navigateTo({ url: '/pages/help/index' }); }
 });

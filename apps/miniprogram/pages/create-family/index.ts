@@ -4,7 +4,7 @@ import { getWechatIdentity } from "../../utils/wechat";
 
 Page({
   data: {
-    familyNameInput: "我的家庭"
+    familyNameInput: "我的家庭",busy:false,agreed:false
   },
 
   onFamilyNameInput(event: WechatMiniprogram.Input) {
@@ -16,8 +16,12 @@ Page({
   onBack() {
     wx.navigateBack();
   },
+  onAgreementChange(e:WechatMiniprogram.CheckboxGroupChange){this.setData({agreed:e.detail.value.includes('agree')});},
+  onOpenHelp(){wx.navigateTo({url:'/pages/help/index'});},
 
   async onCreateFamily() {
+    if(this.data.busy)return;
+    if(!this.data.agreed){wx.showToast({title:'请先阅读并同意隐私说明',icon:'none'});return;}
     const familyName = this.data.familyNameInput.trim();
 
     if (!familyName) {
@@ -28,6 +32,7 @@ Page({
       return;
     }
 
+    this.setData({busy:true});
     wx.showLoading({ title: "创建中" });
 
     try {
@@ -53,6 +58,6 @@ Page({
         title: "创建失败，请稍后重试",
         icon: "none"
       });
-    }
+    } finally{this.setData({busy:false});}
   }
 });

@@ -1,29 +1,60 @@
 <view class="page family-page">
   <view class="family-hero">
-    <text class="eyebrow">家里的小本子</text>
+    <text class="eyebrow">把约定放好，让家人一起回应</text>
     <text class="page-title">{{familyName}}</text>
-    <text class="page-subtitle">先把家人邀请进来，再慢慢放生日、健康、活动、记忆和账本。</text>
+    <text class="page-subtitle">看看近期安排，以及现在等你回应的事。</text>
     <view class="member-pill">{{memberCountText}}</view>
     <button class="family-list-link" bindtap="onOpenFamilyList">切换或创建家庭 ›</button>
   </view>
 
-  <view class="panel invite-panel" wx:if="{{!inviteCode}}">
-    <text class="section-title">下一步：邀请家人</text>
-    <text class="section-note">生成邀请发给家人，家人用微信登录后填写称呼即可加入。</text>
-    <button class="primary-action" bindtap="onCreateInvitation">生成家人邀请码</button>
+  <view class="section today-section">
+    <text class="section-title">等我处理</text>
+    <text class="helper-text" wx:if="{{refreshing && todos.length === 0}}">正在查看待办…</text>
+    <text class="helper-text" wx:if="{{dashboardError}}">{{dashboardError}}</text>
+    <text class="empty-text" wx:if="{{!refreshing && !dashboardError && todos.length === 0}}">暂时没有待办。可以发起一次家庭活动，邀请家人一起回应。</text>
+    <view class="feature-row" wx:for="{{todos}}" wx:key="id" data-id="{{item.id}}" data-activity-id="{{item.activityId}}" data-page="{{item.page}}" bindtap="onOpenTodo">
+      <view class="feature-copy"><text class="feature-title">{{item.title}}</text><text class="feature-desc">{{item.label}} · {{item.timeText}}</text></view><text>›</text>
+    </view>
+    <button class="text-button" bindtap="onRefreshDashboard">刷新待办和加入申请</button>
+  </view>
+  <view class="section" wx:if="{{upcoming.length > 0}}">
+    <text class="section-title">接下来的活动</text>
+    <view class="feature-row" wx:for="{{upcoming}}" wx:key="id" data-id="{{item.id}}" data-page="activities" bindtap="onOpenTodo"><view class="feature-copy"><text class="feature-title">{{item.title}}</text><text class="feature-desc">{{item.timeText}}</text></view><text>›</text></view>
+  </view>
+  <button class="primary-action" bindtap="onOpenActivities">查看或发起家庭活动</button>
+
+  <view class="panel invite-panel" wx:if="{{isCurrentMemberAdmin && joinRequests.length > 0}}">
+    <text class="section-title">家人的加入申请</text>
+    <view wx:for="{{joinRequests}}" wx:key="id" class="request-row">
+      <text class="helper-text">{{item.displayName}} · {{item.available ? '等待确认身份' : '邀请已失效或人数已满'}}</text>
+      <view class="action-row">
+        <button wx:if="{{item.available}}" class="text-button" disabled="{{busy}}" data-id="{{item.id}}" data-decision="approved" bindtap="onDecideJoin">同意加入</button>
+        <button class="text-button" disabled="{{busy}}" data-id="{{item.id}}" data-decision="rejected" bindtap="onDecideJoin">拒绝申请</button>
+      </view>
+    </view>
+    <text class="helper-text">请先确认申请人确实是家人，再开放家庭内容。</text>
   </view>
 
-  <view class="panel invite-card" wx:if="{{inviteCode}}">
+  <view class="panel invite-panel" wx:if="{{isCurrentMemberAdmin && !inviteCode}}">
+    <text class="section-title">下一步：邀请家人</text>
+    <picker range="{{invitationModeOptions}}" value="{{invitationModeIndex}}" bindchange="onInvitationModeChange"><view class="picker-value">{{invitationModeOptions[invitationModeIndex]}}</view></picker>
+    <view class="switch-row" wx:if="{{invitationModeIndex === 1}}"><text class="label">加入前由管理员确认</text><switch checked="{{approvalRequired}}" bindchange="onApprovalChange" /></view>
+    <text class="section-note">{{invitationModeIndex === 1 ? (approvalRequired ? '同一张卡片可供多位家人申请加入。' : '持有卡片的人可直接加入，请只发送到可信的家庭群。') : '这份邀请只供一位新家人加入。'}}</text>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateInvitation">生成邀请卡片</button>
+  </view>
+
+  <view class="panel invite-card" wx:if="{{isCurrentMemberAdmin && inviteCode}}">
     <view class="invite-icon">家</view>
     <text class="section-title">邀请家人</text>
     <text class="section-note center">微信发送邀请，或让家人复制粘贴邀请码加入。</text>
     <view class="code-card">
       <text class="code-label">家庭专属邀请码</text>
       <text class="invite-token" selectable="{{true}}">{{inviteCode}}</text>
-      <text class="section-note">24小时内有效</text>
+      <text class="section-note">有效至 {{invitationExpiry}}</text>
     </view>
     <button class="primary-action" open-type="share">微信发送邀请</button>
     <button class="secondary-action" bindtap="onCopyInviteCode">复制邀请码</button>
+    <button class="text-button" bindtap="onNewInvitation">生成另一份邀请</button>
   </view>
 
   <view class="section invitation-section" wx:if="{{isCurrentMemberAdmin && invitations.length > 0}}">
@@ -31,7 +62,7 @@
     <view class="invitation-list">
       <view class="invitation-row" wx:for="{{invitations}}" wx:key="id">
         <view class="invitation-main">
-          <text class="invitation-code">家人邀请</text>
+          <text class="invitation-code">{{item.modeLabel}}</text>
           <text class="invitation-meta">{{item.statusLabel}} · {{item.expiresAtText}}</text>
         </view>
         <button wx:if="{{item.canCancel}}" class="small-danger-button" data-id="{{item.id}}" bindtap="onCancelInvitation">撤销</button>
@@ -40,7 +71,7 @@
   </view>
 
   <view class="section today-section">
-    <text class="section-title">今天要处理</text>
+    <text class="section-title">家庭工具</text>
     <view class="feature-list">
       <view class="feature-row" wx:for="{{nextActions}}" wx:key="page" data-page="{{item.page}}" bindtap="onOpenFeature">
         <view class="feature-copy">
@@ -74,7 +105,7 @@
 
     <view class="field">
       <text class="label">称呼</text>
-      <input class="input" value="{{editDisplayNameInput}}" bindinput="onEditDisplayNameInput" placeholder="例如：妈妈、哥哥" />
+      <input class="input" disabled="{{!canEditSelectedProfile}}" value="{{editDisplayNameInput}}" bindinput="onEditDisplayNameInput" placeholder="例如：妈妈、哥哥" />
     </view>
 
     <view class="field" wx:if="{{canEditSelectedRole}}">
@@ -86,37 +117,47 @@
 
     <view class="field">
       <text class="label">生日</text>
-      <input class="input" value="{{editBirthdayInput}}" bindinput="onEditBirthdayInput" placeholder="例如：1965-03-12" />
+      <input class="input" disabled="{{!canEditSelectedProfile}}" value="{{editBirthdayInput}}" bindinput="onEditBirthdayInput" placeholder="例如：1965-03-12" />
     </view>
     <view class="field">
       <text class="label">身份标签</text>
-      <picker mode="selector" range="{{identityTagOptions}}" range-key="label" value="{{editIdentityTagIndex}}" bindchange="onEditIdentityTagChange">
+      <picker disabled="{{!canEditSelectedProfile}}" mode="selector" range="{{identityTagOptions}}" range-key="label" value="{{editIdentityTagIndex}}" bindchange="onEditIdentityTagChange">
         <view class="picker-value">{{identityTagOptions[editIdentityTagIndex].label}}</view>
       </picker>
     </view>
 
     <view class="field">
       <text class="label">生日历法</text>
-      <picker mode="selector" range="{{birthdayCalendarOptions}}" range-key="label" value="{{editBirthdayCalendarIndex}}" bindchange="onEditBirthdayCalendarChange">
+      <picker disabled="{{!canEditSelectedProfile}}" mode="selector" range="{{birthdayCalendarOptions}}" range-key="label" value="{{editBirthdayCalendarIndex}}" bindchange="onEditBirthdayCalendarChange">
         <view class="picker-value">{{birthdayCalendarOptions[editBirthdayCalendarIndex].label}}</view>
       </picker>
     </view>
 
     <view class="field">
       <text class="label">常住地</text>
-      <input class="input" value="{{editLocationInput}}" bindinput="onEditLocationInput" placeholder="例如：上海" />
+      <input class="input" disabled="{{!canEditSelectedProfile}}" value="{{editLocationInput}}" bindinput="onEditLocationInput" placeholder="例如：上海" />
     </view>
     <view class="switch-row" wx:if="{{editBirthdayCalendarIndex === 1}}">
       <text class="label">农历闰月</text>
-      <switch checked="{{editBirthdayLeapMonth}}" bindchange="onEditBirthdayLeapMonthChange" />
+      <switch disabled="{{!canEditSelectedProfile}}" checked="{{editBirthdayLeapMonth}}" bindchange="onEditBirthdayLeapMonthChange" />
     </view>
 
-    <view class="field">
+    <view class="field" wx:if="{{canEditSelectedProfile}}">
       <text class="label">紧急联系</text>
       <input class="input" value="{{editEmergencyContactInput}}" bindinput="onEditEmergencyContactInput" placeholder="只有本人和管理员可见" />
     </view>
 
-    <button class="primary-action" bindtap="onSaveMemberProfile">保存资料</button>
+    <button wx:if="{{canEditSelectedProfile}}" class="primary-action" bindtap="onSaveMemberProfile">保存资料</button>
+    <text wx:else class="helper-text">普通成员只能修改自己的资料，其他家人的资料仅供查看。</text>
     <button wx:if="{{canRemoveSelected}}" class="danger-action" bindtap="onRemoveSelectedMember">移除这位家人</button>
+    <text wx:if="{{canEditSelectedRole}}" class="helper-text">转交管理：先将这位家人设为管理员并保存，再退出家庭。家庭至少需要一位管理员。</text>
+  </view>
+  <view class="panel invite-panel">
+    <text class="section-title">家庭设置</text>
+    <button wx:if="{{isCurrentMemberAdmin}}" class="text-button" disabled="{{busy}}" bindtap="onRenameFamily">修改家庭名称</button>
+    <button class="text-button" bindtap="onOpenHelp">隐私、数据处理与意见反馈</button>
+    <text class="helper-text">下次打开：在微信右上角菜单添加到“我的小程序”，或从群里的活动卡片进入。</text>
+    <button class="secondary-action" disabled="{{busy}}" bindtap="onLeaveFamily">退出这个家庭</button>
+    <button wx:if="{{isCurrentMemberAdmin}}" class="text-button danger" disabled="{{busy}}" bindtap="onArchiveFamily">归档整个家庭</button>
   </view>
 </view>

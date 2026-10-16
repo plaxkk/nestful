@@ -147,3 +147,25 @@ page {
   font-size: 48rpx;
   font-weight: 700;
 }
+
+.text-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  padding: 12rpx 18rpx;
+  margin: 0;
+  background: transparent;
+  color: #174c64;
+  font-size: 30rpx;
+  line-height: 1.4;
+  white-space: normal;
+}
+.text-button::after { border: 0; }
+.danger { color: #a52825; }
+.action-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.activity-card { display: flex; flex-direction: column; gap: 18rpx; }
+.share-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(4,22,39,.4); display: flex; align-items: flex-end; padding: 28rpx; }
+.share-sheet { width: 100%; display: flex; flex-direction: column; gap: 24rpx; padding-bottom: 48rpx; }
+.request-row { display: flex; flex-direction: column; gap: 12rpx; padding: 18rpx 0; border-bottom: 1rpx solid #ffe2db; }
+button[disabled] { opacity: .55; }

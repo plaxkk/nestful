@@ -1,0 +1,33 @@
+<view class="page help-page">
+  <text class="page-title">隐私与帮助</text>
+  <text class="helper-text">更新于 2026 年 10 月 16 日 · Nestful 家庭试用版</text>
+  <view class="panel help-section">
+    <text class="section-title">我们会保存什么</text>
+    <text class="page-subtitle">为识别同一个微信用户、登录和验证家庭成员身份，我们保存小程序内的微信身份标识、登录凭证的摘要，以及你主动填写的称呼和家庭内容。加入不要求手机号、通讯录或完整个人资料。</text>
+    <text class="page-subtitle">家庭内容包括你选择记录的生日、提醒、活动及回应、分工、账目和资料链接。服务由 Vercel 和 Supabase 提供，当前业务数据库位于美国西部地区。</text>
+  </view>
+  <view class="panel help-section">
+    <text class="section-title">哪些家人能看到</text>
+    <text class="page-subtitle">同一家庭的有效成员可查看家庭的普通资料、活动、提醒、账本和记录。紧急联系方式及私密备注仅本人和管理员可见。管理员可以管理成员和邀请。</text>
+    <text class="page-subtitle">转发卡片可能显示家庭名或活动名，请只发给希望邀请的人。需要审批的申请人在管理员同意前，无法查看家庭内部资料。</text>
+  </view>
+  <view class="panel help-section">
+    <text class="section-title">通知与资料的边界</text>
+    <text class="page-subtitle">微信通知由接收人自己选择订阅；一次授权对应一次通知。保存循环计划不代表永久推送，未确认不代表家人发生异常。请勿把本服务作为唯一的用药或紧急照护提醒。</text>
+    <text class="page-subtitle">家庭记录当前保存文字和链接，不托管真实文件。请勿保存密码、验证码、恢复密钥或不希望全家看到的健康资料。</text>
+  </view>
+  <view class="panel help-section">
+    <text class="section-title">退出、导出与删除</text>
+    <text class="page-subtitle">你可以在家庭设置退出家庭；最后一位管理员需先完成交接。管理员归档家庭后，全家无法继续访问，后续邀请和提醒会停止。归档保留资料，不等于永久删除。</text>
+    <text class="page-subtitle">如需导出个人资料、申请删除账号或恢复归档，请通过下方微信意见反馈提交申请。为避免误删他人资料，需人工核验身份与处理范围；已提交的家庭协作记录可能需要在移除个人身份后保留。</text>
+    <text class="helper-text">可复制以下定位信息附在反馈中，请勿附上密码、邀请码或健康细节。</text>
+    <text class="helper-text" selectable="{{true}}">{{reference}}</text>
+    <button class="secondary-action" bindtap="onCopyReference">复制反馈定位信息</button>
+    <button class="primary-action" open-type="feedback">意见反馈 / 数据处理申请</button>
+  </view>
+  <view class="panel help-section">
+    <text class="section-title">下次从哪里打开</text>
+    <text class="page-subtitle">从微信群里的活动卡片，可以直接打开对应安排；已有家庭成员无需重复加入。也可以通过微信右上角菜单，添加到“我的小程序”。</text>
+  </view>
+  <button class="secondary-action" disabled="{{busy}}" bindtap="onLogout">退出本机登录</button>
+</view>

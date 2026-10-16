@@ -13,6 +13,7 @@ import { nextBirthday,nextOccurrence,localInstant } from "../src/reminder-schedu
 import { ledgerRepository } from "../src/repositories/ledger.js";
 import Fastify from "fastify";
 import { registerRoutes } from "../src/routes.js";
+import { dashboardRepository } from '../src/repositories/dashboard.js';
 
 // Intentionally local-only: this runner creates and drops its own database.
 const adminUrl = new URL(process.env.NESTFUL_TEST_ADMIN_URL ?? "postgresql://127.0.0.1:55432/postgres");
@@ -28,6 +29,7 @@ let otherFamily:typeof family;
 const migration=await readFile(new URL("../migrations/003_relational_v2_up.sql",import.meta.url),'utf8');
 const precision=await readFile(new URL("../migrations/004_cursor_timestamp_precision_up.sql",import.meta.url),'utf8');
 const membership=await readFile(new URL("../migrations/005_runtime_role_membership_up.sql",import.meta.url),'utf8');
+const collaboration=await readFile(new URL("../migrations/006_mvp_collaboration_up.sql",import.meta.url),'utf8');
 
 before(async()=>{
   process.env.WECHAT_APP_ID='test-app';process.env.WECHAT_REMINDER_TEMPLATE_ID='test-template';
@@ -38,6 +40,7 @@ before(async()=>{
   await owner.query(migration); // rerunning the initialization must not erase data
   await owner.query(precision);await owner.query(precision);
   await owner.query(membership);await owner.query(membership);
+  await owner.query(collaboration);await owner.query(collaboration);
   a=await identityStore.createSession({appId:'test-app',openid:'a'});
   b=await identityStore.createSession({appId:'test-app',openid:'b'});
   outsider=await identityStore.createSession({appId:'test-app',openid:'outsider'});
@@ -47,6 +50,151 @@ before(async()=>{
 after(async()=>{
   await closeDatabase();await owner?.end();
   await admin.query(`drop database if exists "${database}" with (force)`);await admin.end();
+});
+
+test('group invitation admits several people once, caps concurrent admissions and remains revocable',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Group limit',ownerDisplayName:'A'});
+  const i=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group',maxUses:2,requiresApproval:false});
+  const users=await Promise.all(['g1','g2','g3'].map(openid=>identityStore.createSession({appId:'test-app',openid})));
+  const joined=await Promise.allSettled(users.map(u=>familyRepository.accept(i.code,u.userId,'Family member')));
+  assert.equal(joined.filter(r=>r.status==='fulfilled').length,2);
+  const admitted=joined.findIndex(r=>r.status==='fulfilled');
+  assert.equal((await familyRepository.accept(i.code,users[admitted].userId,'Again')).status,'joined');
+  assert.equal((await familyRepository.invitations(f.family.id,a.userId))[0].useCount,2);
+  assert.equal((await familyRepository.invitation(i.code)).status,'full');
+  await familyRepository.cancelInvitation(f.family.id,i.id,a.userId);
+  assert.equal((await familyRepository.invitation(i.code)).status,'canceled');
+  const member=(await familyRepository.members(f.family.id,a.userId)).find(m=>m.userId===users[admitted].userId)!;
+  await familyRepository.updateMember(f.family.id,member.id,a.userId,{version:member.version,status:'inactive'});
+  await assert.rejects(familyRepository.accept(i.code,users[admitted].userId,'Again'),e=>e instanceof DomainError&&e.status===409);
+});
+test('group approvals are idempotent, require admin, honor expiry/revocation and cannot reactivate removed people',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Approval',ownerDisplayName:'A'});
+  const i=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group'});
+  assert.equal(i.requiresApproval,true);
+  const r=await familyRepository.accept(i.code,b.userId,'B');assert.equal(r.status,'pending');
+  const again=await familyRepository.accept(i.code,b.userId,'B');assert.equal(again.status,'pending');
+  assert.equal((await familyRepository.joinRequests(f.family.id,a.userId)).length,1);
+  await assert.rejects(familyRepository.members(f.family.id,b.userId),e=>e instanceof DomainError&&e.status===403);
+  await assert.rejects(familyRepository.decideJoin(f.family.id,r.requestId!,b.userId,'approved'),e=>e instanceof DomainError&&e.status===403);
+  const decisions=await Promise.allSettled([1,2].map(()=>familyRepository.decideJoin(f.family.id,r.requestId!,a.userId,'approved')));
+  assert.equal(decisions.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal((await familyRepository.joinStatus(i.code,b.userId)).status,'joined');
+  assert.equal((await familyRepository.invitations(f.family.id,a.userId))[0].useCount,1);
+  const member=(await familyRepository.members(f.family.id,a.userId)).find(m=>m.userId===b.userId)!;
+  await familyRepository.updateMember(f.family.id,member.id,a.userId,{version:member.version,status:'inactive'});
+  await assert.rejects(familyRepository.accept(i.code,b.userId,'B again'),e=>e instanceof DomainError&&e.status===409);
+  const pending=await familyRepository.accept(i.code,outsider.userId,'C');assert.equal(pending.status,'pending');
+  await familyRepository.cancelInvitation(f.family.id,i.id,a.userId);
+  await assert.rejects(familyRepository.decideJoin(f.family.id,pending.requestId!,a.userId,'approved'),e=>e instanceof DomainError&&e.status===409);
+});
+test('activity entry never leaks private details without membership or a valid matching invitation',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Entry',ownerDisplayName:'A'});
+  const activity=await activitiesRepository.create(f.family.id,a.userId,{title:'Private event',startsAt:new Date(Date.now()+86400000).toISOString(),description:'private detail'});
+  await assert.rejects(activitiesRepository.entry(activity.id,b.userId),e=>e instanceof DomainError&&e.status===403);
+  const wrong=await familyRepository.invite(otherFamily.family.id,outsider.userId);
+  await assert.rejects(activitiesRepository.entry(activity.id,b.userId,wrong.code),e=>e instanceof DomainError&&e.status===403);
+  const invite=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group'});
+  const preview=await activitiesRepository.entry(activity.id,b.userId,invite.code);
+  assert.equal(preview.access,'invitation');assert.equal(preview.title,'Private event');
+  assert.ok(!('description' in preview)&&!('members' in preview)&&!('participants' in preview));
+  const own=await activitiesRepository.entry(activity.id,a.userId);
+  assert.equal(own.family?.id,f.family.id);assert.equal(own.member?.id,f.ownerMember.id);
+  await familyRepository.cancelInvitation(f.family.id,invite.id,a.userId);
+  await assert.rejects(activitiesRepository.entry(activity.id,b.userId,invite.code),e=>e instanceof DomainError&&e.status===403);
+});
+test('activity changes require reconfirmation; dashboard only returns the current member work',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Dashboard',ownerDisplayName:'A'});
+  const invite=await familyRepository.invite(f.family.id,a.userId);
+  const joined=await familyRepository.accept(invite.code,b.userId,'B');assert.ok(joined.member);
+  const activity=await activitiesRepository.create(f.family.id,a.userId,{title:'Dinner',startsAt:new Date(Date.now()+86400000).toISOString(),participantMemberIds:[joined.member!.id],tasks:[{title:'Book table',assigneeMemberId:joined.member!.id}]});
+  await activitiesRepository.rsvp(f.family.id,activity.id,b.userId,'accepted');
+  assert.equal((await dashboardRepository.get(f.family.id,b.userId)).activities.length,0);
+  assert.equal((await dashboardRepository.get(f.family.id,a.userId)).tasks.length,0);
+  assert.equal((await dashboardRepository.get(f.family.id,b.userId)).tasks.length,1);
+  await assert.rejects(activitiesRepository.update(f.family.id,activity.id,b.userId,{title:'Wrong',startsAt:activity.startsAt,version:activity.version}),e=>e instanceof DomainError&&e.status===403);
+  const updated=await activitiesRepository.update(f.family.id,activity.id,a.userId,{title:'Dinner moved',startsAt:activity.startsAt,version:activity.version});
+  assert.equal(updated.participants.find(p=>p.memberId===joined.member!.id)?.rsvp,'pending');
+  assert.equal((await dashboardRepository.get(f.family.id,b.userId)).activities[0].id,activity.id);
+  await assert.rejects(activitiesRepository.update(f.family.id,activity.id,a.userId,{title:'Stale',startsAt:activity.startsAt,version:1}),e=>e instanceof DomainError&&e.status===409);
+  await assert.rejects(dashboardRepository.get(f.family.id,outsider.userId),e=>e instanceof DomainError&&e.status===403);
+});
+test('archive removes all access and stops recurrence, invitations and pending notifications',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Archive',ownerDisplayName:'A'});
+  const i=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group',requiresApproval:false});
+  await familyRepository.accept(i.code,b.userId,'B');
+  const r=await remindersRepository.create(f.family.id,a.userId,{type:'medicine',title:'Pause on archive',dueAt:new Date(Date.now()+60000).toISOString(),frequency:'daily_once',targetMemberIds:[f.ownerMember.id],schedule:{timesOfDay:['08:00']},notificationSubscription:{templateId:'test-template',recipientMemberId:f.ownerMember.id,subscriptionStatus:'accept'}});
+  await assert.rejects(familyRepository.archive(f.family.id,b.userId,1),e=>e instanceof DomainError&&e.status===403);
+  await familyRepository.archive(f.family.id,a.userId,1);
+  await assert.rejects(familyRepository.members(f.family.id,a.userId),e=>e instanceof DomainError&&e.status===403);
+  await assert.rejects(familyRepository.accept(i.code,outsider.userId,'C'),e=>e instanceof DomainError&&e.status===409);
+  assert.ok(!(await familyRepository.memberships(a.userId)).some(m=>m.family.id===f.family.id));
+  assert.equal((await owner.query('select enabled,next_generation_at from nestful.reminder_plans where id=$1',[r.planId])).rows[0].enabled,false);
+  assert.equal((await owner.query('select status from nestful.notification_deliveries where occurrence_id=$1',[r.id])).rows[0].status,'canceled');
+});
+
+test('expired group requests cannot be approved and cross-family request references fail in PostgreSQL',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Expired request',ownerDisplayName:'A'});
+  const i=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group'});
+  const request=await familyRepository.accept(i.code,b.userId,'B');
+  await owner.query("update nestful.family_invitations set created_at=now()-interval '2 days',expires_at=now()-interval '1 day' where id=$1",[i.id]);
+  await assert.rejects(familyRepository.decideJoin(f.family.id,request.requestId!,a.userId,'approved'),e=>e instanceof DomainError&&e.status===409);
+  assert.equal((await familyRepository.joinStatus(i.code,b.userId)).status,'unavailable');
+  await assert.rejects(owner.query('insert into nestful.family_join_requests(family_id,invitation_id,user_id,display_name) values($1,$2,$3,$4)',[otherFamily.family.id,i.id,outsider.userId,'Wrong family']),{code:'23503'});
+});
+test('pause preserves completed history, cancels pending work, and enforces creator/admin permissions',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Pause',ownerDisplayName:'A'});
+  const invite=await familyRepository.invite(f.family.id,a.userId);await familyRepository.accept(invite.code,b.userId,'B');
+  const r=await remindersRepository.create(f.family.id,a.userId,{type:'exercise',title:'Exercise',dueAt:new Date(Date.now()+3600000).toISOString(),frequency:'daily_once',targetScope:'family',schedule:{timesOfDay:['08:00']}});
+  await assert.rejects(remindersRepository.plan(f.family.id,r.planId,b.userId),e=>e instanceof DomainError&&e.status===403);
+  await remindersRepository.complete(f.family.id,r.id,a.userId);
+  const plan=await remindersRepository.plan(f.family.id,r.planId,a.userId);await remindersRepository.pause(f.family.id,r.planId,a.userId,plan.version);
+  const result=(await remindersRepository.list(f.family.id,a.userId)).data.find(o=>o.id===r.id)!;
+  assert.equal(result.completedAt!==undefined,true);assert.equal(result.enabled,false);
+  await assert.rejects(remindersRepository.complete(f.family.id,r.id,b.userId),e=>e instanceof DomainError&&e.code==='reminder_canceled');
+  await assert.rejects(remindersRepository.pause(f.family.id,r.planId,a.userId,plan.version),e=>e instanceof DomainError&&e.status===409);
+});
+test('new collaboration API endpoints reject anonymous/foreign actors and preserve pending admission',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'API collaboration',ownerDisplayName:'A'});
+  const app=Fastify();await registerRoutes(app);await app.ready();
+  const auth={authorization:`Bearer ${a.token}`},foreign={authorization:`Bearer ${outsider.token}`};
+  try{
+    for(const suffix of ['/dashboard','/join-requests']){
+      assert.equal((await app.inject({url:`/v1/families/${f.family.id}${suffix}`})).statusCode,401);
+      assert.equal((await app.inject({url:`/v1/families/${f.family.id}${suffix}`,headers:foreign})).statusCode,403);
+    }
+    assert.equal((await app.inject({method:'PUT',url:`/v1/families/${f.family.id}`,headers:foreign,payload:{name:'Hijack',version:1}})).statusCode,403);
+    const renamed=await app.inject({method:'PUT',url:`/v1/families/${f.family.id}`,headers:auth,payload:{name:'Renamed',version:1}});
+    assert.equal(renamed.statusCode,200);assert.equal(renamed.json().data.version,2);
+    const invite=await app.inject({method:'POST',url:`/v1/families/${f.family.id}/invitations`,headers:auth,payload:{mode:'group'}});
+    assert.equal(invite.statusCode,201);assert.equal(invite.json().data.requiresApproval,true);
+    const accepted=await app.inject({method:'POST',url:`/v1/invitations/${invite.json().data.code}/accept`,headers:foreign,payload:{displayName:'Applicant'}});
+    assert.equal(accepted.statusCode,200);assert.equal(accepted.json().data.status,'pending');assert.equal(accepted.json().data.member,undefined);
+    const requests=(await app.inject({url:`/v1/families/${f.family.id}/join-requests`,headers:auth})).json().data;
+    assert.equal(requests.length,1);assert.equal(requests[0].displayName,'Applicant');
+    assert.equal((await app.inject({method:'POST',url:`/v1/families/${f.family.id}/join-requests/${requests[0].id}/decision`,headers:foreign,payload:{decision:'approved'}})).statusCode,403);
+    assert.equal((await app.inject({method:'POST',url:`/v1/families/${f.family.id}/join-requests/${requests[0].id}/decision`,headers:auth,payload:{decision:'approved'}})).statusCode,200);
+    assert.equal((await app.inject({url:`/v1/families/${f.family.id}/dashboard`,headers:foreign})).statusCode,200);
+  }finally{await app.close();}
+});
+
+test('Vercel entry preserves invitation queries and pagination cursors end to end',async()=>{
+  const {default:handler}=await import('../../../api/index.js');
+  const f=await familyRepository.create(a.userId,{name:'Vercel query',ownerDisplayName:'A'});
+  const i=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group'});
+  const activity=await activitiesRepository.create(f.family.id,a.userId,{title:'Shared activity',startsAt:new Date().toISOString()});
+  await activitiesRepository.create(f.family.id,a.userId,{title:'Second activity',startsAt:new Date(Date.now()+1000).toISOString()});
+  const invoke=async(query:Record<string,string>,token:string)=>{
+    let code=0,body:any;
+    await handler({query,method:'GET',headers:{authorization:`Bearer ${token}`}},{setHeader(){},status(n:number){code=n;},send(s:string){body=JSON.parse(s);}});
+    return {code,body};
+  };
+  const entry=await invoke({path:`/v1/activities/${activity.id}/entry`,code:i.code},b.token);
+  assert.equal(entry.code,200);assert.equal(entry.body.data.access,'invitation');
+  const first=await invoke({path:`/v1/families/${f.family.id}/activities`,limit:'1'},a.token);
+  assert.equal(first.body.data.length,1);assert.ok(first.body.nextCursor);
+  const second=await invoke({path:`/v1/families/${f.family.id}/activities`,limit:'1',cursor:first.body.nextCursor},a.token);
+  assert.equal(second.code,200);assert.notEqual(second.body.data[0].id,first.body.data[0].id);
 });
 
 test('concurrent first WeChat logins yield one stable user and hashed sessions',async()=>{
@@ -63,7 +211,7 @@ test('only the private schema exists; runtime cannot create tables or edit audit
     join pg_roles r on r.oid=a.roleid join pg_roles m on m.oid=a.member
     where r.rolname='nestful_runtime' and m.rolname=current_user`)).rows[0];
   assert.deepEqual(grant,{set_option:true,inherit_option:false});
-  assert.equal((await owner.query("select count(*)::int n from information_schema.tables where table_schema='nestful'")).rows[0].n,22);
+  assert.equal((await owner.query("select count(*)::int n from information_schema.tables where table_schema='nestful'")).rows[0].n,23);
   assert.equal((await owner.query("select to_regclass('public.nestful_app_state') t")).rows[0].t,null);
   await assert.rejects(transaction(tx=>tx.query("create table nestful.forbidden(id int)")),{code:'42501'});
   await assert.rejects(transaction(tx=>tx.query("delete from nestful.audit_events")),{code:'42501'});

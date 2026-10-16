@@ -22,6 +22,12 @@ const readMembersCache = (): FamilyMembersCache => {
 };
 
 export const session = {
+  isFamily(id:string) { const family=this.getFamily();return Boolean(family&&family.id===id); },
+  clearFamily() {
+    wx.removeStorageSync(familyKey);
+    wx.removeStorageSync(memberKey);
+    wx.removeStorageSync(membersKey);
+  },
   getFamily() {
     ensureModelVersion();
     return wx.getStorageSync(familyKey) as Family | "";

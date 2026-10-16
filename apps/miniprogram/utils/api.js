@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = void 0;
+exports.api = exports.errorMessage = exports.ApiRequestError = void 0;
 const config_1 = require("./config");
 const session_1 = require("./session");
 const authHeaders = () => {
@@ -14,6 +14,28 @@ class ApiRequestError extends Error {
         this.data = data;
     }
 }
+exports.ApiRequestError = ApiRequestError;
+const errorMessage = (error, fallback = '暂时无法完成，请稍后重试') => {
+    if (!(error instanceof ApiRequestError))
+        return fallback;
+    const code = error.data?.error;
+    if (code === 'last_admin_required')
+        return '请先把另一位家人设为管理员，再退出';
+    if (code === 'version_conflict')
+        return '内容已被更新，请刷新后再试';
+    if (code === 'invitation_unavailable')
+        return '邀请已失效、已满或已撤销，请联系管理员';
+    if (code === 'request_already_decided')
+        return '申请已处理，请刷新查看';
+    if (error.statusCode === 403)
+        return '暂无操作权限，请确认家庭成员身份';
+    if (error.statusCode === 401)
+        return '登录未完成，请重新打开后重试';
+    if (error.statusCode === 404)
+        return '内容已不存在或暂不可访问';
+    return fallback;
+};
+exports.errorMessage = errorMessage;
 const loginCode = () => new Promise((resolve) => {
     wx.login({
         success: (loginResult) => {
@@ -187,6 +209,9 @@ exports.api = {
             url: `/v1/invitations/${code}`,
         });
     },
+    getJoinStatus(code) {
+        return request({ method: 'GET', url: `/v1/invitations/${code}/status` });
+    },
     acceptInvitation(code, body) {
         return request({
             method: "POST",
@@ -303,4 +328,39 @@ exports.api = {
     subscribeReminder(familyId, reminderId, body) {
         return request({ method: "POST", url: `/v1/families/${familyId}/reminders/${reminderId}/subscription`, data: body });
     },
+    getDashboard(familyId) {
+        return request({ method: 'GET', url: `/v1/families/${familyId}/dashboard` });
+    },
+    listJoinRequests(familyId) {
+        return request({ method: 'GET', url: `/v1/families/${familyId}/join-requests` });
+    },
+    decideJoinRequest(familyId, id, decision) {
+        return request({ method: 'POST', url: `/v1/families/${familyId}/join-requests/${id}/decision`, data: { decision } });
+    },
+    archiveFamily(familyId, version) {
+        return request({ method: 'POST', url: `/v1/families/${familyId}/archive`, data: { version } });
+    },
+    renameFamily(familyId, name, version) { return request({ method: 'PUT', url: `/v1/families/${familyId}`, data: { name, version } }); },
+    getActivityEntry(id, code) {
+        return request({ method: 'GET', url: `/v1/activities/${id}/entry${code ? `?code=${encodeURIComponent(code)}` : ''}` });
+    },
+    updateActivity(familyId, id, body) {
+        return request({ method: 'PUT', url: `/v1/families/${familyId}/activities/${id}`, data: body });
+    },
+    getReminderPlan(familyId, id) {
+        return request({ method: 'GET', url: `/v1/families/${familyId}/reminder-plans/${id}` });
+    },
+    updateReminderPlan(familyId, id, body) {
+        return request({ method: 'PUT', url: `/v1/families/${familyId}/reminder-plans/${id}`, data: body });
+    },
+    pauseReminderPlan(familyId, id, version) {
+        return request({ method: 'POST', url: `/v1/families/${familyId}/reminder-plans/${id}/pause`, data: { version } });
+    },
+    updateLedgerEntry(familyId, id, body) {
+        return request({ method: 'PUT', url: `/v1/families/${familyId}/ledger-entries/${id}`, data: body });
+    },
+    voidLedgerEntry(familyId, id, version) {
+        return request({ method: 'DELETE', url: `/v1/families/${familyId}/ledger-entries/${id}`, data: { version } });
+    },
+    logout() { return request({ method: 'POST', url: '/v1/wechat/logout' }); },
 };

@@ -4,7 +4,22 @@
     <text class="page-subtitle">吃药要指定到人；运动可以给一个人，也可以给全家；生日可以提前提醒，也可以当天推送。</text>
   </view>
 
+  <view class="panel form-panel" wx:if="{{editingPlan}}">
+    <text class="section-title">修改提醒计划</text>
+    <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" /></view>
+    <view class="field"><text class="label">{{editingPlan.type === 'birthday' ? '本轮生日计算起点' : '第一次提醒日期'}}</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
+    <view class="field"><text class="label">时间</text><picker mode="time" value="{{editTimeInput}}" bindchange="onEditTimeChange"><view class="picker-value">{{editTimeInput}}</view></picker></view>
+    <view class="field" wx:if="{{editingPlan.type === 'birthday'}}"><text class="label">出生日期（保留原阳历/农历设置）</text><input class="input" value="{{editBirthdayInput}}" bindinput="onEditBirthdayInput" placeholder="例如：1965-03-12" /></view>
+    <view class="field" wx:else><text class="label">频次</text><picker range="{{frequencyOptions}}" range-key="label" value="{{editFrequencyIndex}}" bindchange="onEditFrequencyChange"><view class="picker-value">{{frequencyOptions[editFrequencyIndex].label}}</view></picker></view>
+    <text class="helper-text">保留原来的提醒对象。修改后，未发生的提醒重新安排，每位接收人需重新授权本次通知。</text>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSavePlan">保存修改</button>
+    <button class="text-button" bindtap="onCancelPlanEdit">取消修改</button>
+  </view>
   <view class="panel form-panel">
+    <text class="helper-text">保存计划不等于微信通知已授权。每位家人需自己订阅；一次授权对应一次通知，未确认不代表没有吃药或发生异常。</text>
+    <button class="secondary-action" bindtap="onToggleForm">{{formVisible ? '收起新增提醒' : '＋ 新增提醒'}}</button>
+  </view>
+  <view class="panel form-panel" wx:if="{{formVisible}}">
     <text class="section-title">新增一个提醒</text>
     <view class="field">
       <text class="label">提醒类型</text>
@@ -61,7 +76,7 @@
       <switch checked="{{notifyOnBirthday}}" bindchange="onNotifyOnBirthdayChange" />
     </view>
 
-    <button class="primary-action" bindtap="onCreateReminder">保存提醒</button>
+    <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onCreateReminder">保存提醒</button>
   </view>
 
   <view class="section">
@@ -74,8 +89,12 @@
           <text class="reminder-meta">{{item.completionText}}</text>
           <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}} · {{item.statusLabel}}</text>
         </view>
-        <button wx:if="{{!item.isCompleted && item.canComplete}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">我已完成</button>
-        <button wx:if="{{item.canComplete && !item.isCompleted}}" class="complete-button" data-id="{{item.id}}" bindtap="onSubscribeReminder">本次通知</button>
+        <button wx:if="{{!item.isCompleted && item.canComplete}}" disabled="{{busy}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">我已完成</button>
+        <button wx:if="{{item.canSubscribe && !item.isCompleted}}" class="complete-button" disabled="{{busy}}" data-id="{{item.id}}" bindtap="onSubscribeReminder">订阅本次通知</button>
+        <view wx:if="{{item.canManage && item.planId && item.enabled}}">
+          <button class="text-button" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onEditPlan">修改计划</button>
+          <button class="text-button danger" disabled="{{busy}}" data-plan-id="{{item.planId}}" bindtap="onPausePlan">停止计划</button>
+        </view>
       </view>
     </view>
   </view>

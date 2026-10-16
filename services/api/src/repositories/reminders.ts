@@ -13,7 +13,7 @@ export interface ReminderInput {
 const statuses=['accept','reject','ban','filter','unavailable'];
 const templateFor=(type:string)=>process.env[`WECHAT_${type.toUpperCase()}_TEMPLATE_ID`]?.trim()||process.env.WECHAT_REMINDER_TEMPLATE_ID?.trim();
 const occurrenceRow=async(tx:Transaction,familyId:string,id:string)=>{
-  const r=await one(tx,"select * from nestful.reminder_occurrences where family_id=$1 and id=$2",[familyId,assertUuid(id)]);
+  const r=await one(tx,"select o.*,p.enabled plan_enabled from nestful.reminder_occurrences o join nestful.reminder_plans p on p.id=o.plan_id where o.family_id=$1 and o.id=$2",[familyId,assertUuid(id)]);
   if(!r)throw new DomainError(404,'reminder_not_found');return r;
 };
 const dto=async(tx:Transaction,r:Row,actorMemberId:string)=>{
@@ -25,7 +25,7 @@ const dto=async(tx:Transaction,r:Row,actorMemberId:string)=>{
   return {id:r.id as string,familyId:r.family_id as string,planId:r.plan_id as string,title:r.title as string,type:r.type as string,dueAt:iso(r.scheduled_at)!,
     frequency:snapshot.frequency as string,schedule:snapshot.schedule as Schedule,targetScope:snapshot.targetScope as string,
     assigneeMemberId:snapshot.assigneeMemberId as string|undefined,createdByMemberId:snapshot.createdByMemberId as string,
-    targetMemberIds:members.map(m=>m.member_id as string),enabled:!r.canceled_at,
+    targetMemberIds:members.map(m=>m.member_id as string),enabled:!r.canceled_at&&(r.plan_enabled??true),
     occurrenceStatus:mine?.status??'pending',completedAt:iso(mine?.completed_at),completedByMemberId:mine?.status==='completed'?actorMemberId:undefined,
     participants:members.map(m=>({memberId:m.member_id as string,status:m.status as string,completedAt:iso(m.completed_at)})),
     notification:own?{templateId:own.template_id as string,recipientMemberId:own.member_id as string,subscriptionStatus:own.subscription_status as string,
@@ -98,18 +98,39 @@ export const createPlanInTransaction=async(tx:Transaction,familyId:string,actor:
 };
 
 export const remindersRepository={
+  async plan(familyId:string,id:string,userId:string){return transaction(async tx=>{
+    const actor=await activeMember(tx,familyId,userId);
+    const p=await one(tx,'select * from nestful.reminder_plans where family_id=$1 and id=$2',[familyId,assertUuid(id)]);
+    if(!p)throw new DomainError(404,'plan_not_found');
+    if(actor.role!=='admin'&&actor.id!==p.created_by_member_id)throw new DomainError(403,'forbidden');
+    const members=(await tx.query('select member_id from nestful.reminder_plan_members where plan_id=$1',[id])).rows;
+    return {id,version:p.version as number,type:p.type as string,title:p.title as string,dueAt:iso(p.starts_at)!,
+      frequency:p.frequency as string,targetScope:p.target_scope as string,assigneeMemberId:p.assignee_member_id as string|undefined,
+      targetMemberIds:members.map(m=>m.member_id as string),schedule:p.schedule as Schedule,enabled:p.enabled as boolean};
+  });},
+  async pause(familyId:string,id:string,userId:string,version:number){return transaction(async tx=>{
+    const actor=await activeMember(tx,familyId,userId),p=await one(tx,'select * from nestful.reminder_plans where family_id=$1 and id=$2 for update',[familyId,assertUuid(id)]);
+    if(!p)throw new DomainError(404,'plan_not_found');
+    if(actor.role!=='admin'&&actor.id!==p.created_by_member_id)throw new DomainError(403,'forbidden');
+    if(p.version!==version)throw new DomainError(409,'version_conflict');
+    await tx.query('update nestful.reminder_plans set enabled=false,next_generation_at=null,version=version+1,updated_at=now() where id=$1',[id]);
+    await tx.query(`update nestful.reminder_occurrences o set canceled_at=coalesce(canceled_at,now()) where plan_id=$1
+      and not exists(select 1 from nestful.reminder_occurrence_members m where m.occurrence_id=o.id and m.status='completed')`,[id]);
+    await tx.query("update nestful.notification_deliveries set status='canceled',updated_at=now() where status in ('pending','skipped','processing') and occurrence_id in (select id from nestful.reminder_occurrences where plan_id=$1)",[id]);
+    await audit(tx,familyId,actor.id,'reminder.plan.paused','reminder_plan',id);return {id,version:version+1};
+  });},
   async create(familyId:string,userId:string,input:ReminderInput){return transaction(async tx=>{
     const actor=await activeMember(tx,familyId,userId),{occurrence}=await createPlanInTransaction(tx,familyId,actor,input);return dto(tx,occurrence,actor.id);
   });},
   async list(familyId:string,userId:string,input:PageInput={}){return transaction(async tx=>{
     const actor=await activeMember(tx,familyId,userId),{limit,after}=pageWindow(input);
-    const rows=(await tx.query(`select * from nestful.reminder_occurrences where family_id=$1
-      and ($2::timestamptz is null or (scheduled_at,id)<($2::timestamptz,$3::uuid)) order by scheduled_at desc,id desc limit $4`,[familyId,after?.time??null,after?.id??null,limit+1])).rows;
+    const rows=(await tx.query(`select o.*,p.enabled plan_enabled from nestful.reminder_occurrences o join nestful.reminder_plans p on p.id=o.plan_id where o.family_id=$1
+      and ($2::timestamptz is null or (o.scheduled_at,o.id)<($2::timestamptz,$3::uuid)) order by o.scheduled_at desc,o.id desc limit $4`,[familyId,after?.time??null,after?.id??null,limit+1])).rows;
     const data=[];for(const r of rows)data.push(await dto(tx,r,actor.id));return pageResult(data,limit,r=>r.dueAt);
   });},
   async complete(familyId:string,id:string,userId:string){return transaction(async tx=>{
     const actor=await activeMember(tx,familyId,userId),r=await occurrenceRow(tx,familyId,id);
-    if(r.canceled_at)throw new DomainError(409,'reminder_canceled');
+    if(r.canceled_at||!r.plan_enabled)throw new DomainError(409,'reminder_canceled');
     const changed=await tx.query(`update nestful.reminder_occurrence_members set status='completed',completed_at=coalesce(completed_at,now())
       where occurrence_id=$1 and member_id=$2 returning member_id`,[id,actor.id]);
     if(!changed.rowCount)throw new DomainError(403,'not_reminder_participant');
@@ -141,7 +162,7 @@ export const remindersRepository={
   });},
   async subscribe(familyId:string,id:string,userId:string,input:{templateId:string;subscriptionStatus:string}){return transaction(async tx=>{
     const actor=await activeMember(tx,familyId,userId),r=await occurrenceRow(tx,familyId,id);
-    if(r.canceled_at)throw new DomainError(409,'reminder_canceled');
+    if(r.canceled_at||!r.plan_enabled)throw new DomainError(409,'reminder_canceled');
     if(input.templateId!==templateFor(r.type)||!statuses.includes(input.subscriptionStatus))throw new DomainError(400,'invalid_subscription');
     const own=await one(tx,"select * from nestful.reminder_occurrence_members where occurrence_id=$1 and member_id=$2",[id,actor.id]);
     if(!own)throw new DomainError(403,'not_reminder_participant');
@@ -155,9 +176,9 @@ export const remindersRepository={
   async generate(at=new Date()){
     return transaction(async tx=>{
       // Materialize birthday advance notifications up to 30 days ahead. Other plans get the next day.
-      const plans=(await tx.query(`select * from nestful.reminder_plans where enabled and next_generation_at<=
+      const plans=(await tx.query(`select p.* from nestful.reminder_plans p join nestful.families f on f.id=p.family_id where p.enabled and f.archived_at is null and p.next_generation_at<=
         $1::timestamptz+case when type='birthday' then interval '31 days' else interval '1 day' end
-        order by next_generation_at for update skip locked limit 50`,[at])).rows;
+        order by p.next_generation_at for update of p skip locked limit 50`,[at])).rows;
       let generated=0;
       for(const plan of plans){
         const horizon=at.getTime()+(plan.type==='birthday'?31:1)*86400000;let next=iso(plan.next_generation_at);
@@ -190,7 +211,8 @@ export const remindersRepository={
         and next_attempt_at<=$1 and expires_at>$1 and attempt_count<3 order by next_attempt_at for update skip locked limit 1) returning *`,[claimAt,lease]));
       if(!task)break;summary.due++;
       const recipient=await transaction(tx=>one(tx,`select i.openid from nestful.family_members m join nestful.users u on u.id=m.user_id
-        join nestful.wechat_identities i on i.user_id=m.user_id where m.id=$1 and m.status='active' and u.status='active' and i.app_id=$2`,[task.member_id,process.env.WECHAT_APP_ID]));
+        join nestful.wechat_identities i on i.user_id=m.user_id join nestful.families f on f.id=m.family_id
+        where m.id=$1 and m.status='active' and u.status='active' and f.archived_at is null and i.app_id=$2`,[task.member_id,process.env.WECHAT_APP_ID]));
       const r=await transaction(tx=>one(tx,"select * from nestful.reminder_occurrences where id=$1 and canceled_at is null",[task.occurrence_id]));
       if(!recipient||!r){await transaction(tx=>tx.query("update nestful.notification_deliveries set status='canceled',last_error='recipient_or_occurrence_unavailable' where id=$1 and lease_token=$2",[task.id,lease]));summary.skipped++;continue;}
       const started=await transaction(tx=>tx.query("update nestful.notification_deliveries set send_started_at=now(),attempt_count=attempt_count+1 where id=$1 and lease_token=$2 and status='processing' returning id",[task.id,lease]));

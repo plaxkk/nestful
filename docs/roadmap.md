@@ -1,5 +1,10 @@
 # Roadmap
 
+> The current release is the focused family collaboration trial in
+> [MVP Plan](mvp-plan.md). The phases below are a backlog of potential directions,
+> not a checklist that must all ship before MVP. Reprioritize them after trial
+> evidence; albums, caregiver escalation and communication are not current features.
+
 ## Phase 0: Foundation
 
 - Repository setup.

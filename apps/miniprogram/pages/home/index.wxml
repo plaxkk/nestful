@@ -12,7 +12,7 @@
 
   <view class="welcome-copy">
     <text class="page-title">Nestful</text>
-    <text class="page-subtitle">这是家里人一起用的小本子</text>
+    <text class="page-subtitle">把家庭群里的约定，变成能回应、能分工的安排</text>
   </view>
 
   <view class="home-actions">
@@ -28,4 +28,5 @@
       <text class="family-option-note">{{currentFamilyId === item.family.id ? '当前家庭' : '打开'}}</text>
     </button>
   </view>
+  <button class="text-button" bindtap="onOpenHelp">隐私与帮助</button>
 </view>

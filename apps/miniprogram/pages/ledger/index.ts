@@ -1,5 +1,6 @@
 import {
   api,
+  errorMessage,
   type FamilyMember,
   type LedgerCategory,
   type LedgerEntry,
@@ -82,7 +83,8 @@ const withLedgerText = (entry: LedgerEntry, members: FamilyMember[]) => ({
   paidByText: memberName(members, entry.paidByMemberId),
   splitText: entry.splitMemberIds.map((memberId) => memberName(members, memberId)).join("、"),
   recurrenceText: recurrenceLabel(entry.recurrence),
-  isIncome: entry.type === "income"
+  isIncome: entry.type === "income",
+  canManage:Boolean((session.getMember()||{role:''}).role==='admin'||entry.createdByMemberId===(session.getMember()||{id:''}).id)
 });
 
 const emptySummary = () => ({
@@ -175,6 +177,9 @@ const handleAuthLedgerError = () => {
 
 Page({
   data: {
+    busy:false,
+    editingEntry:null as LedgerEntry|null,
+    editTitleInput:'',editAmountInput:'',editDateInput:'',editCategoryIndex:0,
     entryTypes,
     categories,
     recurrenceOptions,
@@ -211,6 +216,30 @@ Page({
 
   onShow() {
     void this.loadLedgerData();
+  },
+  onEditEntry(e:WechatMiniprogram.TouchEvent){
+    const entry=this.data.ledgerEntries.find(r=>r.id===e.currentTarget.dataset.id);if(!entry)return;
+    this.setData({editingEntry:entry,editTitleInput:entry.title,editAmountInput:(entry.amountCents/100).toFixed(2),editDateInput:formatDate(new Date(entry.occurredAt)),editCategoryIndex:Math.max(0,categories.findIndex(c=>c.value===entry.category))});wx.pageScrollTo({scrollTop:0,duration:200});
+  },
+  onCancelEntryEdit(){this.setData({editingEntry:null});},
+  onEditTitleInput(e:WechatMiniprogram.Input){this.setData({editTitleInput:e.detail.value});},
+  onEditAmountInput(e:WechatMiniprogram.Input){this.setData({editAmountInput:e.detail.value});},
+  onEditDateChange(e:WechatMiniprogram.PickerChange){this.setData({editDateInput:String(e.detail.value)});},
+  onEditCategoryChange(e:WechatMiniprogram.PickerChange){this.setData({editCategoryIndex:Number(e.detail.value)});},
+  async onSaveEntryEdit(){
+    const family=session.getFamily(),entry=this.data.editingEntry;if(!family||!entry||this.data.busy)return;
+    const title=this.data.editTitleInput.trim(),amountCents=amountToCents(this.data.editAmountInput),occurredAt=parseDateInput(this.data.editDateInput);
+    if(!title||!amountCents||!Number.isSafeInteger(amountCents)||!occurredAt){wx.showToast({title:'请检查名称、金额和日期',icon:'none'});return;}
+    this.setData({busy:true});
+    try{await api.updateLedgerEntry(family.id,entry.id,{...entry,title,amountCents,occurredAt,category:categories[this.data.editCategoryIndex].value});this.setData({editingEntry:null});await this.loadLedgerData({force:true,showLoading:false});wx.showToast({title:'记录已修改',icon:'none'});}
+    catch(error){wx.showToast({title:errorMessage(error),icon:'none'});}finally{this.setData({busy:false});}
+  },
+  async onVoidEntry(e:WechatMiniprogram.TouchEvent){
+    const family=session.getFamily(),entry=this.data.ledgerEntries.find(r=>r.id===e.currentTarget.dataset.id);if(!family||!entry||this.data.busy)return;
+    const confirmed=await wx.showModal({title:'作废这一笔？',content:entry.recurringReminderId?'这笔不再计入汇总。已有续费提醒会保留，如不再需要，请到提醒页停止计划。':'这笔不再计入汇总，操作记录会保留。'});if(!confirmed.confirm)return;
+    this.setData({busy:true});
+    try{await api.voidLedgerEntry(family.id,entry.id,entry.version);await this.loadLedgerData({force:true,showLoading:false});wx.showToast({title:'记录已作废',icon:'none'});}
+    catch(error){wx.showToast({title:errorMessage(error),icon:'none'});}finally{this.setData({busy:false});}
   },
 
   onTypeChange(event: WechatMiniprogram.PickerChange) {
@@ -340,13 +369,14 @@ Page({
     } catch (error) {
       this.setData({ loading: false, refreshing: false });
       wx.showToast({
-        title: "账本加载失败，请确认 API 已启动",
+        title: "账本加载失败，请检查网络后重试",
         icon: "none"
       });
     }
   },
 
   async onCreateLedgerEntry() {
+    if(this.data.busy)return;
     const family = session.getFamily();
     const member = session.getMember();
     const title = this.data.titleInput.trim();
@@ -383,6 +413,7 @@ Page({
 
     const splitMemberIds = Array.from(new Set([member.id, selectedSplitMember?.id].filter(Boolean) as string[]));
 
+    this.setData({busy:true});
     wx.showLoading({ title: "保存中" });
 
     try {
@@ -418,13 +449,14 @@ Page({
       }
 
       wx.showToast({
-        title: "保存失败，请确认 API 已启动",
+        title: "保存失败，请检查网络后重试",
         icon: "none"
       });
-    }
+    } finally{this.setData({busy:false});}
   },
 
   async onCreateGoalFund() {
+    if(this.data.busy)return;
     const family = session.getFamily();
     const member = session.getMember();
     const title = this.data.goalTitleInput.trim();
@@ -448,6 +480,7 @@ Page({
       return;
     }
 
+    this.setData({busy:true});
     wx.showLoading({ title: "保存中" });
 
     try {
@@ -482,6 +515,6 @@ Page({
         title: "目标保存失败",
         icon: "none"
       });
-    }
+    } finally{this.setData({busy:false});}
   }
 });

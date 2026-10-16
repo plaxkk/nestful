@@ -1,0 +1,1 @@
+.help-page,.help-section{display:flex;flex-direction:column;gap:26rpx}.help-section{margin-top:12rpx}.help-section text{display:block}

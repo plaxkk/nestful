@@ -7,7 +7,8 @@
     "pages/ledger/index",
     "pages/digital-space/index",
     "pages/activities/index",
-    "pages/join/index"
+    "pages/join/index",
+    "pages/help/index"
   ],
   "window": {
     "navigationBarTitleText": "Nestful",

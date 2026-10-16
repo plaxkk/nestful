@@ -1,7 +1,7 @@
 <view class="page digital-page">
   <view class="header">
     <text class="eyebrow">家里的东西，有地方放</text>
-    <text class="page-title">家庭数字空间</text>
+    <text class="page-title">家庭记录与链接</text>
     <text class="page-subtitle">先用文字和链接整理资料、账号说明和记忆。密码和真实文件上传以后再接。</text>
   </view>
 
@@ -79,6 +79,7 @@
           <text class="item-meta" wx:if="{{item.peopleText}}">{{item.peopleText}}</text>
           <text class="item-meta" wx:if="{{item.mediaText}}">{{item.mediaText}}</text>
           <text class="warning-text compact-warning" wx:if="{{item.warningText}}">{{item.warningText}}</text>
+          <button wx:if="{{item.url}}" class="text-button" data-url="{{item.url}}" bindtap="onCopyLink">复制资料链接</button>
         </view>
       </view>
     </view>

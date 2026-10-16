@@ -1,96 +1,64 @@
 # MVP Plan
 
-## Objective
+Updated 2026-10-16. Earlier six-module launch plans are superseded by this scope.
 
-Validate whether a WeChat-first family space can become the daily coordination hub for real families.
+## Product hypothesis
 
-## MVP Timebox
+Families need a way to turn arrangements buried in WeChat group chat into clear
+plans: who is coming, who has not responded, who is doing each preparation task,
+and whether the time or place changed. Validate that job before expanding the
+product into a general household management suite.
 
-Target: 8 to 10 weeks from project kickoff.
+## First trial scope
 
-## Must Ship
+- Real WeChat login, separate families, admin/member permissions and profiles.
+- Individual invites and bounded, expiring, revocable group invites. Group invites
+  default to administrator approval; joining is not inferred from group membership.
+- Exact activity cards, destination preservation through joining, RSVP and tasks.
+- Activity edit/cancel; material changes require other participants to reconfirm.
+- Family homepage with real pending responses, assigned tasks and near-term reminders.
+- Birthday/basic reminder plans, explicit per-recipient one-time subscription state,
+  edit/pause, and preserved completion history.
+- Existing ledger with correction and voiding; text/link records with copyable links.
+- Explicit activity-to-memory saving, independent from the digital space module.
+- Family exit, last-admin protection, management handoff guidance, archive, privacy
+  information, logout and a WeChat feedback/data-request entry.
 
-1. Family space
-   - Create a family.
-   - Invite members through WeChat share card.
-   - Member roles: admin, member, elder, child, guest.
-   - Basic profile fields: nickname, birthday, lunar birthday flag, location, emergency contact.
+## Not current promises
 
-2. Reminders
-   - Birthday and anniversary reminders.
-   - Medicine and exercise reminders.
-   - Bill and subscription renewal reminders.
-   - WeChat subscription message integration after explicit user authorization.
+- Reliable medicine alarms, emergency escalation or confirmation that a user read
+  a notification. One-time subscription is not permanent delivery permission.
+- Real photo/file storage, a password vault, automatic extraction of chat history,
+  automatic group-member import or automatic messages into ordinary WeChat groups.
+- Expense settlement/payments, full meeting/call tooling or a public community.
+- Group tools, group to-dos and dynamic cards before account eligibility and
+  client behavior have been verified. Ordinary shared cards must work first.
 
-3. Family activities
-   - Create activity with time, location, participants, budget, notes.
-   - RSVP status: accepted, declined, tentative.
-   - Activity task assignments.
-   - Activity album linked to memory wall.
+Keep finance and digital records available without treating each as a separate
+launch acquisition promise. Their next investment depends on observed use.
 
-4. Memory wall
-   - Upload media metadata.
-   - Tag people, date, place, activity, and story.
-   - Timeline and activity views.
+## Release gates
 
-5. Health care
-   - Medicine plan.
-   - Exercise plan.
-   - Caregiver alert when elder does not confirm a reminder.
-   - Health record notes.
+1. Complete local quality gate, isolated multi-user Postgres/Fastify tests and
+   emitted mini-program flow regressions.
+2. Build and deploy API; check additive schema migration, runtime privileges and
+   production health/auth isolation. Back up business data before migration.
+3. Compile a mini-program preview. This is not formal publication.
+4. Two real WeChat accounts verify group join/approval, object-specific entry,
+   switching families, RSVP, edit/reconfirm, task completion, exit/revocation,
+   reminder authorization/receipt and privacy. Record failures, not just screenshots.
+5. Verify account-console filing, category, privacy declarations and template
+   eligibility. Submit/publish only after the user's explicit acceptance.
 
-6. Household ledger
-   - Expense records.
-   - Split by member.
-   - Recurring bill reminders.
-   - Family goal funds.
+## Trial and measurement
 
-## Deliberately Deferred
+Recruit 5–10 real families for two weeks. A useful initial activation definition
+is at least two members completing a shared arrangement/response, rather than
+merely creating a family. Check invite-to-join, first-response completion, return
+for the next arrangement, and active-family retention appropriate to event frequency.
 
-- Full in-app audio/video call implementation.
-- Automatic extraction of historical WeChat group photos or messages.
-- Complex asset and investment management.
-- Medical diagnosis or health advice.
-- Open community features outside the family space.
+These are proposed evaluation criteria, not measured success claims. WeChat card
+preparation does not prove a card was sent; provider acceptance does not prove
+notification delivery or reading. Avoid raw tokens and health content in metrics.
 
-## Milestones
-
-### Week 1
-
-- Product interviews with 10 target families.
-- Clickable information architecture.
-- Confirm mini-program home, family space, activity, reminder, memory, health, and ledger flows.
-
-### Week 2
-
-- API contract and domain model finalization.
-- Mini-program visual direction.
-- Backend project setup and database schema draft.
-
-### Weeks 3-5
-
-- Family space, invitation, members, profiles.
-- Birthday and anniversary reminders.
-- Basic activity flow.
-
-### Weeks 6-8
-
-- Memory wall.
-- Health reminders.
-- Household ledger.
-- WeChat share cards and subscription reminders.
-
-### Weeks 9-10
-
-- Internal test with real families.
-- Fix onboarding, invitation, reminder reliability, and privacy problems.
-- Decide phase 2 scope based on retention and active-family data.
-
-## Success Metrics
-
-- Family creation completion rate.
-- Member invitation conversion rate.
-- Average members per family.
-- First-week reminder/activity/memory creation rate.
-- 7-day active family retention.
-- 30-day active family retention.
+See [execution and release evidence](mvp-optimization-2026-10-16.md).
