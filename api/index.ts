@@ -14,6 +14,7 @@ async function getApp() {
 }
 
 export default async function handler(req, res) {
+  const startedAt = performance.now();
   const fastify = await getApp();
   const rawPath = typeof req.query?.path === "string" ? req.query.path : undefined;
   const path = rawPath && rawPath.startsWith("/") ? rawPath : `/${rawPath ?? ""}`;
@@ -33,6 +34,7 @@ export default async function handler(req, res) {
     payload: req.body ? JSON.stringify(req.body) : undefined,
     headers: req.headers,
   });
+  res.setHeader("server-timing", `app;dur=${(performance.now() - startedAt).toFixed(1)}`);
 
   const contentType = response.headers["content-type"];
 

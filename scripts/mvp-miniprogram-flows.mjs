@@ -55,7 +55,7 @@ api.getJoinStatus=async()=>({data:{status:'joined',family:familyB,member:memberB
 await p.onRefreshStatus();assert.equal(session.getFamily().id,familyB.id);assert.match(navigation.at(-1),/activityId=target/);
 console.log('PASS pending applicants cannot enter; approval returns to the original activity');
 
-reset();p=page('home');api.listMyFamilies=async()=>({data:[]});await p.restoreFamilySession();
+reset();p=page('home');api.getHome=async()=>({data:{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0}});await p.restoreFamilySession();
 assert.equal(session.getFamily(),'');assert.equal(p.data.hasFamily,false);assert.equal(p.data.families.length,0);
 console.log('PASS membership restoration removes archived/removed stale family state');
 

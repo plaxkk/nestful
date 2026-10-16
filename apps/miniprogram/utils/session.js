@@ -8,6 +8,7 @@ const tokenKey = "appSessionToken";
 const tokenExpiresAtKey = "appSessionTokenExpiresAt";
 const userKey = "currentUser";
 const primaryFamilyKey = "nestful.primaryFamily";
+let homeRevision = 0;
 const ensureModelVersion = () => {
     if (wx.getStorageSync("nestful.modelVersion") === 2)
         return;
@@ -20,6 +21,8 @@ const readMembersCache = () => {
     return typeof value === "object" && value ? value : {};
 };
 exports.session = {
+    getHomeRevision() { return homeRevision; },
+    markHomeChanged() { homeRevision++; },
     getPrimaryFamilyId() {
         ensureModelVersion();
         const user = wx.getStorageSync(userKey);

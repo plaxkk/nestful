@@ -9,6 +9,7 @@ const userKey = "currentUser";
 const primaryFamilyKey = "nestful.primaryFamily";
 
 type FamilyMembersCache = Record<string, FamilyMember[]>;
+let homeRevision = 0;
 
 const ensureModelVersion = () => {
   if (wx.getStorageSync("nestful.modelVersion") === 2) return;
@@ -23,6 +24,8 @@ const readMembersCache = (): FamilyMembersCache => {
 };
 
 export const session = {
+  getHomeRevision() { return homeRevision; },
+  markHomeChanged() { homeRevision++; },
   getPrimaryFamilyId(): string {
     ensureModelVersion();
     const user = wx.getStorageSync(userKey) as AppUser | "";

@@ -28,6 +28,8 @@ Page({
   },
   restoreEpoch: 0,
   contentEpoch: 0,
+  loadedRevision: -1,
+  loadedUserId: "",
   skipInitialRestore: false,
   preferPrimary: true,
   openSwitcherOnRestore: false,
@@ -70,41 +72,53 @@ Page({
   },
   async restoreFamilySession(force = false) {
     if (this.data.restoring) return;
-    if (!force && !this.preferPrimary && this.data.lastRestoredAt && Date.now() - this.data.lastRestoredAt < refreshIntervalMs) {
-      await this.loadDashboard(); return;
-    }
-    const epoch = this.restoreEpoch;
-    this.setData({ restoring: true, familyListError: "" });
+    const cached = session.getFamily();
+    const user = session.getUser();
+    if (!force && !this.preferPrimary && user && user.id === this.loadedUserId && session.hasValidToken()
+      && this.data.hasFamily && cached && cached.id === this.data.currentFamilyId
+      && this.data.lastRestoredAt && Date.now() - this.data.lastRestoredAt < refreshIntervalMs
+      && this.loadedRevision === session.getHomeRevision() && !this.data.error && !this.data.familyListError) return;
+    const epoch = this.restoreEpoch, contentEpoch = ++this.contentEpoch, revision = session.getHomeRevision();
+    this.setData({ restoring: true, familyListError: "", error: "" });
     try {
       await getWechatIdentity();
-      if (epoch !== this.restoreEpoch) return;
-      const response = await api.listMyFamilies();
-      if (epoch !== this.restoreEpoch) return;
-      const primaryId = session.getPrimaryFamilyId(), currentFamily = session.getFamily();
-      const primary = response.data.find(item => item.family.id === primaryId);
-      const current = response.data.find(item => currentFamily && item.family.id === currentFamily.id);
-      const membership = (this.preferPrimary ? primary : current) ?? current ?? primary ?? response.data[0];
+      if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
+      const current = session.getFamily(), primaryId = session.getPrimaryFamilyId();
+      const preferredId = this.preferPrimary ? primaryId || (current && current.id) : (current && current.id) || primaryId;
+      const response = await api.getHome(preferredId || undefined, current ? current.id : undefined);
+      if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
+      const boot = response.data;
+      const membership = boot.families.find(item => item.family.id === boot.currentFamilyId);
       this.preferPrimary = false;
-      if (!membership) {
+      if (!membership || !boot.dashboard) {
         session.clearFamily();
         this.setData({ ...emptyContent(), hasFamily: false, families: [], currentFamilyId: "", familyName: "", restoring: false, loading: false, lastRestoredAt: Date.now() });
         return;
       }
-      if (!primary) session.setPrimaryFamilyId(membership.family.id);
+      if (!boot.families.some(item => item.family.id === primaryId)) session.setPrimaryFamilyId(membership.family.id);
       this.activateFamily(membership);
+      this.renderDashboard(boot.dashboard);
+      if (boot.activity) this.applyHeroDetails(boot.activity);
+      this.loadedRevision = revision;
+      const loadedUser = session.getUser();
+      this.loadedUserId = loadedUser ? loadedUser.id : "";
       this.setData({
-        families: response.data.map(item => ({ ...item, id: item.family.id, initial: item.family.name.slice(0, 1) })), restoring: false,
+        families: boot.families.map(item => ({ ...item, id: item.family.id, initial: item.family.name.slice(0, 1) })),
+        joinRequestCount: boot.joinRequestCount ?? 0, restoring: false, loading: false,
         lastRestoredAt: Date.now(), switcherVisible: this.openSwitcherOnRestore
       });
       this.openSwitcherOnRestore = false;
-      await this.loadDashboard();
-    } catch {
-      if (epoch !== this.restoreEpoch) return;
-      this.syncHomeState();
-      this.setData({ restoring: false, familyListError: "家庭列表暂时无法更新，请检查网络后重试。" });
-      if (this.data.hasFamily) await this.loadDashboard();
+    } catch (error) {
+      if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
+      if (error instanceof ApiRequestError && [401, 403, 404].includes(error.statusCode)) {
+        session.clearFamily();
+        this.setData({ ...emptyContent(), hasFamily: false, families: [], currentFamilyId: "", familyName: "", lastRestoredAt: 0 });
+      }
+      // Never follow one failed startup request with another slow legacy request.
+      this.setData({ restoring: false, loading: false, familyListError: "暂时没能加载家里的安排，请检查网络后重试。" });
     }
   },
+
   activateFamily(membership: FamilyMembership) {
     const changed = this.data.currentFamilyId !== membership.family.id;
     session.setFamily(membership.family); session.setMember(membership.member); session.setMembers(membership.family.id, membership.members);
@@ -118,25 +132,18 @@ Page({
     const family = session.getFamily();
     if (!family || !this.data.hasFamily) return;
     const epoch = this.restoreEpoch;
-    const contentEpoch = ++this.contentEpoch;
+    const contentEpoch = ++this.contentEpoch, revision = session.getHomeRevision();
     this.setData({ loading: true, error: "" });
     const member = session.getMember();
     if (member && member.role === "admin") void this.loadJoinRequestCount(family.id, epoch, contentEpoch);
     try {
       const d: FamilyDashboard = (await api.getDashboard(family.id)).data;
       if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch || !session.isFamily(family.id)) return;
-      const item = (r: DashboardItem, label: string, page: string, kind: string): HomeItem => ({ ...r, key: `${kind}:${r.id}`, label, page, kind, timeText: dateText(r.at) });
+      this.renderDashboard(d);
+      this.loadedRevision = revision;
+      const loadedUser = session.getUser();
+      this.loadedUserId = loadedUser ? loadedUser.id : "";
       const next = d.upcoming[0] ?? d.activities[0];
-      const todos = [
-        ...d.activities.filter(r => r.id !== next?.id).map(r => item(r, "待我回应", "activities", "activity")),
-        ...d.tasks.map(r => item(r, "我负责", "activities", "task"))
-      ];
-      this.setData({
-        hero: next ? { ...next, timeText: dateText(next.at), location: "", responseText: "", needsResponse: d.activities.some(r => r.id === next.id), actionText: d.activities.some(r => r.id === next.id) ? "回应邀请" : "查看安排" } : null,
-        todos: todos.slice(0, 3), moreTodoCount: Math.max(0, todos.length - 3),
-        reminders: d.reminders.slice(0, 3).map(r => item(r, "与我有关", "reminders", "reminder")),
-        pendingCount: d.activities.length + d.tasks.length + d.reminders.length, loading: false
-      });
       if (next) void this.loadHeroDetails(family.id, next.id, epoch, contentEpoch);
     } catch (error) {
       if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch || !session.isFamily(family.id)) return;
@@ -146,6 +153,28 @@ Page({
         this.setData({ ...emptyContent(), loading: false, error: "暂时没能加载家里的安排，请重试。" });
       }
     }
+  },
+  renderDashboard(d: FamilyDashboard) {
+    const item = (r: DashboardItem, label: string, page: string, kind: string): HomeItem => ({ ...r, key: `${kind}:${r.id}`, label, page, kind, timeText: dateText(r.at) });
+    const next = d.upcoming[0] ?? d.activities[0];
+    const todos = [
+      ...d.activities.filter(r => r.id !== next?.id).map(r => item(r, "待我回应", "activities", "activity")),
+      ...d.tasks.map(r => item(r, "我负责", "activities", "task"))
+    ];
+    this.setData({
+      hero: next ? { ...next, timeText: dateText(next.at), location: "", responseText: "", needsResponse: d.activities.some(r => r.id === next.id), actionText: d.activities.some(r => r.id === next.id) ? "回应邀请" : "查看安排" } : null,
+      todos: todos.slice(0, 3), moreTodoCount: Math.max(0, todos.length - 3),
+      reminders: d.reminders.slice(0, 3).map(r => item(r, "与我有关", "reminders", "reminder")),
+      pendingCount: d.activities.length + d.tasks.length + d.reminders.length, loading: false
+    });
+  },
+  applyHeroDetails(a: Activity) {
+    if (!this.data.hero || this.data.hero.id !== a.id) return;
+    const member = session.getMember(), mine = a.participants?.find(p => member && p.memberId === member.id);
+    const needsResponse = Boolean(mine && ["pending", "tentative"].includes(mine.rsvp));
+    const count = (a.participants ?? []).filter(p => p.rsvp === "accepted").length;
+    if (a.status === "cancelled" || a.status === "completed") { this.setData({ hero: null }); return; }
+    this.setData({ hero: { ...this.data.hero, title: a.title, timeText: dateText(a.startsAt), location: a.location || "", responseText: count ? `${count} 位家人已确认` : "等待家人一起回应", needsResponse, actionText: needsResponse ? "回应邀请" : "查看安排" } });
   },
   async loadJoinRequestCount(familyId: string, epoch: number, contentEpoch: number) {
     try {
@@ -158,11 +187,7 @@ Page({
     try {
       const a = (await api.getActivity(familyId, id)).data;
       if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch || !session.isFamily(familyId) || this.data.hero?.id !== id) return;
-      const member = session.getMember(), mine = a.participants?.find(p => member && p.memberId === member.id);
-      const needsResponse = Boolean(mine && ["pending", "tentative"].includes(mine.rsvp));
-      const count = (a.participants ?? []).filter(p => p.rsvp === "accepted").length;
-      if (a.status === "cancelled" || a.status === "completed") { this.setData({ hero: null }); return; }
-      this.setData({ hero: { ...this.data.hero, title: a.title, timeText: dateText(a.startsAt), location: a.location || "", responseText: count ? `${count} 位家人已确认` : "等待家人一起回应", needsResponse, actionText: needsResponse ? "回应邀请" : "查看安排" } });
+      this.applyHeroDetails(a);
     } catch { /* The independently loaded dashboard remains useful without details. */ }
   },
   onOpenSwitcher() { this.setData({ switcherVisible: true }); },

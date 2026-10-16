@@ -7,6 +7,7 @@ import { spaceRepository } from './repositories/space.js';
 import { remindersRepository } from './repositories/reminders.js';
 import { ledgerRepository } from './repositories/ledger.js';
 import { dashboardRepository } from './repositories/dashboard.js';
+import { homeRepository } from './repositories/home.js';
 import { pageWindow,pageResult } from './repositories/pagination.js';
 import { exchangeWechatCode,getReminderSubscriptionConfig,sendReminderSubscriptionMessage } from './wechat.js';
 
@@ -71,6 +72,11 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
   });
   server.post('/v1/wechat/logout',async r=>{await user(r);await identityStore.revokeSession(bearer(r)!);return {data:{ok:true}};});
   server.get('/v1/me/families',async r=>({data:await familyRepository.memberships((await user(r)).id)}));
+  server.get('/v1/me/home',async(r,reply)=>{
+    reply.header('cache-control','private, no-store');
+    const q=(r.query??{}) as Record<string,string>;
+    return {data:await homeRepository.get((await user(r)).id,q.familyId,q.fallbackFamilyId)};
+  });
   server.post('/v1/families',async(r,reply)=>{
     const u=await user(r),b=body(r);forbiddenIdentity(b);
     return reply.code(201).send({data:await familyRepository.create(u.id,{name:text(b,'name',true)!,ownerDisplayName:text(b,'ownerDisplayName',true)!})});

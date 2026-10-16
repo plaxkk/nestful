@@ -268,6 +268,13 @@ export type ActivityTaskStatus = "open" | "done";
 
 export interface DashboardItem { id: string; title: string; at: string; activityId?: string }
 export interface FamilyDashboard { activities: DashboardItem[]; tasks: DashboardItem[]; reminders: DashboardItem[]; upcoming: DashboardItem[] }
+export interface HomeBootstrap {
+  families: FamilyMembership[];
+  currentFamilyId: string;
+  dashboard: FamilyDashboard | null;
+  activity: Activity | null;
+  joinRequestCount: number | null;
+}
 export interface JoinRequest { id: string; displayName: string; status: string; createdAt?: string; available: boolean }
 export interface ReminderPlan {
   id: string; version: number; type: ReminderType; title: string; dueAt: string;
@@ -385,15 +392,16 @@ const shouldRefreshSession = (options: WechatMiniprogram.RequestOption, error: u
   error instanceof ApiRequestError && error.statusCode === 401 && options.url !== "/v1/wechat/session";
 
 const request = async <T>(options: WechatMiniprogram.RequestOption): Promise<T> => {
+  let response: T;
   try {
-    return await sendRequest<T>(options);
+    response = await sendRequest<T>(options);
   } catch (error) {
     if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
-      return sendRequest<T>(options);
-    }
-
-    throw error;
+      response = await sendRequest<T>(options);
+    } else throw error;
   }
+  if (options.method && options.method !== 'GET' && !options.url.startsWith('/v1/wechat/')) session.markHomeChanged();
+  return response;
 };
 
 const listAll = async <T>(url: string): Promise<ApiResponse<T[]>> => {
@@ -410,6 +418,12 @@ const listAll = async <T>(url: string): Promise<ApiResponse<T[]>> => {
 };
 
 export const api = {
+  getHome(familyId?: string, fallbackFamilyId?: string) {
+    const params: string[] = [];
+    if (familyId) params.push(`familyId=${encodeURIComponent(familyId)}`);
+    if (fallbackFamilyId) params.push(`fallbackFamilyId=${encodeURIComponent(fallbackFamilyId)}`);
+    return request<ApiResponse<HomeBootstrap>>({ method: 'GET', url: `/v1/me/home${params.length ? `?${params.join('&')}` : ''}` });
+  },
   createFamily(body: { name: string; ownerUserId: string; ownerDisplayName: string; ownerWechatOpenId?: string }) {
     return request<ApiResponse<{ family: Family; ownerMember: FamilyMember }>>({
       method: "POST",

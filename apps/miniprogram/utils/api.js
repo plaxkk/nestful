@@ -107,15 +107,20 @@ const refreshAppSession = async () => {
 };
 const shouldRefreshSession = (options, error) => error instanceof ApiRequestError && error.statusCode === 401 && options.url !== "/v1/wechat/session";
 const request = async (options) => {
+    let response;
     try {
-        return await sendRequest(options);
+        response = await sendRequest(options);
     }
     catch (error) {
         if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
-            return sendRequest(options);
+            response = await sendRequest(options);
         }
-        throw error;
+        else
+            throw error;
     }
+    if (options.method && options.method !== 'GET' && !options.url.startsWith('/v1/wechat/'))
+        session_1.session.markHomeChanged();
+    return response;
 };
 const listAll = async (url) => {
     const data = [], seen = new Set();
@@ -132,6 +137,14 @@ const listAll = async (url) => {
     return { data };
 };
 exports.api = {
+    getHome(familyId, fallbackFamilyId) {
+        const params = [];
+        if (familyId)
+            params.push(`familyId=${encodeURIComponent(familyId)}`);
+        if (fallbackFamilyId)
+            params.push(`fallbackFamilyId=${encodeURIComponent(fallbackFamilyId)}`);
+        return request({ method: 'GET', url: `/v1/me/home${params.length ? `?${params.join('&')}` : ''}` });
+    },
     createFamily(body) {
         return request({
             method: "POST",

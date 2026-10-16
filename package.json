@@ -13,6 +13,7 @@
     "miniprogram:smoke": "node scripts/miniprogram-static-smoke.mjs",
     "miniprogram:flows": "node scripts/mvp-miniprogram-flows.mjs",
     "miniprogram:home-flows": "node scripts/home-miniprogram-flows.mjs",
+    "miniprogram:startup": "node scripts/home-startup-performance.mjs",
     "miniprogram:devtools-smoke": "node scripts/miniprogram-devtools-smoke.mjs",
     "experience:upload-plan": "node scripts/experience-upload-plan.mjs",
     "experience:record-draft": "node scripts/experience-validation-record-draft.mjs",

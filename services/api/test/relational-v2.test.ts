@@ -14,6 +14,7 @@ import { ledgerRepository } from "../src/repositories/ledger.js";
 import Fastify from "fastify";
 import { registerRoutes } from "../src/routes.js";
 import { dashboardRepository } from '../src/repositories/dashboard.js';
+import { homeRepository } from '../src/repositories/home.js';
 
 // Intentionally local-only: this runner creates and drops its own database.
 const adminUrl = new URL(process.env.NESTFUL_TEST_ADMIN_URL ?? "postgresql://127.0.0.1:55432/postgres");
@@ -415,4 +416,57 @@ test('cursor pagination never drops records sharing a millisecond boundary',asyn
     for(const row of page.data){assert.equal(seen.has(row.id),false);seen.add(row.id);}cursor=page.nextCursor;
   }while(cursor);
   assert.ok(ids.every(id=>seen.has(id)));
+});
+
+test('home bootstrap authenticates once and returns one complete selected-family view',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Startup family',ownerDisplayName:'A'});
+  const activity=await activitiesRepository.create(f.family.id,a.userId,{title:'Startup dinner',startsAt:new Date(Date.now()+86400000).toISOString(),location:'Home'});
+  const invite=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group',requiresApproval:true});
+  await familyRepository.accept(invite.code,b.userId,'Pending applicant');
+  const app=Fastify();await registerRoutes(app);await app.ready();
+  try{
+    assert.equal((await app.inject({url:'/v1/me/home'})).statusCode,401);
+    const response=await app.inject({url:`/v1/me/home?familyId=${f.family.id}`,headers:{authorization:`Bearer ${a.token}`}});
+    assert.equal(response.statusCode,200);
+    assert.equal(response.headers['cache-control'],'private, no-store');
+    const result=response.json().data;
+    assert.equal(result.currentFamilyId,f.family.id);assert.equal(result.dashboard.upcoming[0].id,activity.id);
+    assert.equal(result.activity.id,activity.id);assert.equal(result.activity.location,'Home');assert.equal(result.joinRequestCount,1);
+    assert.ok(result.families.some((m:any)=>m.family.id===f.family.id));
+    assert.equal(JSON.stringify(result).includes(invite.code),false);
+  }finally{await app.close();}
+});
+
+test('home bootstrap never selects an unauthorized family or exposes private member profiles',async()=>{
+  const foreign=await familyRepository.create(outsider.userId,{name:'Unjoined bootstrap family',ownerDisplayName:'Outside'});
+  const f=await familyRepository.create(b.userId,{name:'Bootstrap privacy',ownerDisplayName:'B'});
+  await familyRepository.updateMember(f.family.id,f.ownerMember.id,b.userId,{version:1,emergencyContact:'private-contact',privateNotes:'private-notes'});
+  const result=await homeRepository.get(b.userId,foreign.family.id,f.family.id);
+  assert.equal(result.currentFamilyId,f.family.id);
+  assert.ok(result.families.every(m=>m.family.id!==foreign.family.id));
+  assert.equal(JSON.stringify(result).includes('private-contact'),false);assert.equal(JSON.stringify(result).includes('private-notes'),false);
+});
+
+test('home bootstrap gives empty accounts an empty view and ordinary members no admin applications',async()=>{
+  const empty=await identityStore.createSession({appId:'test-app',openid:'empty-bootstrap'});
+  const result=await homeRepository.get(empty.userId,otherFamily.family.id);
+  assert.deepEqual(result,{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0});
+  const f=await familyRepository.create(a.userId,{name:'Bootstrap member',ownerDisplayName:'A'});
+  const invitation=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group',requiresApproval:false});
+  await familyRepository.accept(invitation.code,b.userId,'B');
+  const privateInvite=await familyRepository.invite(f.family.id,a.userId,undefined,{mode:'group',requiresApproval:true});
+  await familyRepository.accept(privateInvite.code,outsider.userId,'Waiting applicant');
+  const member=await homeRepository.get(b.userId,f.family.id);
+  assert.equal(member.currentFamilyId,f.family.id);assert.equal(member.joinRequestCount,0);
+});
+
+test('home bootstrap excludes archived families and Vercel exposes non-sensitive request timing',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Archived bootstrap',ownerDisplayName:'A'});
+  await familyRepository.archive(f.family.id,a.userId,f.family.version);
+  const result=await homeRepository.get(a.userId,f.family.id,family.family.id);
+  assert.equal(result.currentFamilyId,family.family.id);assert.ok(result.families.every(m=>m.family.id!==f.family.id));
+  const {default:handler}=await import('../../../api/index.js');
+  const headers:Record<string,string>={};let status=0,body:any;
+  await handler({query:{path:'/v1/me/home',familyId:family.family.id},method:'GET',headers:{authorization:`Bearer ${a.token}`}},{setHeader(k:string,v:string){headers[k]=v;},status(n:number){status=n;},send(s:string){body=JSON.parse(s);}});
+  assert.equal(status,200);assert.equal(body.data.currentFamilyId,family.family.id);assert.match(headers['server-timing'],/^app;dur=\d+(\.\d+)?$/);
 });
