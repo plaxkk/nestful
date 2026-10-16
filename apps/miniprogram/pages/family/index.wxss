@@ -12,6 +12,22 @@
   padding-top: 28rpx;
 }
 
+.family-list-link {
+  align-self: flex-start;
+  margin: 0;
+  padding: 16rpx 0;
+  border: 0;
+  background: transparent;
+  color: #9a4b2f;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.family-list-link::after {
+  border: 0;
+}
+
 .eyebrow {
   color: #9a4b2f;
   font-size: 30rpx;

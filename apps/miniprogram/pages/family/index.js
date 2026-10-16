@@ -108,6 +108,9 @@ Page({
     onShow() {
         void this.loadFamilyData();
     },
+    onOpenFamilyList() {
+        wx.reLaunch({ url: "/pages/home/index" });
+    },
     async loadFamilyData(options = {}) {
         const family = session_1.session.getFamily();
         const currentMember = session_1.session.getMember();

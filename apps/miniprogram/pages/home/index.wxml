@@ -1,5 +1,5 @@
 <view class="page home paper-pattern">
-  <view class="hero-card">
+  <view class="hero-card" wx:if="{{!hasFamily}}">
     <view class="notebook-image">
       <view class="sun-strip"></view>
       <view class="book">
@@ -17,6 +17,15 @@
 
   <view class="home-actions">
     <button class="primary-action pill" bindtap="onPrimaryAction">{{primaryText}}</button>
+    <button wx:if="{{hasFamily}}" class="secondary-action pill" bindtap="onCreateFamily">创建另一个家庭</button>
     <button class="secondary-action pill" bindtap="onJoinFamily">输入邀请码加入</button>
+  </view>
+
+  <view class="family-list" wx:if="{{families.length > 1}}">
+    <text class="section-title">切换家庭</text>
+    <button class="family-option" wx:for="{{families}}" wx:key="id" data-id="{{item.family.id}}" bindtap="onSelectFamily">
+      <text class="family-option-name">{{item.family.name}}</text>
+      <text class="family-option-note">{{currentFamilyId === item.family.id ? '当前家庭' : '打开'}}</text>
+    </button>
   </view>
 </view>

@@ -4,6 +4,7 @@
     <text class="page-title">{{familyName}}</text>
     <text class="page-subtitle">先把家人邀请进来，再慢慢放生日、健康、活动、记忆和账本。</text>
     <view class="member-pill">{{memberCountText}}</view>
+    <button class="family-list-link" bindtap="onOpenFamilyList">切换或创建家庭 ›</button>
   </view>
 
   <view class="panel invite-panel" wx:if="{{!inviteCode}}">

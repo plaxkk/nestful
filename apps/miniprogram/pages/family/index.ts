@@ -139,6 +139,10 @@ Page({
     void this.loadFamilyData();
   },
 
+  onOpenFamilyList() {
+    wx.reLaunch({ url: "/pages/home/index" });
+  },
+
   async loadFamilyData(options: LoadOptions = {}) {
     const family = session.getFamily();
     const currentMember = session.getMember();

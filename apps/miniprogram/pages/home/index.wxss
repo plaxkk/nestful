@@ -98,3 +98,40 @@
 .pill {
   border-radius: 999rpx;
 }
+
+.family-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.family-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  width: 100%;
+  min-height: 104rpx;
+  margin: 0;
+  padding: 24rpx;
+  border: 2rpx solid #ffe2db;
+  border-radius: 24rpx;
+  background: #ffffff;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.family-option-name {
+  flex: 1;
+  min-width: 0;
+  color: #2b1611;
+  font-size: 34rpx;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.family-option-note {
+  flex-shrink: 0;
+  color: #63635f;
+  font-size: 30rpx;
+}

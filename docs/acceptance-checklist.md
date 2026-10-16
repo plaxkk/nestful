@@ -60,6 +60,16 @@ Expected setup flow:
 13. Fill a display name and tap "确认加入家庭".
 14. App navigates back to the family page and the member list includes the new family member.
 
+Repeat creation without deleting data:
+
+1. In the family page, tap "切换或创建家庭" near the heading.
+2. On the home page, tap "创建另一个家庭" and give it a different name.
+3. Create it and verify the new family opens with the current user as admin.
+4. Return through "切换或创建家庭" and choose the original family from "切换家庭".
+5. Verify its existing members and data remain available. Opening/canceling the
+   create form must preserve the selected family; a late home refresh must not
+   overwrite the newly selected or created family.
+
 Expected family-task flow:
 
 1. In family overview, "今天要处理" contains entries for birthday/health, activity, memory wall, and ledger.
