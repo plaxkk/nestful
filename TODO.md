@@ -84,6 +84,7 @@ Last updated: 2026-06-09
 - [x] Add private relational schema, composite foreign keys, least-privilege role, and transactional integrity checks.
 - [x] Replace global JSONB runtime storage with module repositories and session-derived actors.
 - [x] Add disposable Postgres/Fastify integration tests and deterministic TS-to-JS client generation.
-- [x] Complete final permission/concurrency review and full release quality gate (19 Postgres/Fastify tests).
+- [x] Complete final permission/concurrency review and full release quality gate (21 Postgres/Fastify tests after the performance follow-up).
 - [x] Back up legacy state, configure the user-selected pooler login with explicit runtime-role membership, authenticate scheduling, and deploy.
-- [ ] Generate the v2 phone preview and record two-account acceptance; formal release requires user confirmation.
+- [x] Generate the v2 phone preview with the official WeChat CLI (2026-10-16).
+- [ ] Record two-account phone acceptance; formal release requires user confirmation.

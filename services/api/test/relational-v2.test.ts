@@ -111,6 +111,27 @@ test('concurrent record creation never overwrites other families',async()=>{
   assert.ok(list.every(f=>memberships.some(m=>m.family.id===f.family.id)));
   assert.equal(new Set(list.map(f=>f.family.id)).size,8);
 });
+test('family creation commits its first admin and audit together and rolls back failed references',async()=>{
+  const created=await familyRepository.create(a.userId,{name:'Atomic family',ownerDisplayName:'A'});
+  const event=(await owner.query("select actor_user_id,actor_member_id,resource_id from nestful.audit_events where family_id=$1 and action='family.created'",[created.family.id])).rows;
+  assert.deepEqual(event,[{actor_user_id:a.userId,actor_member_id:created.ownerMember.id,resource_id:created.family.id}]);
+  const counts=async()=>(await owner.query(`select (select count(*) from nestful.families) as families,
+    (select count(*) from nestful.family_members) as members,(select count(*) from nestful.audit_events) as audits`)).rows[0];
+  const before=await counts();
+  await assert.rejects(familyRepository.create(randomUUID(),{name:'Must roll back',ownerDisplayName:'missing user'}),{code:'23503'});
+  assert.deepEqual(await counts(),before);
+});
+test('batched membership reads keep family members and private fields isolated',async()=>{
+  const list=await familyRepository.memberships(a.userId);
+  assert.ok(list.length>2);
+  for(const item of list){
+    assert.equal(item.member.userId,a.userId);
+    assert.equal(item.member.familyId,item.family.id);
+    assert.ok(item.members.every(m=>m.familyId===item.family.id&&!('emergencyContact' in m)&&!('privateNotes' in m)));
+    assert.ok(item.members.some(m=>m.id===item.member.id));
+  }
+  assert.ok(!list.some(item=>item.family.id===otherFamily.family.id&&item.members.every(m=>m.userId!==a.userId)));
+});
 test('activities and digital space work independently; explicit memory save is idempotent and immutable',async()=>{
   const standalone=await spaceRepository.create(family.family.id,a.userId,{kind:'document',title:'Independent document',url:'https://example.com'});
   assert.equal(standalone.activityId,null);

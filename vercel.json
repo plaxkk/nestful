@@ -1,4 +1,5 @@
 {
+  "regions": ["pdx1"],
   "rewrites": [
     { "source": "/v1/:path*", "destination": "/api?path=/v1/:path*" },
     { "source": "/health", "destination": "/api?path=/health" }

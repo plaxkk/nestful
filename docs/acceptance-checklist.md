@@ -38,10 +38,10 @@ Open WeChat DevTools with:
 ```
 
 V2 preview status is recorded in the cutover evidence. Historical DevTools
-checks are not current phone acceptance. Open the project and log in before
-running an authorized preview. The CLI may need
-`ELECTRON_BASE_APP_PATH=/Applications/wechatwebdevtools.app/Contents/MacOS`
-with the current Electron installation.
+checks are not current phone acceptance. Open the project, log in, and enable
+Settings → Security → Service Port before running an authorized preview. The
+current Electron CLI discovers its own service port; do not force the historical
+9420 port or the old installation-path override.
 
 Expected setup flow:
 

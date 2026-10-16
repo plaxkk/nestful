@@ -2,8 +2,9 @@
 
 Status: implemented and deployed on 2026-10-16. Production health confirms
 `relational-v2`. The early-data reset retains the legacy JSONB row and a private
-backup; new runtime records start in the separate `nestful` schema. Phone preview
-and two-account acceptance remain pending. See [cutover evidence](v2-cutover-2026-10-16.md).
+backup; new runtime records start in the separate `nestful` schema. The phone
+preview was generated successfully; two-account acceptance remains pending. See
+[cutover evidence](v2-cutover-2026-10-16.md).
 
 ## Product decisions
 

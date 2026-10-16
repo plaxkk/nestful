@@ -13,7 +13,9 @@ deployment configuration, generated mini-program JS, transport/event bindings,
 and experience-version evidence tooling.
 
 The runtime gate starts a disposable local Postgres instance and exercises the
-actual repositories and Fastify routes. All 19 tests passed at cutover. They
+actual repositories and Fastify routes. All 19 tests passed at cutover; the
+performance follow-up passed 21, adding atomic family/audit rollback and batched
+membership isolation coverage. They
 cover identity/session concurrency, family isolation, private fields, invitations,
 last-admin/version conflicts, foreign keys, expense totals, independent activity
 and space modules, idempotent memory snapshots, cursor precision, calendar/lunar

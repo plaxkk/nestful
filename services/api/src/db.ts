@@ -23,9 +23,9 @@ export type Transaction = PoolClient;
 export const transaction = async <T>(operation: (tx: Transaction) => Promise<T>): Promise<T> => {
   const tx = await getPool().connect();
   try {
-    await tx.query("begin");
     // Also restrict old migration-owner credentials during the deployment transition.
-    await tx.query("set local role nestful_runtime");
+    // One protocol round trip; SET LOCAL still expires at commit/rollback.
+    await tx.query("begin; set local role nestful_runtime");
     const result = await operation(tx);
     await tx.query("commit");
     return result;

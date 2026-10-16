@@ -33,22 +33,32 @@ export const familyRepository = {
   async create(userId:string,input:{name:string;ownerDisplayName:string}) {
     if (!input.name.trim()||input.name.length>100||!input.ownerDisplayName.trim()) throw new DomainError(400,"invalid_family");
     return transaction(async tx=>{
-      const f=(await one(tx,"insert into nestful.families(name,created_by_user_id) values($1,$2) returning *",[input.name.trim(),assertUuid(userId)]))!;
-      const m=(await one(tx,"insert into nestful.family_members(family_id,user_id,display_name,role) values($1,$2,$3,'admin') returning *",[f.id,userId,input.ownerDisplayName.trim()]))!;
-      await audit(tx,f.id,m.id,"family.created","family",f.id);
-      return {family:familyDto(f),ownerMember:memberDto(m)};
+      // Depend on RETURNING rows rather than rereading sibling CTE writes.
+      // Family, first admin and audit stay atomic, with one database round trip.
+      const row=(await one(tx,`with family as (
+        insert into nestful.families(name,created_by_user_id) values($1,$2) returning *
+      ), member as (
+        insert into nestful.family_members(family_id,user_id,display_name,role)
+        select id,$2,$3,'admin' from family returning *
+      ), audited as (
+        insert into nestful.audit_events(family_id,actor_user_id,actor_member_id,action,resource_type,resource_id)
+        select family.id,$2,member.id,'family.created','family',family.id from family cross join member
+        returning id
+      ) select to_jsonb(family) as family,to_jsonb(member) as member from family cross join member`,
+        [input.name.trim(),assertUuid(userId),input.ownerDisplayName.trim()]))!;
+      return {family:familyDto(row.family),ownerMember:memberDto(row.member)};
     });
   },
   async memberships(userId:string) {
     return transaction(async tx=>{
       const rows=(await tx.query(`select f.*,m.id member_id from nestful.families f join nestful.family_members m on m.family_id=f.id
         where m.user_id=$1 and m.status='active' and f.archived_at is null order by m.joined_at desc limit 100`,[assertUuid(userId)])).rows;
-      const memberships=[];
-      for (const f of rows) {
-        const members=(await tx.query("select * from nestful.family_members where family_id=$1 and status='active' order by joined_at,id",[f.id])).rows;
-        memberships.push({family:familyDto(f),member:memberDto(members.find(m=>m.id===f.member_id)!),members:members.map(m=>memberDto(m))});
-      }
-      return memberships;
+      if(!rows.length)return [];
+      const members=(await tx.query("select * from nestful.family_members where family_id=any($1::uuid[]) and status='active' order by joined_at,id",[rows.map(f=>f.id)])).rows;
+      return rows.map(f=>{
+        const familyMembers=members.filter(m=>m.family_id===f.id);
+        return {family:familyDto(f),member:memberDto(familyMembers.find(m=>m.id===f.member_id)!),members:familyMembers.map(m=>memberDto(m))};
+      });
     });
   },
   async get(familyId:string,userId:string) {

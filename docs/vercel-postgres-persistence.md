@@ -44,6 +44,10 @@ separate improvement. Passwords containing special characters must be URL encode
 Updating a variable requires a new deployment. Never temporarily deploy an
 endpoint that exposes credentials, or downgrade a Secret to readable config.
 
+Keep function compute close to the database: `vercel.json` selects `pdx1`,
+matching the current Supabase `us-west-2` endpoint. If the database region changes,
+review this setting too. See [the measured performance follow-up](api-performance-2026-10-16.md).
+
 ## Recovery history
 
 On 2026-10-15, the replacement Supabase project's legacy state was restored from
