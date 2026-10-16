@@ -469,4 +469,5 @@ test('home bootstrap excludes archived families and Vercel exposes non-sensitive
   const headers:Record<string,string>={};let status=0,body:any;
   await handler({query:{path:'/v1/me/home',familyId:family.family.id},method:'GET',headers:{authorization:`Bearer ${a.token}`}},{setHeader(k:string,v:string){headers[k]=v;},status(n:number){status=n;},send(s:string){body=JSON.parse(s);}});
   assert.equal(status,200);assert.equal(body.data.currentFamilyId,family.family.id);assert.match(headers['server-timing'],/^app;dur=\d+(\.\d+)?$/);
+  assert.equal(headers['cache-control'],'private, no-store');
 });

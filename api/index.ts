@@ -41,6 +41,8 @@ export default async function handler(req, res) {
   if (contentType) {
     res.setHeader("content-type", contentType);
   }
+  const cacheControl = response.headers["cache-control"];
+  if (cacheControl) res.setHeader("cache-control", cacheControl);
 
   res.status(response.statusCode);
   res.send(response.body);
