@@ -42,5 +42,5 @@ for (const [name, command, args] of checks) {
 const elapsedSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
 console.log(`\nrelease local gate passed in ${elapsedSeconds}s`);
 console.log(
-  "Runtime checks still require npm run release:runtime-smoke, which starts the local API and DevTools automation but never previews or uploads.",
+  "Runtime checks still require npm run release:runtime-smoke, which runs Fastify against disposable Postgres. Real WeChat phone acceptance is a separate step.",
 );

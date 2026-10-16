@@ -3,16 +3,19 @@ import { session } from "../../utils/session";
 
 const roleOptions: Array<{ label: string; value: FamilyMember["role"] }> = [
   { label: "管理员", value: "admin" },
-  { label: "家人", value: "member" },
-  { label: "长辈", value: "elder" },
-  { label: "孩子", value: "child" },
-  { label: "访客", value: "guest" }
+  { label: "家人", value: "member" }
 ];
 
 const birthdayCalendarOptions: Array<{ label: string; value: "solar" | "lunar" }> = [
   { label: "阳历", value: "solar" },
   { label: "农历", value: "lunar" }
 ];
+const identityTagOptions = [
+  { label: "不设置", value: null },
+  { label: "长辈", value: "elder" },
+  { label: "孩子", value: "child" },
+  { label: "访客", value: "guest" }
+] as const;
 
 const pageRefreshIntervalMs = 30 * 1000;
 
@@ -111,6 +114,9 @@ Page({
     isCurrentMemberAdmin: false,
     roleOptions,
     birthdayCalendarOptions,
+    identityTagOptions,
+    editIdentityTagIndex: 0,
+    editBirthdayLeapMonth: false,
     memberEditorVisible: false,
     selectedMember: null as (FamilyMember & { avatarText: string; roleLabel: string; detailText: string }) | null,
     editDisplayNameInput: "",
@@ -340,6 +346,8 @@ Page({
         editRoleIndex: roleIndex >= 0 ? roleIndex : 1,
         editBirthdayInput: member.birthday ?? "",
         editBirthdayCalendarIndex: calendarIndex >= 0 ? calendarIndex : 0,
+        editIdentityTagIndex: Math.max(0, identityTagOptions.findIndex(item => item.value === member.identityTag)),
+        editBirthdayLeapMonth: Boolean(member.birthdayLeapMonth),
         editLocationInput: member.location ?? "",
         editEmergencyContactInput: member.emergencyContact ?? "",
         canEditSelectedRole: this.data.isCurrentMemberAdmin,
@@ -386,6 +394,12 @@ Page({
   onEditRoleChange(event: WechatMiniprogram.PickerChange) {
     this.setData({ editRoleIndex: Number(event.detail.value) });
   },
+  onEditIdentityTagChange(event: WechatMiniprogram.PickerChange) {
+    this.setData({ editIdentityTagIndex: Number(event.detail.value) });
+  },
+  onEditBirthdayLeapMonthChange(event: WechatMiniprogram.SwitchChange) {
+    this.setData({ editBirthdayLeapMonth: event.detail.value });
+  },
 
   onEditBirthdayCalendarChange(event: WechatMiniprogram.PickerChange) {
     this.setData({ editBirthdayCalendarIndex: Number(event.detail.value) });
@@ -417,10 +431,13 @@ Page({
 
     try {
       const response = await api.updateMember(family.id, selectedMember.id, {
+        version: selectedMember.version,
         displayName,
         role: this.data.canEditSelectedRole ? roleOptions[this.data.editRoleIndex]?.value : undefined,
         birthday: this.data.editBirthdayInput.trim(),
         birthdayCalendar: birthdayCalendarOptions[this.data.editBirthdayCalendarIndex]?.value,
+        birthdayLeapMonth: this.data.editBirthdayCalendarIndex === 1 && this.data.editBirthdayLeapMonth,
+        identityTag: identityTagOptions[this.data.editIdentityTagIndex]?.value ?? null,
         location: this.data.editLocationInput.trim(),
         emergencyContact: this.data.editEmergencyContactInput.trim()
       });
@@ -472,7 +489,7 @@ Page({
         wx.showLoading({ title: "处理中" });
 
         try {
-          await api.removeMember(family.id, selectedMember.id);
+          await api.removeMember(family.id, selectedMember.id, selectedMember.version);
           wx.hideLoading();
           this.setData({
             memberEditorVisible: false,

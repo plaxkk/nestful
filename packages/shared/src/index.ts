@@ -1,4 +1,4 @@
-export type FamilyRole = "admin" | "member" | "elder" | "child" | "guest";
+export type FamilyRole = "admin" | "member";
 
 export type ReminderType =
   | "birthday"
@@ -40,6 +40,7 @@ export interface User {
 }
 
 export interface Family {
+  version: number;
   id: string;
   name: string;
   ownerUserId: string;
@@ -47,6 +48,7 @@ export interface Family {
 }
 
 export interface FamilyMember {
+  version: number;
   id: string;
   familyId: string;
   userId?: string;
@@ -55,6 +57,9 @@ export interface FamilyMember {
   role: FamilyRole;
   birthday?: string;
   birthdayCalendar?: "solar" | "lunar";
+  birthdayLeapMonth?: boolean;
+  identityTag?: "elder" | "child" | "guest";
+  status?: "active" | "inactive";
   location?: string;
   emergencyContact?: string;
   joinedAt?: string;
@@ -92,6 +97,7 @@ export interface Reminder {
   dueAt: string;
   occurrenceNumber?: number;
   occurrenceStatus?: ReminderOccurrenceStatus;
+  participants: Array<{ memberId: string; status: ReminderOccurrenceStatus; completedAt?: string }>;
   assigneeMemberId?: string;
   targetScope?: ReminderTargetScope;
   targetMemberIds?: string[];
@@ -142,6 +148,8 @@ export interface ReminderSchedule {
   birthdayDate?: string;
   advanceDays?: number;
   notifyOnDay?: boolean;
+  birthdayCalendar?: "solar" | "lunar";
+  birthdayLeapMonth?: boolean;
 }
 
 export interface ReminderNotification {
@@ -149,7 +157,7 @@ export interface ReminderNotification {
   recipientMemberId: string;
   recipientOpenId?: string;
   subscriptionStatus: "accept" | "reject" | "ban" | "filter" | "unavailable";
-  sendStatus: "pending" | "sent" | "failed" | "skipped";
+  sendStatus: "pending" | "processing" | "sent" | "failed" | "skipped" | "expired" | "unknown" | "canceled";
   requestedAt: string;
   sentAt?: string;
   lastAttemptAt?: string;
@@ -159,6 +167,7 @@ export interface ReminderNotification {
 }
 
 export interface Activity {
+  version: number;
   id: string;
   familyId: string;
   title: string;
@@ -185,6 +194,7 @@ export interface ActivityParticipant {
 }
 
 export interface ActivityTask {
+  version: number;
   id: string;
   activityId: string;
   familyId: string;
@@ -208,6 +218,7 @@ export interface MemoryItem {
 }
 
 export interface DigitalSpaceItem {
+  version: number;
   id: string;
   familyId: string;
   kind: DigitalSpaceItemKind;
@@ -245,6 +256,7 @@ export interface HealthPlan {
 }
 
 export interface LedgerEntry {
+  version: number;
   id: string;
   familyId: string;
   type: LedgerEntryType;
@@ -259,6 +271,7 @@ export interface LedgerEntry {
 }
 
 export interface LedgerGoalFund {
+  version: number;
   id: string;
   familyId: string;
   title: string;

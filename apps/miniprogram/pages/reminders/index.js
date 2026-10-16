@@ -1,588 +1,416 @@
-const { api } = require("../../utils/api");
-const { session } = require("../../utils/session");
-const { requestReminderSubscription } = require("../../utils/wechat");
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const api_1 = require("../../utils/api");
+const session_1 = require("../../utils/session");
+const wechat_1 = require("../../utils/wechat");
 const reminderTypes = [
-  { label: "生日", value: "birthday" },
-  { label: "吃药", value: "medicine" },
-  { label: "运动", value: "exercise" },
+    { label: "生日", value: "birthday" },
+    { label: "吃药", value: "medicine" },
+    { label: "运动", value: "exercise" }
 ];
-
 const frequencyOptions = [
-  { label: "仅一次", value: "once", timesOfDay: [] },
-  { label: "每天一次", value: "daily_once", timesOfDay: ["08:00"] },
-  { label: "每天两次", value: "daily_twice", timesOfDay: ["08:00", "20:00"] },
-  { label: "每天三次", value: "daily_three_times", timesOfDay: ["08:00", "13:00", "20:00"] },
-  { label: "每周一次", value: "weekly", timesOfDay: ["08:00"] },
+    { label: "仅一次", value: "once", timesOfDay: [] },
+    { label: "每天一次", value: "daily_once", timesOfDay: ["08:00"] },
+    { label: "每天两次", value: "daily_twice", timesOfDay: ["08:00", "20:00"] },
+    { label: "每天三次", value: "daily_three_times", timesOfDay: ["08:00", "13:00", "20:00"] },
+    { label: "每周一次", value: "weekly", timesOfDay: ["08:00"] }
 ];
-
 const targetScopeOptions = [
-  { label: "全家一起", value: "family" },
-  { label: "指定成员", value: "member" },
+    { label: "全家一起", value: "family" },
+    { label: "指定成员", value: "member" }
 ];
-
 const pageRefreshIntervalMs = 30 * 1000;
-
 const advanceDayOptions = [0, 1, 3, 7, 14, 30].map((value) => ({
-  label: value === 0 ? "不提前" : `提前 ${value} 天`,
-  value,
+    label: value === 0 ? "不提前" : `提前 ${value} 天`,
+    value
 }));
-
 const pad = (value) => value.toString().padStart(2, "0");
-
-const formatInputTime = (date) =>
-  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
-    date.getMinutes(),
-  )}`;
-
+const formatInputTime = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 const formatDateInput = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
 const defaultDueAtInput = () => {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  date.setHours(8, 0, 0, 0);
-
-  return formatInputTime(date);
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(8, 0, 0, 0);
+    return formatInputTime(date);
 };
-
 const normalizeDueAt = (value) => {
-  const parsed = new Date(value.replace(" ", "T"));
-
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+    const parsed = new Date(value.replace(" ", "T"));
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
-
 const nextBirthdayDueAt = (birthdayDate, advanceDays) => {
-  const [monthText, dayText] = birthdayDate.split("-").slice(1);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  if (!month || !day) {
-    return undefined;
-  }
-
-  const now = new Date();
-  let birthday = new Date(now.getFullYear(), month - 1, day, 8, 0, 0, 0);
-  let dueAt = new Date(birthday);
-  dueAt.setDate(dueAt.getDate() - advanceDays);
-
-  if (dueAt.getTime() <= now.getTime()) {
-    birthday = new Date(now.getFullYear() + 1, month - 1, day, 8, 0, 0, 0);
-    dueAt = new Date(birthday);
+    const [monthText, dayText] = birthdayDate.split("-").slice(1);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    if (!month || !day) {
+        return undefined;
+    }
+    const now = new Date();
+    let birthday = new Date(now.getFullYear(), month - 1, day, 8, 0, 0, 0);
+    let dueAt = new Date(birthday);
     dueAt.setDate(dueAt.getDate() - advanceDays);
-  }
-
-  return dueAt.toISOString();
+    if (dueAt.getTime() <= now.getTime()) {
+        birthday = new Date(now.getFullYear() + 1, month - 1, day, 8, 0, 0, 0);
+        dueAt = new Date(birthday);
+        dueAt.setDate(dueAt.getDate() - advanceDays);
+    }
+    return dueAt.toISOString();
 };
-
 const memberName = (member) => {
-  const displayName = member?.displayName.trim();
-
-  if (displayName && displayName !== "我") {
-    return displayName;
-  }
-
-  return member?.role === "admin" ? "家庭管理员" : "家人";
+    const displayName = member?.displayName.trim();
+    if (displayName && displayName !== "我") {
+        return displayName;
+    }
+    return member?.role === "admin" ? "家庭管理员" : "家人";
 };
-
 const typeLabel = (type) => reminderTypes.find((item) => item.value === type)?.label ?? "提醒";
-
 const notificationLabel = (reminder) => {
-  if (!reminder.notification) {
+    if (!reminder.notification) {
+        return "";
+    }
+    if (reminder.notification.sendStatus === "sent") {
+        return " · 已发微信通知";
+    }
+    if (reminder.notification.sendStatus === "pending") {
+        return " · 微信通知待发送";
+    }
     return "";
-  }
-
-  if (reminder.notification.sendStatus === "sent") {
-    return " · 已发微信通知";
-  }
-
-  if (reminder.notification.sendStatus === "pending") {
-    return " · 微信通知待发送";
-  }
-
-  return "";
 };
-
 const reminderMeta = (reminder) => {
-  const scheduleParts = [
-    reminder.schedule?.targetLabel,
-    reminder.schedule?.frequencyLabel,
-    reminder.schedule?.birthdayDate ? `生日 ${reminder.schedule.birthdayDate}` : undefined,
-  ].filter(Boolean);
-
-  return scheduleParts.length > 0 ? ` · ${scheduleParts.join(" · ")}` : "";
+    const scheduleParts = [
+        reminder.schedule?.targetLabel,
+        reminder.schedule?.frequencyLabel,
+        reminder.schedule?.birthdayDate ? `生日 ${reminder.schedule.birthdayDate}` : undefined
+    ].filter(Boolean);
+    return scheduleParts.length > 0 ? ` · ${scheduleParts.join(" · ")}` : "";
 };
-
 const withReminderText = (reminder, hasNextOccurrence) => ({
-  ...reminder,
-  typeLabel: typeLabel(reminder.type),
-  dueAtText: formatInputTime(new Date(reminder.dueAt)),
-  statusLabel: `${reminder.completedAt ? "已完成" : "待提醒"}${hasNextOccurrence ? " · 下次已安排" : ""}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
-  isCompleted: Boolean(reminder.completedAt),
+    ...reminder,
+    typeLabel: typeLabel(reminder.type),
+    dueAtText: formatInputTime(new Date(reminder.dueAt)),
+    statusLabel: `${reminder.completedAt ? "已完成" : "待提醒"}${hasNextOccurrence ? " · 下次已安排" : ""}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
+    isCompleted: Boolean(reminder.completedAt),
+    canComplete: Boolean(reminder.participants?.some(participant => participant.memberId === (session_1.session.getMember() || { id: "" }).id)),
+    completionText: `已完成 ${reminder.participants?.filter(p => p.status === "completed").length ?? 0}/${reminder.participants?.length ?? 0} 人`
 });
-
 const statusCodeFromError = (error) => {
-  if (typeof error === "object" && error && "statusCode" in error) {
-    const statusCode = error.statusCode;
-
-    if (typeof statusCode === "number") {
-      return statusCode;
+    if (typeof error === "object" && error && "statusCode" in error) {
+        const statusCode = error.statusCode;
+        if (typeof statusCode === "number") {
+            return statusCode;
+        }
     }
-  }
-
-  if (error instanceof Error) {
-    const match = error.message.match(/status (\d+)/);
-
-    return match ? Number(match[1]) : undefined;
-  }
-
-  return undefined;
+    if (error instanceof Error) {
+        const match = error.message.match(/status (\d+)/);
+        return match ? Number(match[1]) : undefined;
+    }
+    return undefined;
 };
-
 const isAuthReminderError = (error) => {
-  const statusCode = statusCodeFromError(error);
-
-  return statusCode === 401 || statusCode === 403;
+    const statusCode = statusCodeFromError(error);
+    return statusCode === 401 || statusCode === 403;
 };
-
 Page({
-  data: {
-    reminderTypes,
-    frequencyOptions,
-    targetScopeOptions,
-    advanceDayOptions,
-    typeIndex: 1,
-    memberIndex: 0,
-    frequencyIndex: 1,
-    targetScopeIndex: 0,
-    advanceDayIndex: 3,
-    titleInput: "提醒吃药",
-    dueAtInput: defaultDueAtInput(),
-    birthdayDateInput: formatDateInput(new Date()),
-    notifyOnBirthday: true,
-    members: [],
-    memberOptions: [],
-    reminders: [],
-    loading: false,
-    refreshing: false,
-    lastLoadedAt: 0,
-  },
-
-  onShow() {
-    void this.loadPage();
-  },
-
-  onTypeChange(event) {
-    const typeIndex = Number(event.detail.value);
-    const reminderType = reminderTypes[typeIndex]?.value;
-    const nextTitle = reminderType === "birthday" ? "家人生日" : reminderType === "exercise" ? "提醒运动" : "提醒吃药";
-
-    this.setData({
-      typeIndex,
-      titleInput: nextTitle,
-      frequencyIndex: reminderType === "medicine" ? 1 : 0,
-    });
-  },
-
-  onMemberChange(event) {
-    const memberIndex = Number(event.detail.value);
-    const member = this.data.members[memberIndex];
-
-    this.setData({
-      memberIndex,
-      birthdayDateInput: member?.birthday ?? this.data.birthdayDateInput,
-    });
-  },
-
-  onFrequencyChange(event) {
-    this.setData({
-      frequencyIndex: Number(event.detail.value),
-    });
-  },
-
-  onTargetScopeChange(event) {
-    this.setData({
-      targetScopeIndex: Number(event.detail.value),
-    });
-  },
-
-  onAdvanceDayChange(event) {
-    this.setData({
-      advanceDayIndex: Number(event.detail.value),
-    });
-  },
-
-  onTitleInput(event) {
-    this.setData({
-      titleInput: event.detail.value,
-    });
-  },
-
-  onDueAtInput(event) {
-    this.setData({
-      dueAtInput: event.detail.value,
-    });
-  },
-
-  onBirthdayDateInput(event) {
-    this.setData({
-      birthdayDateInput: event.detail.value,
-    });
-  },
-
-  onNotifyOnBirthdayChange(event) {
-    this.setData({
-      notifyOnBirthday: event.detail.value,
-    });
-  },
-
-  async loadPage(options = {}) {
-    if (
-      !options.force &&
-      this.data.lastLoadedAt > 0 &&
-      Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs
-    ) {
-      return;
-    }
-
-    if (this.data.refreshing && !options.force) {
-      return;
-    }
-
-    this.setData({ refreshing: true });
-    await Promise.all([
-      this.loadMembers(),
-      this.loadReminders({ showLoading: options.showLoading ?? this.data.reminders.length === 0 }),
-    ]);
-    this.setData({
-      refreshing: false,
-      lastLoadedAt: Date.now(),
-    });
-  },
-
-  async loadMembers() {
-    const family = session.getFamily();
-
-    if (!family) {
-      return;
-    }
-
-    const cachedMembers = session.getMembers(family.id);
-
-    if (cachedMembers.length > 0) {
-      this.setData({
-        members: cachedMembers,
-        memberOptions: cachedMembers.map(memberName),
-        birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput,
-      });
-    }
-
-    try {
-      const response = await api.listMembers(family.id);
-      const members = response.data;
-      session.setMembers(family.id, members);
-
-      this.setData({
-        members,
-        memberOptions: members.map(memberName),
-        birthdayDateInput: members[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput,
-      });
-    } catch {
-      if (this.data.members.length === 0) {
-        this.setData({
-          members: [],
-          memberOptions: [],
-        });
-      }
-    }
-  },
-
-  async loadReminders(options = {}) {
-    const family = session.getFamily();
-
-    if (!family) {
-      wx.redirectTo({ url: "/pages/home/index" });
-      return;
-    }
-
-    const shouldShowLoading = options.showLoading ?? this.data.reminders.length === 0;
-
-    this.setData({ loading: shouldShowLoading });
-
-    try {
-      const response = await api.listReminders(family.id);
-      const pendingPlanIds = new Set(
-        response.data
-          .filter((reminder) => reminder.planId && !reminder.completedAt)
-          .map((reminder) => reminder.planId),
-      );
-
-      this.setData({
-        reminders: response.data
-          .slice()
-          .sort((left, right) => Date.parse(left.dueAt) - Date.parse(right.dueAt))
-          .map((reminder) => withReminderText(reminder, Boolean(reminder.planId && reminder.completedAt && pendingPlanIds.has(reminder.planId)))),
-        loading: false,
-      });
-    } catch (error) {
-      this.setData({ loading: false, refreshing: false });
-      wx.showToast({
-        title: "提醒加载失败，请确认 API 已启动",
-        icon: "none",
-      });
-    }
-  },
-
-  buildReminderBodies(member, creatorId) {
-    const reminderType = reminderTypes[this.data.typeIndex]?.value;
-    const title = this.data.titleInput.trim();
-    const frequency = frequencyOptions[this.data.frequencyIndex] ?? frequencyOptions[0];
-    const targetScope = targetScopeOptions[this.data.targetScopeIndex]?.value ?? "family";
-
-    if (!reminderType || !title) {
-      return [];
-    }
-
-    if (reminderType === "birthday") {
-      const birthdayDate = this.data.birthdayDateInput.trim();
-      const advanceDays = advanceDayOptions[this.data.advanceDayIndex]?.value ?? 0;
-      const bodies = [];
-      const birthdayTarget = memberName(member);
-
-      if (advanceDays > 0) {
-        const advanceDueAt = nextBirthdayDueAt(birthdayDate, advanceDays);
-
-        if (advanceDueAt) {
-          bodies.push({
-            type: "birthday",
-            title: `${birthdayTarget}生日提醒`,
-            dueAt: advanceDueAt,
-            createdByMemberId: creatorId,
-            assigneeMemberId: member.id,
-            targetScope: "member",
-            targetMemberIds: [member.id],
-            frequency: "yearly",
-            schedule: {
-              targetLabel: birthdayTarget,
-              frequencyLabel: `提前 ${advanceDays} 天`,
-              birthdayDate,
-              advanceDays,
-              notifyOnDay: this.data.notifyOnBirthday,
-            },
-          });
-        }
-      }
-
-      if (this.data.notifyOnBirthday) {
-        const dayDueAt = nextBirthdayDueAt(birthdayDate, 0);
-
-        if (dayDueAt) {
-          bodies.push({
-            type: "birthday",
-            title: `${birthdayTarget}今天生日`,
-            dueAt: dayDueAt,
-            createdByMemberId: creatorId,
-            assigneeMemberId: member.id,
-            targetScope: "member",
-            targetMemberIds: [member.id],
-            frequency: "yearly",
-            schedule: {
-              targetLabel: birthdayTarget,
-              frequencyLabel: "当天推送",
-              birthdayDate,
-              advanceDays: 0,
-              notifyOnDay: true,
-            },
-          });
-        }
-      }
-
-      return bodies;
-    }
-
-    const dueAt = normalizeDueAt(this.data.dueAtInput.trim());
-
-    if (!dueAt) {
-      return [];
-    }
-
-    if (reminderType === "medicine") {
-      return [
-        {
-          type: "medicine",
-          title,
-          dueAt,
-          createdByMemberId: creatorId,
-          assigneeMemberId: member.id,
-          targetScope: "member",
-          targetMemberIds: [member.id],
-          frequency: frequency.value,
-          schedule: {
-            targetLabel: memberName(member),
-            frequencyLabel: frequency.label,
-            timesOfDay: frequency.timesOfDay,
-          },
-        },
-      ];
-    }
-
-    const isFamilyTarget = targetScope === "family";
-
-    if (isFamilyTarget) {
-      const familyTargets = this.data.members.length > 0 ? this.data.members : [member];
-
-      return familyTargets.map((targetMember) => ({
-        type: "exercise",
-        title,
-        dueAt,
-        createdByMemberId: creatorId,
-        assigneeMemberId: targetMember.id,
-        targetScope: "member",
-        targetMemberIds: [targetMember.id],
-        frequency: frequency.value,
-        schedule: {
-          targetLabel: memberName(targetMember),
-          frequencyLabel: frequency.label,
-          timesOfDay: frequency.timesOfDay,
-        },
-      }));
-    }
-
-    return [
-      {
-        type: "exercise",
-        title,
-        dueAt,
-        createdByMemberId: creatorId,
-        assigneeMemberId: member.id,
-        targetScope,
-        targetMemberIds: [member.id],
-        frequency: frequency.value,
-        schedule: {
-          targetLabel: memberName(member),
-          frequencyLabel: frequency.label,
-          timesOfDay: frequency.timesOfDay,
-        },
-      },
-    ];
-  },
-
-  async onCreateReminder() {
-    const family = session.getFamily();
-    const creator = session.getMember();
-    const selectedMember = this.data.members[this.data.memberIndex] ?? creator;
-
-    if (!family || !creator) {
-      wx.showToast({
-        title: "请先创建家庭",
-        icon: "none",
-      });
-      return;
-    }
-
-    if (!selectedMember) {
-      wx.showToast({
-        title: "请先添加家庭成员",
-        icon: "none",
-      });
-      return;
-    }
-
-    const reminderBodies = this.buildReminderBodies(selectedMember, creator.id);
-
-    if (reminderBodies.length === 0) {
-      wx.showToast({
-        title: "请补全提醒设置",
-        icon: "none",
-      });
-      return;
-    }
-
-    wx.showLoading({ title: "保存中" });
-
-    try {
-      let acceptedSubscription = false;
-      const fanoutFamilyReminder =
-        reminderBodies.length > 1 &&
-        reminderBodies.every((reminderBody) => reminderBody.type === "exercise") &&
-        targetScopeOptions[this.data.targetScopeIndex]?.value === "family";
-      const createRequests = [];
-
-      for (const reminderBody of reminderBodies) {
-        const shouldAttachNotification = !fanoutFamilyReminder || reminderBody.assigneeMemberId === creator.id;
-        const subscription = shouldAttachNotification
-          ? await requestReminderSubscription(reminderBody.type)
-          : undefined;
-        acceptedSubscription = acceptedSubscription || subscription?.subscriptionStatus === "accept";
-
-        createRequests.push(api.createReminder(family.id, {
-          ...reminderBody,
-          notificationSubscription: subscription
-            ? {
-                templateId: subscription.templateId,
-                recipientMemberId: creator.id,
-                subscriptionStatus: subscription.subscriptionStatus,
-              }
-            : undefined,
-        }));
-      }
-
-      await Promise.all(createRequests);
-
-      wx.hideLoading();
-      this.setData({
-        titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
+    data: {
+        reminderTypes,
+        frequencyOptions,
+        targetScopeOptions,
+        advanceDayOptions,
+        typeIndex: 1,
+        memberIndex: 0,
+        frequencyIndex: 1,
+        targetScopeIndex: 0,
+        advanceDayIndex: 3,
+        titleInput: "提醒吃药",
         dueAtInput: defaultDueAtInput(),
-      });
-      void this.loadPage({ force: true, showLoading: false });
-      wx.showToast({
-        title: acceptedSubscription ? "提醒已保存，到点会通知" : "提醒已保存",
-        icon: "success",
-      });
-    } catch (error) {
-      wx.hideLoading();
-      if (isAuthReminderError(error)) {
-        session.clear();
-        wx.showToast({
-          title: "登录已失效，请重新进入家庭",
-          icon: "none",
+        birthdayDateInput: formatDateInput(new Date()),
+        notifyOnBirthday: true,
+        members: [],
+        memberOptions: [],
+        reminders: [],
+        loading: false,
+        refreshing: false,
+        lastLoadedAt: 0
+    },
+    onShow() {
+        void this.loadPage();
+    },
+    onTypeChange(event) {
+        const typeIndex = Number(event.detail.value);
+        const reminderType = reminderTypes[typeIndex]?.value;
+        const nextTitle = reminderType === "birthday" ? "家人生日" : reminderType === "exercise" ? "提醒运动" : "提醒吃药";
+        this.setData({
+            typeIndex,
+            titleInput: nextTitle,
+            frequencyIndex: reminderType === "medicine" ? 1 : 0
         });
-        wx.redirectTo({ url: "/pages/home/index" });
-        return;
-      }
-
-      wx.showToast({
-        title: "保存失败，请确认 API 已启动",
-        icon: "none",
-      });
+    },
+    onMemberChange(event) {
+        const memberIndex = Number(event.detail.value);
+        const member = this.data.members[memberIndex];
+        this.setData({
+            memberIndex,
+            birthdayDateInput: member?.birthday ?? this.data.birthdayDateInput
+        });
+    },
+    onFrequencyChange(event) {
+        this.setData({
+            frequencyIndex: Number(event.detail.value)
+        });
+    },
+    onTargetScopeChange(event) {
+        this.setData({
+            targetScopeIndex: Number(event.detail.value)
+        });
+    },
+    onAdvanceDayChange(event) {
+        this.setData({
+            advanceDayIndex: Number(event.detail.value)
+        });
+    },
+    onTitleInput(event) {
+        this.setData({
+            titleInput: event.detail.value
+        });
+    },
+    onDueAtInput(event) {
+        this.setData({
+            dueAtInput: event.detail.value
+        });
+    },
+    onBirthdayDateInput(event) {
+        this.setData({
+            birthdayDateInput: event.detail.value
+        });
+    },
+    onNotifyOnBirthdayChange(event) {
+        this.setData({
+            notifyOnBirthday: event.detail.value
+        });
+    },
+    async loadPage(options = {}) {
+        if (!options.force &&
+            this.data.lastLoadedAt > 0 &&
+            Date.now() - this.data.lastLoadedAt < pageRefreshIntervalMs) {
+            return;
+        }
+        if (this.data.refreshing && !options.force) {
+            return;
+        }
+        this.setData({ refreshing: true });
+        await Promise.all([
+            this.loadMembers(),
+            this.loadReminders({ showLoading: options.showLoading ?? this.data.reminders.length === 0 })
+        ]);
+        this.setData({
+            refreshing: false,
+            lastLoadedAt: Date.now()
+        });
+    },
+    async loadMembers() {
+        const family = session_1.session.getFamily();
+        if (!family) {
+            return;
+        }
+        const cachedMembers = session_1.session.getMembers(family.id);
+        if (cachedMembers.length > 0) {
+            this.setData({
+                members: cachedMembers,
+                memberOptions: cachedMembers.map(memberName),
+                birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
+            });
+        }
+        try {
+            const response = await api_1.api.listMembers(family.id);
+            const members = response.data;
+            session_1.session.setMembers(family.id, members);
+            this.setData({
+                members,
+                memberOptions: members.map(memberName),
+                birthdayDateInput: members[this.data.memberIndex]?.birthday ?? this.data.birthdayDateInput
+            });
+        }
+        catch {
+            if (this.data.members.length === 0) {
+                this.setData({
+                    members: [],
+                    memberOptions: []
+                });
+            }
+        }
+    },
+    async loadReminders(options = {}) {
+        const family = session_1.session.getFamily();
+        if (!family) {
+            wx.redirectTo({ url: "/pages/home/index" });
+            return;
+        }
+        const shouldShowLoading = options.showLoading ?? this.data.reminders.length === 0;
+        this.setData({ loading: shouldShowLoading });
+        try {
+            const response = await api_1.api.listReminders(family.id);
+            const pendingPlanIds = new Set(response.data
+                .filter((reminder) => reminder.planId && !reminder.completedAt)
+                .map((reminder) => reminder.planId));
+            this.setData({
+                reminders: response.data
+                    .slice()
+                    .sort((left, right) => Date.parse(left.dueAt) - Date.parse(right.dueAt))
+                    .map((reminder) => withReminderText(reminder, Boolean(reminder.planId && reminder.completedAt && pendingPlanIds.has(reminder.planId)))),
+                loading: false
+            });
+        }
+        catch (error) {
+            this.setData({ loading: false, refreshing: false });
+            wx.showToast({
+                title: "提醒加载失败，请确认 API 已启动",
+                icon: "none"
+            });
+        }
+    },
+    buildReminderBodies(member, creatorId) {
+        const type = reminderTypes[this.data.typeIndex]?.value;
+        const title = this.data.titleInput.trim();
+        const frequency = frequencyOptions[this.data.frequencyIndex] ?? frequencyOptions[0];
+        const dueAt = normalizeDueAt(this.data.dueAtInput.trim());
+        if (!type || !title || !dueAt)
+            return [];
+        if (type === "birthday") {
+            return [{ type, title, dueAt, createdByMemberId: creatorId, assigneeMemberId: member.id,
+                    targetScope: "member", targetMemberIds: [creatorId], frequency: "yearly",
+                    schedule: { birthdayDate: this.data.birthdayDateInput.trim(), birthdayCalendar: member.birthdayCalendar ?? "solar",
+                        birthdayLeapMonth: member.birthdayLeapMonth, advanceDays: advanceDayOptions[this.data.advanceDayIndex]?.value ?? 0,
+                        notifyOnDay: this.data.notifyOnBirthday, targetLabel: memberName(member), frequencyLabel: "每年" } }];
+        }
+        const targetScope = type === "exercise" ? targetScopeOptions[this.data.targetScopeIndex]?.value ?? "member" : "member";
+        return [{ type, title, dueAt, createdByMemberId: creatorId, assigneeMemberId: member.id,
+                targetScope, targetMemberIds: targetScope === "member" ? [member.id] : undefined,
+                frequency: frequency.value, schedule: { timesOfDay: frequency.timesOfDay, frequencyLabel: frequency.label,
+                    targetLabel: targetScope === "family" ? "全家" : memberName(member) } }];
+    },
+    async onCreateReminder() {
+        const family = session_1.session.getFamily();
+        const creator = session_1.session.getMember();
+        const selectedMember = this.data.members[this.data.memberIndex] ?? creator;
+        if (!family || !creator) {
+            wx.showToast({
+                title: "请先创建家庭",
+                icon: "none"
+            });
+            return;
+        }
+        if (!selectedMember) {
+            wx.showToast({
+                title: "请先添加家庭成员",
+                icon: "none"
+            });
+            return;
+        }
+        const reminderBodies = this.buildReminderBodies(selectedMember, creator.id);
+        if (reminderBodies.length === 0) {
+            wx.showToast({
+                title: "请补全提醒设置",
+                icon: "none"
+            });
+            return;
+        }
+        wx.showLoading({ title: "保存中" });
+        try {
+            let acceptedSubscription = false;
+            const fanoutFamilyReminder = reminderBodies.length > 1 &&
+                reminderBodies.every((reminderBody) => reminderBody.type === "exercise") &&
+                targetScopeOptions[this.data.targetScopeIndex]?.value === "family";
+            const createRequests = [];
+            for (const reminderBody of reminderBodies) {
+                const shouldAttachNotification = reminderBody.targetScope === "family" || Boolean(reminderBody.targetMemberIds?.includes(creator.id));
+                const subscription = shouldAttachNotification
+                    ? await (0, wechat_1.requestReminderSubscription)(reminderBody.type)
+                    : undefined;
+                acceptedSubscription = acceptedSubscription || subscription?.subscriptionStatus === "accept";
+                createRequests.push(api_1.api.createReminder(family.id, {
+                    ...reminderBody,
+                    notificationSubscription: subscription
+                        ? {
+                            templateId: subscription.templateId,
+                            recipientMemberId: creator.id,
+                            subscriptionStatus: subscription.subscriptionStatus
+                        }
+                        : undefined
+                }));
+            }
+            await Promise.all(createRequests);
+            wx.hideLoading();
+            this.setData({
+                titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
+                dueAtInput: defaultDueAtInput()
+            });
+            void this.loadPage({ force: true, showLoading: false });
+            wx.showToast({
+                title: acceptedSubscription ? "提醒已保存，请留意通知状态" : "提醒已保存",
+                icon: "success"
+            });
+        }
+        catch (error) {
+            wx.hideLoading();
+            if (isAuthReminderError(error)) {
+                session_1.session.clear();
+                wx.showToast({
+                    title: "登录已失效，请重新进入家庭",
+                    icon: "none"
+                });
+                wx.redirectTo({ url: "/pages/home/index" });
+                return;
+            }
+            wx.showToast({
+                title: "保存失败，请确认 API 已启动",
+                icon: "none"
+            });
+        }
+    },
+    async onSubscribeReminder(event) {
+        const family = session_1.session.getFamily();
+        const id = event.currentTarget.dataset.id;
+        const reminder = this.data.reminders.find(item => item.id === id);
+        if (!family || !reminder)
+            return;
+        try {
+            const subscription = await (0, wechat_1.requestReminderSubscription)(reminder.type);
+            if (!subscription) {
+                wx.showToast({ title: "通知暂不可用", icon: "none" });
+                return;
+            }
+            await api_1.api.subscribeReminder(family.id, id, subscription);
+            await this.loadPage({ force: true, showLoading: false });
+            wx.showToast({ title: "已更新本次通知授权", icon: "none" });
+        }
+        catch {
+            wx.showToast({ title: "授权未更新，请检查是否有待发送通知", icon: "none" });
+        }
+    },
+    async onCompleteReminder(event) {
+        const member = session_1.session.getMember();
+        const reminderId = event.currentTarget.dataset.id;
+        if (!member || !reminderId) {
+            wx.showToast({
+                title: "请先创建家庭",
+                icon: "none"
+            });
+            return;
+        }
+        try {
+            await api_1.api.completeReminder(reminderId, {
+                actorMemberId: member.id
+            });
+            await this.loadPage({ force: true, showLoading: false });
+            wx.showToast({
+                title: "已标记完成",
+                icon: "success"
+            });
+        }
+        catch (error) {
+            wx.showToast({
+                title: "操作失败，请稍后再试",
+                icon: "none"
+            });
+        }
     }
-  },
-
-  async onCompleteReminder(event) {
-    const member = session.getMember();
-    const reminderId = event.currentTarget.dataset.id;
-
-    if (!member || !reminderId) {
-      wx.showToast({
-        title: "请先创建家庭",
-        icon: "none",
-      });
-      return;
-    }
-
-    try {
-      await api.completeReminder(reminderId, {
-        actorMemberId: member.id,
-      });
-      await this.loadPage({ force: true, showLoading: false });
-      wx.showToast({
-        title: "已标记完成",
-        icon: "success",
-      });
-    } catch (error) {
-      wx.showToast({
-        title: "操作失败，请稍后再试",
-        icon: "none",
-      });
-    }
-  },
 });

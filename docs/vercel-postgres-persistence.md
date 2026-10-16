@@ -1,173 +1,59 @@
-# Vercel Postgres Persistence
+# Vercel Postgres persistence — v2
 
-Nestful production must not rely on Vercel local files. Vercel functions can be recreated at any time, so production persistence uses Postgres-compatible cloud storage.
+Nestful requires Postgres. File persistence and the single global JSONB state
+have been removed from the new API. No schema creation occurs in an API request.
 
-## Required Environment Variables
+## Provision
 
-Set these in the Vercel Nestful project for Production:
+1. Back up `public.nestful_app_state` before the early-data reset.
+2. Run `services/api/migrations/003_relational_v2_up.sql`, `004_cursor_timestamp_precision_up.sql`, and `005_runtime_role_membership_up.sql` as the migration owner. The last migration grants that login explicit `SET TRUE` membership, required on PostgreSQL 16+.
+3. Create a separate database login with a generated password and grant it
+   `nestful_runtime`; never commit its password or connection URL.
+4. Use the exact Transaction pooler endpoint from Supabase Connect (usually port
+   6543). Its pooled username is `<login-role>.<project-ref>`.
+5. Configure Vercel Production `DATABASE_URL` with the selected login and
+   `PGSSL=require`. Keep the existing WeChat credentials and template IDs.
+6. Set a strong `CRON_SECRET` and provide the same value to the external scheduler
+   and GitHub `NESTFUL_CRON_SECRET`. Dispatch requires a bearer token; it no longer
+   permits unauthenticated requests or a secret in the query string.
+7. Deploy the matching API and preview client after all checks pass.
 
-```text
-NESTFUL_STORAGE=postgres
-DATABASE_URL=<Supabase or Postgres pooled connection string>
-PGSSL=require
-```
+The Supabase project is `qrspwgrkxogbpvrdafnn`. V2 business tables are in the
+private **nestful** schema, not the default public schema. Do not expose that
+schema through PostgREST. `nestful_runtime` has DML but no DDL rights, and cannot
+update or delete audit events. Every API transaction enters this role. On
+2026-10-16 the user chose the existing `postgres` pooler connection and explicitly
+authorized `GRANT nestful_runtime TO postgres WITH INHERIT FALSE, SET TRUE`.
+The connection credential therefore still has the owner's privileges outside
+the API's restricted transactions; switching to a dedicated login remains a
+separate improvement. Passwords containing special characters must be URL encoded.
 
-Remove the old `DATA_FILE` Production variable after `DATABASE_URL` is set. `DATA_FILE` is only for local development.
+## Verify
 
-If the external Postgres database is unavailable during an experience-version
-acceptance, deploy with file storage as a temporary fallback:
+- `GET /health` must return `storage: relational-v2`; it now checks database access.
+- Anonymous family, member, reminder, activity, ledger, and space requests must
+  fail. The old global `GET /v1/families` route is removed.
+- Two real WeChat users create/join a family, then verify reminders, per-person
+  completion, ledger, activities, and independently created space entries.
+- Complete an activity, then explicitly save it as memory. Repeating that action
+  must not create duplicate memories.
+- Verify scheduler authorization and inspect notification states. Provider
+  acceptance is not confirmation of delivery or reading.
 
-```text
-NESTFUL_STORAGE=file
-DATA_FILE=/tmp/nestful.json
-```
+`DATABASE_URL` and other production Secrets cannot be read back with env pull.
+Updating a variable requires a new deployment. Never temporarily deploy an
+endpoint that exposes credentials, or downgrade a Secret to readable config.
 
-This restores the mini-program API on Vercel, but it is not durable production
-persistence. Switch back to Postgres after `DATABASE_URL` is known-good.
+## Recovery history
 
-## Recommended Database
+On 2026-10-15, the replacement Supabase project's legacy state was restored from
+`db_cluster-22-08-2026@03-11-27.backup.gz`; its row was last updated on 2026-06-16.
+The restore matched its source JSONB: 6 families, 8 members, 3 users, 7 reminder
+plans, 11 reminders, 10 invitations, and 59 audit events. Only business state was
+restored; system schemas and database roles were not imported. The direct DB
+hostname failed on Vercel; switching to the Transaction pooler restored service.
 
-Use Supabase/Postgres unless there is an explicit company requirement to keep Nestful data in Tencent Cloud.
-
-For Supabase, use the pooled connection string from:
-
-```text
-Supabase Project -> Settings -> Database -> Connection string -> Transaction pooler
-```
-
-The value usually starts with:
-
-```text
-postgresql://...
-```
-
-## What the API Creates
-
-On first production request, the API creates this table if it does not exist:
-
-```sql
-create table if not exists nestful_app_state (
-  id text primary key,
-  data jsonb not null,
-  updated_at timestamptz not null default now()
-);
-```
-
-Current business entities are persisted inside the `data` JSONB document:
-
-- `families`
-- `members`
-- `invitations`
-- `reminders`
-- `activities`
-- `ledgerEntries`
-- `ledgerGoalFunds`
-- `digitalSpaceItems`
-- `auditEvents`
-
-This is the Phase 3 persistence bridge from local JSON to cloud database. The normalized migration is now checked in under `services/api/migrations/`, but the API should continue to read and write JSONB until a staged cutover is explicitly scheduled.
-
-## Normalized Migration Rehearsal
-
-Run this on a staging clone first:
-
-```bash
-psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_up.sql
-psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_verify.sql
-```
-
-The verify query should show zero `count_delta` for entities that exist in JSONB. If a rehearsal fails or the application should stay on JSONB, rollback only the normalized projection:
-
-```bash
-psql "$DATABASE_URL" -f services/api/migrations/001_normalized_postgres_down.sql
-```
-
-The rollback keeps `nestful_app_state` intact.
-
-## Supabase Recovery (2026-10-15)
-
-The replacement project is `qrspwgrkxogbpvrdafnn`. The cluster backup named
-`db_cluster-22-08-2026@03-11-27.backup.gz` contained one Nestful state row,
-last updated at `2026-06-16 08:04:25.17338+00`. Only that business row was
-restored; Supabase system schemas and roles were not imported. A JSONB equality
-query confirmed the restored document exactly matched the backup: 6 families,
-8 members, 3 users, 7 reminder plans, 11 reminders, 10 invitations, and 59 audit
-events. Changes after that snapshot cannot be recovered from this backup.
-
-The schema is recorded in `services/api/migrations/002_private_app_state_up.sql`.
-RLS is enabled and `anon`/`authenticated` table access is revoked because the
-API uses a privileged Postgres connection. The advisor's informational
-"RLS Enabled No Policy" finding is intentional: clients must not access this
-all-family document through the Data API.
-
-Production cutover completed after replacing the direct connection, which
-returned `ENOTFOUND`, and deploying the updated environment. Production API
-verification returned HTTP 200 for all 6 families, all 8 members, and all 11
-reminders; family IDs matched the backup. An unknown invitation returned the
-expected 404. A database update probe succeeded inside a rolled-back transaction,
-leaving the business document unchanged. Mini-program WeChat login and new
-family/invitation/reminder creation still require an authenticated device check;
-old sessions may have expired and require login again.
-
-Use the **Transaction pooler**
-connection string from the project's **Connect** dialog (normally port 6543),
-including its pooler hostname and `postgres.<project-ref>` username. Do not
-derive the pooler hostname from the region. Keep the password secret and retain
-`NESTFUL_STORAGE=postgres` and `PGSSL=require`, then redeploy and verify API
-reads and writes. Updating the variable alone does not update a deployment.
-
-## Vercel CLI Setup
-
-After the database exists, add the variables:
-
-```bash
-vercel env add NESTFUL_STORAGE production
-vercel env add DATABASE_URL production
-vercel env add PGSSL production
-```
-
-Use these values:
-
-```text
-NESTFUL_STORAGE -> postgres
-DATABASE_URL -> <database connection string>
-PGSSL -> require
-```
-
-Then remove the old local-file variable from Production:
-
-```bash
-vercel env rm DATA_FILE production
-```
-
-Finally deploy:
-
-```bash
-vercel deploy --prod
-```
-
-## Verification
-
-Run local checks before deploying:
-
-```bash
-corepack pnpm run typecheck
-corepack pnpm run lint
-DATA_FILE=/tmp/nestful-smoke.json corepack pnpm run dev:api
-API_BASE_URL=http://127.0.0.1:3100 corepack pnpm run acceptance:smoke
-vercel build --prod
-```
-
-After production deploy, verify:
-
-```bash
-curl https://nestful.kkplayit.online/health
-curl https://nestful.kkplayit.online/v1/families
-```
-
-For persistence verification:
-
-1. Create a family through the mini program or API.
-2. Redeploy production with `vercel deploy --prod`.
-3. Read `/v1/families` again.
-4. Confirm the same family still exists.
+For the v2 reset, take a fresh backup because the legacy app has received writes
+since that recovery. Keep the old table inaccessible to the runtime after cutover.
+Once new writes begin, do not roll back to stale JSONB. Pause writes and restore
+or repair the v2 database instead.

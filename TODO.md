@@ -76,3 +76,14 @@ Last updated: 2026-06-09
 - [x] Run WeChat DevTools runtime page-flow smoke for onboarding, invite, reminders, ledger, digital space, and activities.
 - [x] Prepare experience-version invite validation runbook, evidence template, draft generator, and record checker.
 - [ ] Run experience-version invite validation with at least two testers before real family testing.
+
+
+## Data Model v2 (2026-10-15)
+
+- [x] Confirm login-only members, shared-family privacy, independent activities/space, and clock-driven recurrence.
+- [x] Add private relational schema, composite foreign keys, least-privilege role, and transactional integrity checks.
+- [x] Replace global JSONB runtime storage with module repositories and session-derived actors.
+- [x] Add disposable Postgres/Fastify integration tests and deterministic TS-to-JS client generation.
+- [x] Complete final permission/concurrency review and full release quality gate (19 Postgres/Fastify tests).
+- [x] Back up legacy state, configure the user-selected pooler login with explicit runtime-role membership, authenticate scheduling, and deploy.
+- [ ] Generate the v2 phone preview and record two-account acceptance; formal release requires user confirmation.

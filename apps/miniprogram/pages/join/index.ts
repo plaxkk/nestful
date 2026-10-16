@@ -56,7 +56,7 @@ Page({
     try {
       const response = await api.getInvitation(code);
       this.setData({
-        invitationStatus: response.data.acceptedAt ? "邀请已使用" : "邀请有效"
+        invitationStatus: response.data.status === "active" ? `邀请有效：${response.data.familyName}` : response.data.status === "accepted" ? "邀请已使用" : "邀请已失效"
       });
     } catch (error) {
       this.setData({
@@ -108,6 +108,7 @@ Page({
           id: response.data.member.familyId,
           name: "我的家庭",
           ownerUserId: "",
+          version: 1,
           createdAt: ""
         });
       }

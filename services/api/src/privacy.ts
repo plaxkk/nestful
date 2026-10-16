@@ -20,6 +20,7 @@ export const canAddMemberDirectly = (member: FamilyMember | undefined, familyId:
   canManageFamily(member, familyId);
 
 export const redactMemberForList = (member: FamilyMember): FamilyMember => ({
+  version: member.version,
   id: member.id,
   familyId: member.familyId,
   userId: member.userId,

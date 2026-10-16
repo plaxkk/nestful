@@ -25,5 +25,6 @@ jobs:
               --header "Authorization: Bearer $CRON_SECRET" \
               "$REMINDER_DISPATCH_URL"
           else
-            curl --fail --silent --show-error "$REMINDER_DISPATCH_URL"
+            echo "NESTFUL_CRON_SECRET is required for reminder dispatch" >&2
+            exit 1
           fi

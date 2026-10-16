@@ -6,6 +6,7 @@ export interface WechatIdentity {
   userId: string;
   wechatOpenId?: string;
 }
+let pendingIdentity: Promise<WechatIdentity> | undefined;
 
 export const getWechatIdentity = (options?: { forceRefresh?: boolean }): Promise<WechatIdentity> => {
   const cachedUser = session.getUser();
@@ -17,11 +18,11 @@ export const getWechatIdentity = (options?: { forceRefresh?: boolean }): Promise
     });
   }
 
-  return new Promise((resolve) => {
+  pendingIdentity ??= new Promise<WechatIdentity>((resolve, reject) => {
     wx.login({
       success: async (loginResult) => {
         if (!loginResult.code) {
-          resolve({ userId: `local-${Date.now()}` });
+          reject(new Error("微信登录未取得凭证，请重试"));
           return;
         }
 
@@ -33,15 +34,16 @@ export const getWechatIdentity = (options?: { forceRefresh?: boolean }): Promise
             userId: response.data.userId,
             wechatOpenId: response.data.wechatOpenId,
           });
-        } catch {
-          resolve({ userId: `local-${Date.now()}` });
+        } catch (error) {
+          reject(error);
         }
       },
       fail: () => {
-        resolve({ userId: `local-${Date.now()}` });
+        reject(new Error("微信登录失败，请重试"));
       },
     });
-  });
+  }).finally(() => { pendingIdentity = undefined; });
+  return pendingIdentity;
 };
 
 export const requestReminderSubscription = async (type: ReminderType) => {

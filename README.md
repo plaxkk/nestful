@@ -41,9 +41,9 @@ Reminder notifications use WeChat Mini Program subscription messages. Configure 
 - Exercise template keyword keys: `WECHAT_EXERCISE_PROJECT_KEY`, `WECHAT_EXERCISE_TIME_KEY`, `WECHAT_EXERCISE_PLAN_KEY`, `WECHAT_EXERCISE_FREQUENCY_KEY`, `WECHAT_EXERCISE_AMOUNT_KEY`
 - `CRON_SECRET` or `NESTFUL_CRON_SECRET` for protecting the dispatch endpoint
 
-After users authorize a reminder notification in the mini-program, `GET /v1/reminders/dispatch-due` scans due reminders and sends pending WeChat subscription messages. Reminder plans create separate due occurrences; completing a recurring occurrence advances the next in-app occurrence, while WeChat subscription-message delivery remains bound to a one-time user authorization.
+After users authorize a reminder notification in the mini-program, `GET /v1/reminders/dispatch-due` scans due reminders and sends pending WeChat subscription messages. Reminder plans create separate due occurrences; recurring occurrences are generated from their schedules independently of completion, while WeChat subscription-message delivery remains bound to a one-time user authorization.
 
-Production reminder dispatch should be driven by a reliable scheduler that calls `GET /v1/reminders/dispatch-due` every 5 minutes. Vercel Hobby only supports daily cron jobs, so do not add a sub-daily dispatch cron to `vercel.json` while the project is on Hobby. The GitHub Actions workflow in `.github/workflows/reminder-dispatch.yml` is configured as a best-effort fallback on an offset 5-minute schedule and supports manual `workflow_dispatch`, but GitHub scheduled workflows can be delayed or dropped under load and should not be the only production reminder scheduler. For reliable near-real-time reminders, use Vercel Pro Cron or an external scheduler such as cron-job.org, EasyCron, or Upstash QStash to call the dispatch endpoint directly. If `CRON_SECRET` or `NESTFUL_CRON_SECRET` is enabled on the API, set the same value in the scheduler and as the repository secret `NESTFUL_CRON_SECRET`.
+Production reminder dispatch should be driven by a reliable scheduler that calls `GET /v1/reminders/dispatch-due` every 5 minutes. Vercel Hobby only supports daily cron jobs, so do not add a sub-daily dispatch cron to `vercel.json` while the project is on Hobby. The GitHub Actions workflow in `.github/workflows/reminder-dispatch.yml` is configured as a best-effort fallback on an offset 5-minute schedule and supports manual `workflow_dispatch`, but GitHub scheduled workflows can be delayed or dropped under load and should not be the only production reminder scheduler. For reliable near-real-time reminders, use Vercel Pro Cron or an external scheduler such as cron-job.org, EasyCron, or Upstash QStash to call the dispatch endpoint directly. A strong `CRON_SECRET` is required; set the same value in the scheduler and as the repository secret `NESTFUL_CRON_SECRET`.
 
 ## Initial Tech Direction
 
@@ -73,7 +73,7 @@ Run backend smoke acceptance:
 npm run acceptance:smoke
 ```
 
-The backend must be running first with `npm run dev:api`.
+This runs the isolated Postgres/Fastify acceptance suite. For manual API development, configure a migrated database and real WeChat credentials before `npm run dev:api`.
 
 ## Automated Quality Gate
 
@@ -87,7 +87,19 @@ npm run release:quality-gate
 
 `release:local-gate` runs the offline checks, including release script syntax checks, that do not need a local API server, WeChat DevTools automation, or external WeChat artifacts.
 
-`release:runtime-smoke` starts the local API if needed, runs `acceptance:smoke`, starts WeChat DevTools automation on `ws://127.0.0.1:9421` if needed, runs `miniprogram:devtools-smoke`, and cleans up the local API/DevTools instances it started.
+`release:runtime-smoke` boots a disposable local Postgres instance and runs the
+real repository and Fastify integration tests, including family isolation,
+constraints, concurrent writes, reminder generation, and notification claims.
+Install PostgreSQL 16+ tools (`initdb`, `pg_ctl`) on PATH, or set
+`POSTGRES_BIN_DIR`. No production connection or WeChat credentials are used.
+
+The deployed API requires the v2 schema and permission to enter `nestful_runtime`. See
+[Data model v2](docs/data-model-v2.md) and
+[production setup](docs/vercel-postgres-persistence.md).
+
+`npm run miniprogram:build` emits the runtime JS from TypeScript;
+`npm run miniprogram:check-js` detects drift. Both sources are committed.
+Actual phone/WeChat acceptance is separate from local integration testing.
 
 WeChat DevTools preview/upload creates external WeChat artifacts and should only be run after an explicit release approval.
 

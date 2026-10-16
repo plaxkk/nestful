@@ -9,6 +9,12 @@ const userKey = "currentUser";
 
 type FamilyMembersCache = Record<string, FamilyMember[]>;
 
+const ensureModelVersion = () => {
+  if (wx.getStorageSync("nestful.modelVersion") === 2) return;
+  for (const key of [familyKey, memberKey, membersKey, tokenKey, tokenExpiresAtKey, userKey]) wx.removeStorageSync(key);
+  wx.setStorageSync("nestful.modelVersion", 2);
+};
+
 const readMembersCache = (): FamilyMembersCache => {
   const value = wx.getStorageSync(membersKey);
 
@@ -17,6 +23,7 @@ const readMembersCache = (): FamilyMembersCache => {
 
 export const session = {
   getFamily() {
+    ensureModelVersion();
     return wx.getStorageSync(familyKey) as Family | "";
   },
 
@@ -46,6 +53,7 @@ export const session = {
   },
 
   getUser() {
+    ensureModelVersion();
     return wx.getStorageSync(userKey) as AppUser | "";
   },
 

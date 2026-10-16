@@ -74,6 +74,7 @@
             <button class="secondary-action compact" data-id="{{item.id}}" data-status="completed" bindtap="onUpdateActivityStatus">完成活动</button>
             <button class="secondary-action compact danger" data-id="{{item.id}}" data-status="cancelled" bindtap="onUpdateActivityStatus">取消活动</button>
           </view>
+          <button wx:if="{{item.status === 'completed'}}" class="secondary-action compact" data-id="{{item.id}}" bindtap="onSaveActivityMemory">保存为家庭记忆</button>
         </view>
       </view>
     </view>

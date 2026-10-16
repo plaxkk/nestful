@@ -22,7 +22,10 @@
     "release:quality-gate": "node scripts/release-quality-gate.mjs",
     "typecheck": "corepack pnpm -r typecheck",
     "lint": "corepack pnpm -r lint",
-    "test": "corepack pnpm -r test"
+    "test": "corepack pnpm -r test",
+    "miniprogram:build": "node scripts/build-miniprogram-js.mjs",
+    "miniprogram:check-js": "node scripts/build-miniprogram-js.mjs --check",
+    "test:postgres": "node scripts/postgres-tests.mjs"
   },
   "workspaces": [
     "apps/*",

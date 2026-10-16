@@ -413,6 +413,7 @@ Page({
 
     await api.updateActivityTask(family.id, activityId, taskId, {
       actorMemberId: member.id,
+      version: this.data.activities.find(activity => activity.id === activityId)?.tasks?.find(task => task.id === taskId)?.version ?? 0,
       status
     });
     await this.loadActivities({ showLoading: false });
@@ -430,9 +431,20 @@ Page({
 
     await api.updateActivityStatus(family.id, activityId, {
       actorMemberId: member.id,
+      version: this.data.activities.find(activity => activity.id === activityId)?.version ?? 0,
       status
     });
     await this.loadActivities({ showLoading: false });
+  },
+
+  async onSaveActivityMemory(event: WechatMiniprogram.TouchEvent) {
+    const family = session.getFamily();
+    const activityId = event.currentTarget.dataset.id as string;
+    if (!family || !activityId) return;
+    try {
+      await api.saveActivityMemory(family.id, activityId);
+      wx.showToast({ title: "已保存到家庭记忆", icon: "success" });
+    } catch { wx.showToast({ title: "保存失败，请刷新后重试", icon: "none" }); }
   },
 
   onCopyShareText(event: WechatMiniprogram.TouchEvent) {

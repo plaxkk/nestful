@@ -85,7 +85,7 @@ const getAccessToken = async () => {
   url.searchParams.set("appid", appId);
   url.searchParams.set("secret", appSecret);
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
   const data = (await response.json()) as AccessTokenResponse;
 
   if (!response.ok || !data.access_token) {
@@ -102,11 +102,7 @@ const getAccessToken = async () => {
 
 export const exchangeWechatCode = async (code: string) => {
   if (!appId || !appSecret) {
-    return {
-      userId: `local-${Date.now()}`,
-      wechatOpenId: undefined,
-      configured: false,
-    };
+    throw new Error("wechat_credentials_missing");
   }
 
   const url = new URL("https://api.weixin.qq.com/sns/jscode2session");
@@ -115,7 +111,7 @@ export const exchangeWechatCode = async (code: string) => {
   url.searchParams.set("js_code", code);
   url.searchParams.set("grant_type", "authorization_code");
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
   const data = (await response.json()) as CodeSessionResponse;
 
   if (!response.ok || !data.openid) {
@@ -123,9 +119,9 @@ export const exchangeWechatCode = async (code: string) => {
   }
 
   return {
-    userId: `wechat:${data.openid}`,
-    wechatOpenId: data.openid,
-    configured: true,
+    appId,
+    openid: data.openid,
+    unionid: data.unionid,
   };
 };
 
@@ -228,7 +224,9 @@ export const sendReminderSubscriptionMessage = async (input: {
     };
   }
 
-  const accessToken = await getAccessToken();
+  let accessToken: string;
+  try { accessToken = await getAccessToken(); }
+  catch { return { ok: false, error: "wechat_access_token_unavailable" }; }
   const url = new URL("https://api.weixin.qq.com/cgi-bin/message/subscribe/send");
   url.searchParams.set("access_token", accessToken);
   const templateData = (() => {
@@ -255,7 +253,7 @@ export const sendReminderSubscriptionMessage = async (input: {
           value: (input.reminder.schedule?.targetLabel ?? input.reminder.title).slice(0, 20),
         },
         [birthdayDateKey]: {
-          value: input.reminder.schedule?.birthdayDate ?? formatReminderDate(input.reminder.dueAt),
+          value: formatReminderDate(input.reminder.dueAt),
         },
       };
     }
@@ -293,7 +291,8 @@ export const sendReminderSubscriptionMessage = async (input: {
     };
   })();
 
-  const response = await fetch(url, {
+  let response: Response;
+  try { response = await fetch(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -306,12 +305,16 @@ export const sendReminderSubscriptionMessage = async (input: {
       lang: "zh_CN",
       data: templateData,
     }),
-  });
+    signal: AbortSignal.timeout(10000),
+  }); } catch { return { ok: false, unknown: true, error: "wechat_delivery_result_unknown" }; }
 
-  const responseData = (await response.json()) as WeChatErrorResponse;
+  let responseData: WeChatErrorResponse;
+  try { responseData = (await response.json()) as WeChatErrorResponse; }
+  catch { return { ok: false, unknown: true, error: "wechat_delivery_result_unknown" }; }
+  if (responseData.errcode === undefined) return { ok: false, unknown: true, error: "wechat_delivery_result_unknown" };
 
   return {
     ok: response.ok && responseData.errcode === 0,
-    error: responseData.errmsg ?? `wechat_subscribe_send_failed:${responseData.errcode ?? response.status}`,
+    error: `wechat_subscribe_send_failed:${responseData.errcode ?? response.status}`,
   };
 };

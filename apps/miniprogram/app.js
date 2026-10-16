@@ -1,5 +1,6 @@
+"use strict";
 App({
-  globalData: {
-    apiBaseUrl: "https://nestful.kkplayit.online",
-  },
+    globalData: {
+        apiBaseUrl: "https://nestful.kkplayit.online",
+    },
 });

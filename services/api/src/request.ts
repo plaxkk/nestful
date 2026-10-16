@@ -32,7 +32,7 @@ export const optionalString = (body: Record<string, unknown>, key: string) => {
 
 export const optionalRole = (body: Record<string, unknown>, key: string): FamilyRole | undefined => {
   const value = body[key];
-  const roles: FamilyRole[] = ["admin", "member", "elder", "child", "guest"];
+  const roles: FamilyRole[] = ["admin", "member"];
 
   return typeof value === "string" && roles.includes(value as FamilyRole) ? (value as FamilyRole) : undefined;
 };

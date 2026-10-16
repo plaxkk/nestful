@@ -71,9 +71,11 @@
       <view class="reminder-row {{item.isCompleted ? 'completed' : ''}}" wx:for="{{reminders}}" wx:key="id">
         <view class="reminder-main">
           <text class="reminder-title">{{item.title}}</text>
+          <text class="reminder-meta">{{item.completionText}}</text>
           <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}} · {{item.statusLabel}}</text>
         </view>
-        <button wx:if="{{!item.isCompleted}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">完成</button>
+        <button wx:if="{{!item.isCompleted && item.canComplete}}" class="complete-button" data-id="{{item.id}}" bindtap="onCompleteReminder">我已完成</button>
+        <button wx:if="{{item.canComplete && !item.isCompleted}}" class="complete-button" data-id="{{item.id}}" bindtap="onSubscribeReminder">本次通知</button>
       </view>
     </view>
   </view>

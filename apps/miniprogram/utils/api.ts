@@ -3,9 +3,11 @@ import { session } from "./session";
 
 export interface ApiResponse<T> {
   data: T;
+  nextCursor?: string;
 }
 
 export interface Family {
+  version: number;
   id: string;
   name: string;
   ownerUserId: string;
@@ -13,14 +15,18 @@ export interface Family {
 }
 
 export interface FamilyMember {
+  version: number;
   id: string;
   familyId: string;
   userId?: string;
   wechatOpenId?: string;
   displayName: string;
-  role: "admin" | "member" | "elder" | "child" | "guest";
+  role: "admin" | "member";
   birthday?: string;
   birthdayCalendar?: "solar" | "lunar";
+  birthdayLeapMonth?: boolean;
+  identityTag?: "elder" | "child" | "guest";
+  status?: "active" | "inactive";
   location?: string;
   emergencyContact?: string;
   joinedAt?: string;
@@ -75,6 +81,7 @@ export interface Reminder {
   dueAt: string;
   occurrenceNumber?: number;
   occurrenceStatus?: ReminderOccurrenceStatus;
+  participants: Array<{ memberId: string; status: ReminderOccurrenceStatus; completedAt?: string }>;
   assigneeMemberId?: string;
   targetScope?: ReminderTargetScope;
   targetMemberIds?: string[];
@@ -105,6 +112,8 @@ export interface ReminderSchedule {
   birthdayDate?: string;
   advanceDays?: number;
   notifyOnDay?: boolean;
+  birthdayCalendar?: "solar" | "lunar";
+  birthdayLeapMonth?: boolean;
 }
 
 export interface ReminderNotification {
@@ -112,7 +121,7 @@ export interface ReminderNotification {
   recipientMemberId: string;
   recipientOpenId?: string;
   subscriptionStatus: "accept" | "reject" | "ban" | "filter" | "unavailable";
-  sendStatus: "pending" | "sent" | "failed" | "skipped";
+  sendStatus: "pending" | "processing" | "sent" | "failed" | "skipped" | "expired" | "unknown" | "canceled";
   requestedAt: string;
   sentAt?: string;
   lastAttemptAt?: string;
@@ -128,6 +137,7 @@ export type DigitalSpaceItemKind = "document" | "account" | "memory";
 export type DigitalSpaceMediaKind = "image" | "video" | "file" | "link";
 
 export interface LedgerEntry {
+  version: number;
   id: string;
   familyId: string;
   type: LedgerEntryType;
@@ -142,6 +152,7 @@ export interface LedgerEntry {
 }
 
 export interface LedgerGoalFund {
+  version: number;
   id: string;
   familyId: string;
   title: string;
@@ -180,6 +191,7 @@ export interface LedgerMonthlySummary {
 }
 
 export interface DigitalSpaceItem {
+  version: number;
   id: string;
   familyId: string;
   kind: DigitalSpaceItemKind;
@@ -207,6 +219,7 @@ export interface DigitalSpaceMediaItem {
 }
 
 export interface Activity {
+  version: number;
   id: string;
   familyId: string;
   title: string;
@@ -233,6 +246,7 @@ export interface ActivityParticipant {
 }
 
 export interface ActivityTask {
+  version: number;
   id: string;
   activityId: string;
   familyId: string;
@@ -275,11 +289,20 @@ const loginCode = (): Promise<string | undefined> =>
 
 let sessionRefresh: Promise<boolean> | undefined;
 
+const wireBody = (options: WechatMiniprogram.RequestOption) => {
+  if (!options.data || typeof options.data !== "object" || Array.isArray(options.data)) return options.data;
+  const data = { ...options.data } as Record<string, unknown>;
+  for (const key of ["ownerUserId", "ownerWechatOpenId", "userId", "wechatOpenId", "createdByMemberId", "actorMemberId"]) delete data[key];
+  if (options.url.endsWith("/rsvp")) delete data.memberId;
+  return data;
+};
+
 const sendRequest = <T>(options: WechatMiniprogram.RequestOption): Promise<T> =>
   new Promise((resolve, reject) => {
     wx.request({
       ...options,
       url: `${getApiBaseUrl()}${options.url}`,
+      data: wireBody(options),
       timeout: 8000,
       header: {
         ...(options.data === undefined ? {} : { "content-type": "application/json" }),
@@ -336,15 +359,24 @@ const request = async <T>(options: WechatMiniprogram.RequestOption): Promise<T> 
     return await sendRequest<T>(options);
   } catch (error) {
     if (shouldRefreshSession(options, error) && (await refreshAppSession())) {
-      const user = session.getUser();
-      const retryOptions = options.method === "POST" && options.url === "/v1/families" && user
-        ? { ...options, data: { ...(options.data as Record<string, unknown>), ownerUserId: user.id, ownerWechatOpenId: user.wechatOpenId } }
-        : options;
-      return sendRequest<T>(retryOptions);
+      return sendRequest<T>(options);
     }
 
     throw error;
   }
+};
+
+const listAll = async <T>(url: string): Promise<ApiResponse<T[]>> => {
+  const data: T[] = [], seen = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const response: ApiResponse<T[]> = await request({ method: "GET", url: `${url}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}` });
+    data.push(...response.data);
+    cursor = response.nextCursor;
+    if (cursor && seen.has(cursor)) throw new Error("Invalid pagination cursor");
+    if (cursor) seen.add(cursor);
+  } while (cursor);
+  return { data };
 };
 
 export const api = {
@@ -396,10 +428,14 @@ export const api = {
     familyId: string,
     memberId: string,
     body: {
+      version: number;
       displayName?: string;
       role?: FamilyMember["role"];
       birthday?: string;
       birthdayCalendar?: "solar" | "lunar";
+      birthdayLeapMonth?: boolean;
+      identityTag?: "elder" | "child" | "guest" | null;
+      status?: "active" | "inactive";
       location?: string;
       emergencyContact?: string;
     },
@@ -411,19 +447,20 @@ export const api = {
     });
   },
 
-  removeMember(familyId: string, memberId: string) {
+  removeMember(familyId: string, memberId: string, version: number) {
     return request<ApiResponse<FamilyMember>>({
       method: "DELETE",
       url: `/v1/families/${familyId}/members/${memberId}`,
+      data: { version },
     });
   },
 
   createInvitation(familyId: string, body: { createdByMemberId: string; role: FamilyMember["role"] }) {
-    return request<ApiResponse<{ invitation: FamilyInvitation; joinPath: string }>>({
+    return request<ApiResponse<FamilyInvitation>>({
       method: "POST",
       url: `/v1/families/${familyId}/invitations`,
       data: body,
-    });
+    }).then(response => ({ data: { invitation: response.data, joinPath: response.data.joinPath ?? "" } }));
   },
 
   listInvitations(familyId: string) {
@@ -441,7 +478,7 @@ export const api = {
   },
 
   getInvitation(code: string) {
-    return request<ApiResponse<FamilyInvitation>>({
+    return request<ApiResponse<{ familyName: string; status: "active" | "accepted" | "expired" | "canceled"; expiresAt?: string }>>({
       method: "GET",
       url: `/v1/invitations/${code}`,
     });
@@ -456,10 +493,7 @@ export const api = {
   },
 
   listReminders(familyId: string) {
-    return request<ApiResponse<Reminder[]>>({
-      method: "GET",
-      url: `/v1/families/${familyId}/reminders`,
-    });
+    return listAll<Reminder>(`/v1/families/${familyId}/reminders`);
   },
 
   getReminderSubscriptionConfig(type?: ReminderType) {
@@ -504,10 +538,7 @@ export const api = {
   },
 
   listLedgerEntries(familyId: string) {
-    return request<ApiResponse<LedgerEntry[]>>({
-      method: "GET",
-      url: `/v1/families/${familyId}/ledger-entries`,
-    });
+    return listAll<LedgerEntry>(`/v1/families/${familyId}/ledger-entries`);
   },
 
   createLedgerEntry(
@@ -538,10 +569,7 @@ export const api = {
   },
 
   listLedgerGoalFunds(familyId: string) {
-    return request<ApiResponse<LedgerGoalFund[]>>({
-      method: "GET",
-      url: `/v1/families/${familyId}/ledger-goal-funds`,
-    });
+    return listAll<LedgerGoalFund>(`/v1/families/${familyId}/ledger-goal-funds`);
   },
 
   createLedgerGoalFund(
@@ -562,10 +590,7 @@ export const api = {
   },
 
   listDigitalSpaceItems(familyId: string) {
-    return request<ApiResponse<DigitalSpaceItem[]>>({
-      method: "GET",
-      url: `/v1/families/${familyId}/digital-space-items`,
-    });
+    return listAll<DigitalSpaceItem>(`/v1/families/${familyId}/digital-space-items`);
   },
 
   createDigitalSpaceItem(
@@ -597,10 +622,7 @@ export const api = {
   },
 
   listActivities(familyId: string) {
-    return request<ApiResponse<Activity[]>>({
-      method: "GET",
-      url: `/v1/families/${familyId}/activities`,
-    });
+    return listAll<Activity>(`/v1/families/${familyId}/activities`);
   },
 
   createActivity(
@@ -657,7 +679,7 @@ export const api = {
     familyId: string,
     activityId: string,
     taskId: string,
-    body: { actorMemberId: string; status: ActivityTaskStatus },
+    body: { actorMemberId: string; status: ActivityTaskStatus; version: number },
   ) {
     return request<ApiResponse<Activity>>({
       method: "PUT",
@@ -669,12 +691,18 @@ export const api = {
   updateActivityStatus(
     familyId: string,
     activityId: string,
-    body: { actorMemberId: string; status: "completed" | "cancelled" },
+    body: { actorMemberId: string; status: "completed" | "cancelled"; version: number },
   ) {
     return request<ApiResponse<Activity>>({
       method: "PUT",
       url: `/v1/families/${familyId}/activities/${activityId}/status`,
       data: body,
     });
+  },
+  saveActivityMemory(familyId: string, activityId: string) {
+    return request<ApiResponse<DigitalSpaceItem>>({ method: "POST", url: `/v1/families/${familyId}/activities/${activityId}/save-memory` });
+  },
+  subscribeReminder(familyId: string, reminderId: string, body: { templateId: string; subscriptionStatus: ReminderNotification["subscriptionStatus"] }) {
+    return request<ApiResponse<Reminder>>({ method: "POST", url: `/v1/families/${familyId}/reminders/${reminderId}/subscription`, data: body });
   },
 };

@@ -291,3 +291,5 @@
   font-weight: 800;
   line-height: 1.2;
 }
+
+.invite-token { display: block; word-break: break-all; font-size: 32rpx; line-height: 1.7; padding: 20rpx 0; }
