@@ -42,4 +42,13 @@ for(const page of app.pages){
  for(const [,handler] of template.matchAll(/(?:bind|catch)(?:tap|input|change|confirm)="([a-zA-Z][a-zA-Z0-9_]*)"/g))assert.equal(typeof definition[handler],'function',`${page}: missing handler ${handler}`);
 }
 delete global.Page;delete global.wx;
+for(const component of Object.values(app.usingComponents ?? {})){
+ let definition;global.Component=d=>{definition=d;};
+ const path=`apps/miniprogram${component}`;
+ for(const ext of ['js','wxml','wxss','json'])assert.ok(existsSync(`${path}.${ext}`),`${path}.${ext} missing`);
+ require(`../${path}.js`);
+ const template=readFileSync(`${path}.wxml`,'utf8');
+ for(const [,handler] of template.matchAll(/(?:bind|catch)(?:tap|input|change|confirm)="([a-zA-Z][a-zA-Z0-9_]*)"/g))assert.equal(typeof definition.methods?.[handler],'function',`${component}: missing handler ${handler}`);
+}
+delete global.Component;
 console.log('mini-program smoke passed: emitted JS, auth refresh, server-owned identity, pagination, login failure, template handlers');

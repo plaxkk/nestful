@@ -124,7 +124,7 @@ Page({
         void this.loadFamilyData({ force: true, showLoading: false });
     },
     onOpenFamilyList() {
-        wx.reLaunch({ url: "/pages/home/index" });
+        wx.reLaunch({ url: "/pages/home/index?switch=1" });
     },
     async loadFamilyData(options = {}) {
         const family = session_1.session.getFamily();
@@ -146,6 +146,7 @@ Page({
         const isCurrentMemberAdmin = Boolean(currentMember && currentMember.role === "admin");
         const hasRenderedFamily = this.data.currentFamilyId === family.id && this.data.members.length > 0;
         this.setData({
+            ...(this.data.currentFamilyId !== family.id ? { inviteCode: "", inviteDigits: [], joinPath: "", activeInvitationId: "", invitations: [], joinRequests: [] } : {}),
             currentFamilyId: family.id,
             familyName: family.name,
             isCurrentMemberAdmin,
@@ -155,10 +156,10 @@ Page({
                     members: members.map(withAvatarText),
                     memberCountText: `${members.length} 位家人`
                 }),
-            invitations: isCurrentMemberAdmin ? this.data.invitations : [],
+            invitations: isCurrentMemberAdmin && this.data.currentFamilyId === family.id ? this.data.invitations : [],
             refreshing: true
         });
-        await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations(), this.loadDashboard(), this.loadJoinRequests()]);
+        await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations(), this.loadJoinRequests()]);
         this.setData({
             lastLoadedAt: Date.now(),
             refreshing: false
@@ -193,6 +194,8 @@ Page({
             });
         }
         catch (error) {
+            if (!session_1.session.isFamily(family.id))
+                return;
             this.setData({ loading: false, refreshing: false });
             if (error instanceof api_1.ApiRequestError && [401, 403, 404].includes(error.statusCode)) {
                 session_1.session.clearFamily();
@@ -248,6 +251,8 @@ Page({
                 requiresApproval: this.data.invitationModeIndex === 1 && this.data.approvalRequired
             });
             wx.hideLoading();
+            if (!session_1.session.isFamily(family.id))
+                return;
             this.setData({
                 inviteCode: response.data.invitation.code,
                 activeInvitationId: response.data.invitation.id,

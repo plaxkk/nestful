@@ -84,4 +84,5 @@
       </view>
     </view>
   </view>
+  <family-nav active="records" wx:if="{{members.length > 0}}" />
 </view>

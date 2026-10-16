@@ -154,7 +154,7 @@ Page({
   },
 
   onOpenFamilyList() {
-    wx.reLaunch({ url: "/pages/home/index" });
+    wx.reLaunch({ url: "/pages/home/index?switch=1" });
   },
 
   async loadFamilyData(options: LoadOptions = {}) {
@@ -184,6 +184,7 @@ Page({
     const hasRenderedFamily = this.data.currentFamilyId === family.id && this.data.members.length > 0;
 
     this.setData({
+      ...(this.data.currentFamilyId !== family.id ? { inviteCode: "", inviteDigits: [], joinPath: "", activeInvitationId: "", invitations: [], joinRequests: [] } : {}),
       currentFamilyId: family.id,
       familyName: family.name,
       isCurrentMemberAdmin,
@@ -193,11 +194,11 @@ Page({
             members: members.map(withAvatarText),
             memberCountText: `${members.length} 位家人`
           }),
-      invitations: isCurrentMemberAdmin ? this.data.invitations : [],
+      invitations: isCurrentMemberAdmin && this.data.currentFamilyId === family.id ? this.data.invitations : [],
       refreshing: true
     });
 
-    await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations(),this.loadDashboard(),this.loadJoinRequests()]);
+    await Promise.all([this.loadMembers({ showLoading: options.showLoading }), this.loadInvitations(), this.loadJoinRequests()]);
     this.setData({
       lastLoadedAt: Date.now(),
       refreshing: false
@@ -234,6 +235,7 @@ Page({
         loading: false
       });
     } catch (error) {
+      if (!session.isFamily(family.id)) return;
       this.setData({ loading: false, refreshing: false });
       if (error instanceof ApiRequestError && [401,403,404].includes(error.statusCode)) {
         session.clearFamily();
@@ -293,8 +295,8 @@ Page({
         mode:this.data.invitationModeIndex===1?'group':'single',
         requiresApproval:this.data.invitationModeIndex===1&&this.data.approvalRequired
       });
-
       wx.hideLoading();
+      if (!session.isFamily(family.id)) return;
       this.setData({
         inviteCode: response.data.invitation.code,
         activeInvitationId:response.data.invitation.id,

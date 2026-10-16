@@ -1,32 +1,60 @@
-<view class="page home paper-pattern">
-  <view class="hero-card" wx:if="{{!hasFamily}}">
-    <view class="notebook-image">
-      <view class="sun-strip"></view>
-      <view class="book">
-        <view class="book-left"></view>
-        <view class="book-right"></view>
+<view class="home">
+  <block wx:if="{{hasFamily}}">
+    <view class="family-bar">
+      <button class="family-switch" bindtap="onOpenSwitcher" aria-label="切换家庭">
+        <text class="family-name">{{familyName}}</text><view class="chevron"></view>
+        <text class="family-tag">{{currentFamilyId === primaryFamilyId ? '主家庭' : '查看中'}}</text>
+      </button>
+      <text class="member-count" wx:if="{{memberCount > 0}}">{{memberCount}} 位家人</text>
+    </view>
+    <view class="intro"><text class="date">{{dateLabel}}</text><text class="greeting">日子，一起好好过。</text><text class="subtitle">一家人的安排，都在这里。</text></view>
+    <view class="status-line" wx:if="{{familyListError}}"><text>{{familyListError}}</text><button bindtap="onRetry">重试</button></view>
+    <view class="load-state" wx:if="{{error}}"><text>{{error}}</text><button class="quiet-button" bindtap="onRetry">重新加载</button></view>
+    <view class="load-state" wx:elif="{{(loading || restoring) && !hero && !todos.length && !reminders.length}}"><view class="loading-dot"></view><text>正在看看家里的安排…</text></view>
+    <block wx:else>
+      <view class="gathering" wx:if="{{hero}}">
+        <view class="hero-heading"><text>下一次相聚</text><text class="meal-mark">聚</text></view>
+        <button class="hero-title" data-id="{{hero.id}}" bindtap="onOpenTodo">{{hero.title}}</button>
+        <text class="hero-detail">{{hero.timeText}}{{hero.location ? ' · ' + hero.location : ''}}</text>
+        <view class="hero-bottom"><text class="hero-response">{{hero.responseText || (hero.needsResponse ? '等你告诉家人是否参加' : '把相聚留在日历里')}}</text><button class="hero-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onHeroAction">{{hero.actionText}}</button></view>
       </view>
-      <view class="tea-cup"></view>
+      <view class="gathering gathering-empty" wx:else><text class="hero-heading">给相聚，留一点时间</text><text class="empty-title">下一次，一起做点什么？</text><text class="hero-detail">吃顿饭、散散步，或约一次视频聊天。</text><button class="hero-action" bindtap="onCreateActivity">发起家庭活动</button></view>
+      <view class="section-heading"><text>等我处理</text><text class="section-note">{{pendingCount ? pendingCount + ' 件事' : '都安排好了'}}</text></view>
+      <text class="calm-note" wx:if="{{!pendingCount}}">今天没有待办，安心过好自己的日子。</text>
+      <text class="calm-note" wx:elif="{{!todos.length}}">{{hero && hero.needsResponse ? '回应上方的活动邀请，' : ''}}{{reminders.length ? '再看看下面的提醒。' : '告诉家人你的安排。'}}</text>
+      <view class="todo-list" wx:if="{{todos.length}}">
+        <view class="todo" wx:for="{{todos}}" wx:key="key">
+          <button class="todo-main" data-id="{{item.id}}" data-activity-id="{{item.activityId}}" bindtap="onOpenTodo"><view class="todo-symbol">{{item.kind === 'task' ? '备' : '约'}}</view><view class="todo-copy"><text class="todo-title">{{item.title}}</text><text class="todo-meta">{{item.label}} · {{item.timeText}}</text></view></button>
+          <button wx:if="{{item.kind === 'task'}}" class="complete-task" disabled="{{busyTaskId}}" loading="{{busyTaskId === item.id}}" data-key="{{item.key}}" bindtap="onCompleteTask" aria-label="完成{{item.title}}"><view class="task-circle" wx:if="{{busyTaskId !== item.id}}"></view></button>
+          <button wx:else class="open-todo" data-id="{{item.id}}" bindtap="onOpenTodo" aria-label="打开{{item.title}}">›</button>
+        </view>
+      </view>
+      <button wx:if="{{moreTodoCount > 0}}" class="more-link" bindtap="onOpenActivities">还有 {{moreTodoCount}} 件事，查看全部活动 ›</button>
+      <view class="section-heading reminder-heading"><text>家里的提醒</text><button bindtap="onOpenReminders">查看全部 ›</button></view>
+      <view class="reminder-row" wx:for="{{reminders}}" wx:key="key"><button class="reminder-main" data-page="reminders" data-id="{{item.id}}" bindtap="onOpenTodo"><view class="reminder-mark"></view><view class="reminder-copy"><text>{{item.title}}</text><text class="reminder-meta">{{item.timeText}} · 与我有关</text></view><text class="row-arrow">›</text></button></view>
+      <text class="calm-note" wx:if="{{!reminders.length}}">暂时没有与你有关的待办提醒。</text>
+      <view class="quick-links"><button bindtap="onOpenReminders"><view class="small-bell"></view><text>查看提醒</text></button><button bindtap="onOpenLedger"><view class="small-book"></view><text>家庭账本</text></button></view>
+    </block>
+    <family-nav active="home" badge="{{joinRequestCount}}" />
+  </block>
+  <view class="welcome" wx:else>
+    <view class="welcome-symbol"><view class="welcome-roof"></view><view class="welcome-house"></view></view>
+    <text class="welcome-brand">nestful</text><text class="welcome-title">一家人的小事，<text>一起放在心上。</text></text><text class="welcome-note">把家庭群里的约定，变成能回应、能分工的安排。</text>
+    <text class="welcome-note" wx:if="{{restoring}}">正在找回你的家庭…</text>
+    <block wx:else><text class="welcome-error" wx:if="{{familyListError}}">{{familyListError}}</text><button class="welcome-primary" bindtap="onPrimaryAction">创建我的家庭</button><button class="welcome-secondary" bindtap="onJoinFamily">通过邀请加入家庭</button><button class="more-link" wx:if="{{familyListError}}" bindtap="onRetry">重新加载我的家庭</button></block>
+    <button class="welcome-help" bindtap="onOpenHelp">隐私与帮助</button>
+  </view>
+  <view class="switcher-backdrop" wx:if="{{switcherVisible}}" bindtap="onCloseSwitcher" catchtouchmove="onStopPropagation">
+    <view class="switcher-sheet" catchtap="onStopPropagation" role="dialog" aria-label="我的家庭">
+      <view class="sheet-heading"><text>我的家庭</text><button bindtap="onCloseSwitcher" aria-label="关闭家庭切换">×</button></view>
+      <scroll-view class="family-options" scroll-y style="height: {{families.length > 3 ? 460 : families.length * 140}}rpx">
+        <view class="family-option" wx:for="{{families}}" wx:key="id">
+          <button class="family-choice" disabled="{{busy || busyTaskId}}" data-id="{{item.id}}" bindtap="onSelectFamily"><view class="family-initial">{{item.initial}}</view><view class="family-choice-copy"><text>{{item.family.name}}</text><text class="choice-note">{{item.id === primaryFamilyId ? '主家庭 · ' : ''}}{{item.members.length}} 位家人{{item.id === currentFamilyId ? ' · 当前查看' : ''}}</text></view></button>
+          <button class="set-primary" wx:if="{{item.id !== primaryFamilyId}}" data-id="{{item.id}}" bindtap="onSetPrimary">设为主家庭</button>
+        </view>
+      </scroll-view>
+      <text class="sheet-note">平时直接进入主家庭，其他家庭需要时再切换。</text>
+      <view class="sheet-actions"><button bindtap="onJoinFamily">加入家庭</button><button bindtap="onCreateFamily">创建家庭</button></view>
     </view>
   </view>
-
-  <view class="welcome-copy">
-    <text class="page-title">Nestful</text>
-    <text class="page-subtitle">把家庭群里的约定，变成能回应、能分工的安排</text>
-  </view>
-
-  <view class="home-actions">
-    <button class="primary-action pill" bindtap="onPrimaryAction">{{primaryText}}</button>
-    <button wx:if="{{hasFamily}}" class="secondary-action pill" bindtap="onCreateFamily">创建另一个家庭</button>
-    <button class="secondary-action pill" bindtap="onJoinFamily">输入邀请码加入</button>
-  </view>
-
-  <view class="family-list" wx:if="{{families.length > 1}}">
-    <text class="section-title">切换家庭</text>
-    <button class="family-option" wx:for="{{families}}" wx:key="id" data-id="{{item.family.id}}" bindtap="onSelectFamily">
-      <text class="family-option-name">{{item.family.name}}</text>
-      <text class="family-option-note">{{currentFamilyId === item.family.id ? '当前家庭' : '打开'}}</text>
-    </button>
-  </view>
-  <button class="text-button" bindtap="onOpenHelp">隐私与帮助</button>
 </view>

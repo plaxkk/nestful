@@ -7,10 +7,11 @@ const membersKey = "familyMembers";
 const tokenKey = "appSessionToken";
 const tokenExpiresAtKey = "appSessionTokenExpiresAt";
 const userKey = "currentUser";
+const primaryFamilyKey = "nestful.primaryFamily";
 const ensureModelVersion = () => {
     if (wx.getStorageSync("nestful.modelVersion") === 2)
         return;
-    for (const key of [familyKey, memberKey, membersKey, tokenKey, tokenExpiresAtKey, userKey])
+    for (const key of [familyKey, memberKey, membersKey, tokenKey, tokenExpiresAtKey, userKey, primaryFamilyKey])
         wx.removeStorageSync(key);
     wx.setStorageSync("nestful.modelVersion", 2);
 };
@@ -19,6 +20,17 @@ const readMembersCache = () => {
     return typeof value === "object" && value ? value : {};
 };
 exports.session = {
+    getPrimaryFamilyId() {
+        ensureModelVersion();
+        const user = wx.getStorageSync(userKey);
+        const preference = wx.getStorageSync(primaryFamilyKey);
+        return user && preference && preference.userId === user.id ? preference.familyId || "" : "";
+    },
+    setPrimaryFamilyId(familyId) {
+        const user = this.getUser();
+        if (user)
+            wx.setStorageSync(primaryFamilyKey, { userId: user.id, familyId });
+    },
     isFamily(id) { const family = this.getFamily(); return Boolean(family && family.id === id); },
     clearFamily() {
         wx.removeStorageSync(familyKey);
@@ -79,6 +91,7 @@ exports.session = {
         return !expiresAt || Date.parse(expiresAt) > Date.now() + 60 * 1000;
     },
     clear() {
+        wx.removeStorageSync(primaryFamilyKey);
         wx.removeStorageSync(familyKey);
         wx.removeStorageSync(memberKey);
         wx.removeStorageSync(membersKey);

@@ -34,7 +34,7 @@ Page({
         session_1.session.setFamily(family);
         session_1.session.setMember(member);
         session_1.session.setMembers(family.id, [member]);
-        const url = this.targetActivityId ? `/pages/activities/index?familyId=${family.id}&activityId=${encodeURIComponent(this.targetActivityId)}` : '/pages/family/index';
+        const url = this.targetActivityId ? `/pages/activities/index?familyId=${family.id}&activityId=${encodeURIComponent(this.targetActivityId)}` : '/pages/home/index?current=1';
         wx.redirectTo({ url });
     },
     async onRefreshStatus() {

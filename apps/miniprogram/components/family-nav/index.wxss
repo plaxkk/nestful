@@ -1,0 +1,21 @@
+.nav-space { height: calc(132rpx + env(safe-area-inset-bottom)); }
+.family-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; padding: 16rpx 20rpx calc(12rpx + env(safe-area-inset-bottom)); background: #fffefa; border-top: 1rpx solid #e6e7dd; }
+.nav-item { position: relative; display: flex; flex: 1; flex-direction: column; gap: 8rpx; align-items: center; justify-content: center; margin: 0; padding: 10rpx 4rpx; min-height: 94rpx; border: 0; border-radius: 0; background: transparent; color: #737b70; font-size: 24rpx; line-height: 1.4; }
+.nav-badge { position: absolute; top: 0; right: 25rpx; min-width: 30rpx; height: 30rpx; padding: 0 5rpx; box-sizing: border-box; border-radius: 20rpx; background: #925938; color: #fffefa; font-size: 22rpx; line-height: 30rpx; text-align: center; }
+.nav-item::after { border: 0; }
+.selected { color: #365b44; font-weight: 600; }
+.nav-icon { position: relative; width: 36rpx; height: 36rpx; box-sizing: border-box; }
+.house::before { content: ''; position: absolute; width: 23rpx; height: 23rpx; border-left: 2rpx solid currentColor; border-top: 2rpx solid currentColor; transform: rotate(45deg); top: 1rpx; left: 6rpx; border-radius: 3rpx; }
+.house>view { position: absolute; left: 5rpx; right: 5rpx; bottom: 0; height: 22rpx; border: 2rpx solid currentColor; border-top: 0; border-radius: 2rpx; }
+.house>view::after { content: ''; position: absolute; width: 8rpx; height: 13rpx; border: 2rpx solid currentColor; border-bottom: 0; bottom: 0; left: 7rpx; }
+.calendar { border: 2rpx solid currentColor; border-radius: 6rpx; top: 2rpx; height: 31rpx; }
+.calendar::before { content: ''; position: absolute; top: 8rpx; width: 100%; border-top: 2rpx solid currentColor; }
+.calendar::after { content: ''; position: absolute; left: 8rpx; right: 8rpx; top: -6rpx; height: 10rpx; border-left: 2rpx solid currentColor; border-right: 2rpx solid currentColor; }
+.calendar>view { width: 4rpx; height: 4rpx; position: absolute; top: 16rpx; left: 8rpx; background: currentColor; box-shadow: 10rpx 0 currentColor, 0 7rpx currentColor, 10rpx 7rpx currentColor; }
+.book { border: 2rpx solid currentColor; border-radius: 4rpx 7rpx 7rpx 4rpx; height: 30rpx; top: 2rpx; }
+.book::before { content: ''; position: absolute; height: 100%; left: 8rpx; border-left: 2rpx solid currentColor; }
+.book>view { position: absolute; top: 8rpx; left: 14rpx; right: 5rpx; border-top: 2rpx solid currentColor; box-shadow: 0 7rpx currentColor; }
+.people::before,.people::after { content: ''; position: absolute; width: 11rpx; height: 11rpx; border: 2rpx solid currentColor; border-radius: 50%; top: 0; }
+.people::before { left: 3rpx; } .people::after { right: 0; top: 5rpx; width: 9rpx; height: 9rpx; }
+.people>view { position: absolute; width: 24rpx; height: 17rpx; border: 2rpx solid currentColor; border-bottom: 0; border-radius: 16rpx 16rpx 0 0; left: 0; bottom: 0; }
+.people>view::after { content: ''; position: absolute; width: 13rpx; height: 14rpx; border: 2rpx solid currentColor; border-left: 0; border-bottom: 0; border-radius: 0 14rpx 0 0; left: 21rpx; top: 1rpx; }

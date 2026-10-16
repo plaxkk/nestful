@@ -80,4 +80,5 @@
       <button class="text-button" bindtap="onCloseShare">关闭</button>
     </view>
   </view>
+  <family-nav active="activities" wx:if="{{!entryError && members.length > 0}}" />
 </view>

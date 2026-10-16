@@ -16,6 +16,9 @@
     "navigationBarTextStyle": "black",
     "backgroundColor": "#fff8f6"
   },
+  "usingComponents": {
+    "family-nav": "/components/family-nav/index"
+  },
   "networkTimeout": {
     "request": 10000
   },

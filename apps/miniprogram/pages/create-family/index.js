@@ -48,7 +48,7 @@ Page({
             session_1.session.setMember(response.data.ownerMember);
             session_1.session.setMembers(response.data.family.id, [response.data.ownerMember]);
             wx.hideLoading();
-            wx.redirectTo({ url: "/pages/family/index?welcome=1" });
+            wx.reLaunch({ url: "/pages/home/index?current=1" });
         }
         catch (error) {
             wx.hideLoading();

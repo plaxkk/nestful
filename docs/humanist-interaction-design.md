@@ -54,3 +54,13 @@ Implementation guardrails:
 3. Body copy stays at or above 30rpx.
 4. Avoid words like "module", "config", "MVP", or "permission" in user-facing flow.
 5. Keep the first path focused on creating a household before showing deeper family tasks.
+
+## 2026-10-16 Home: 家的日常
+
+The selected new direction makes one primary family the center of daily use.
+Existing members enter Home's arrangements directly; create/join onboarding is
+only for users without a family. Multiple households are available through the
+family-name sheet, with explicit primary selection. Invitations, member profiles
+and management move to the Family destination. Home uses warm paper, forest
+green actions and a sand-colored gathering card. See
+[the implementation and verification notes](home-daily-design-2026-10-16.md).

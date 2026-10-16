@@ -30,7 +30,8 @@ Page({
         taskActivityId: '', newTaskTitle: '', newTaskAssigneeIndex: 0,
     },
     targetActivityId: '', inviteCode: '', loadEpoch: 0,
-    onLoad(query) { this.targetActivityId = query.activityId ?? ''; this.inviteCode = query.code ?? ''; this.setData({ focused: Boolean(this.targetActivityId) }); },
+    onLoad(query) { this.targetActivityId = query.activityId ?? ''; this.inviteCode = query.code ?? ''; this.setData({ focused: Boolean(this.targetActivityId) }); if (query.create === '1' && !this.targetActivityId)
+        this.onBeginCreate(); },
     onShow() { void this.loadPage(); },
     onHide() { this.loadEpoch++; this.setData({ loading: false }); },
     async loadPage() {
@@ -79,7 +80,7 @@ Page({
     onRetry() { void this.loadPage(); },
     onJoinFromEntry() { wx.navigateTo({ url: `/pages/join/index?activityId=${encodeURIComponent(this.targetActivityId)}` }); },
     onAllActivities() { this.targetActivityId = ''; this.inviteCode = ''; this.setData({ focused: false }); void this.loadPage(); },
-    onGoFamily() { wx.reLaunch({ url: '/pages/family/index' }); },
+    onGoFamily() { wx.reLaunch({ url: '/pages/home/index?current=1' }); },
     onOpenHelp() { wx.navigateTo({ url: '/pages/help/index' }); },
     onBeginCreate() { this.setData({ formVisible: true, editingId: '', editingVersion: 0, titleInput: '', locationInput: '', descriptionInput: '', taskInput: '', detailsVisible: false }); },
     onCancelEdit() { this.setData({ formVisible: false, editingId: '', editingVersion: 0 }); },

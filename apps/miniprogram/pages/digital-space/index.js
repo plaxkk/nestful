@@ -66,9 +66,17 @@ Page({
         refreshing: false,
         lastLoadedAt: 0
     },
+    loadEpoch: 0,
+    currentFamilyId: "",
     onShow() {
+        const family = session_1.session.getFamily();
+        if (!family || family.id !== this.currentFamilyId) {
+            this.setData({ members: [], memberOptions: [], items: [], visibleItems: [], lastLoadedAt: 0, refreshing: false });
+            this.currentFamilyId = family ? family.id : "";
+        }
         void this.loadPage();
     },
+    onHide() { this.loadEpoch++; this.setData({ refreshing: false, loading: false }); },
     onCopyLink(e) { const url = e.currentTarget.dataset.url; if (url)
         wx.setClipboardData({ data: url }); },
     onKindChange(event) {
@@ -131,6 +139,7 @@ Page({
         if (this.data.refreshing && !options.force) {
             return;
         }
+        const epoch = ++this.loadEpoch;
         const cachedMembers = session_1.session.getMembers(family.id);
         if (cachedMembers.length > 0 && this.data.members.length === 0) {
             this.setData({
@@ -148,6 +157,8 @@ Page({
                 api_1.api.listMembers(family.id),
                 api_1.api.listDigitalSpaceItems(family.id)
             ]);
+            if (epoch !== this.loadEpoch || !session_1.session.isFamily(family.id))
+                return;
             const members = membersResponse.data;
             const items = itemsResponse.data.map((item) => withItemText(item, members));
             const filterKind = filterKinds[this.data.filterIndex]?.value ?? "all";
@@ -163,6 +174,8 @@ Page({
             });
         }
         catch (error) {
+            if (epoch !== this.loadEpoch || !session_1.session.isFamily(family.id))
+                return;
             this.setData({ loading: false, refreshing: false });
             wx.showToast({
                 title: "数字空间加载失败，请检查网络后重试",

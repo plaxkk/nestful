@@ -309,3 +309,11 @@
 }
 
 .invite-token { display: block; word-break: break-all; font-size: 32rpx; line-height: 1.7; padding: 20rpx 0; }
+
+/* Family management lives behind the Family destination, away from daily tasks. */
+.family-page { background: #faf7f1; }
+.family-page .page-title,.family-page .section-title { color: #26392e; }
+.family-page .eyebrow,.family-page .family-list-link { color: #365b44; }
+.family-page .panel,.family-page .feature-row,.family-page .member-row { border-color: #e6e7dd; background: #fffefa; }
+.family-page .member-pill { background: #ecf0e7; color: #365b44; }
+.family-page .primary-action { background: #365b44; color: #fffefa; }

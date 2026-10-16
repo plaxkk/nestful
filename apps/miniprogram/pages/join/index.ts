@@ -24,7 +24,7 @@ Page({
   },
   async enterFamily(family:Family,member:FamilyMember){
     session.setFamily(family);session.setMember(member);session.setMembers(family.id,[member]);
-    const url=this.targetActivityId?`/pages/activities/index?familyId=${family.id}&activityId=${encodeURIComponent(this.targetActivityId)}`:'/pages/family/index';
+    const url=this.targetActivityId?`/pages/activities/index?familyId=${family.id}&activityId=${encodeURIComponent(this.targetActivityId)}`:'/pages/home/index?current=1';
     wx.redirectTo({url});
   },
   async onRefreshStatus(){

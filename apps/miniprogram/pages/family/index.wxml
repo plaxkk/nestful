@@ -1,27 +1,11 @@
 <view class="page family-page">
   <view class="family-hero">
-    <text class="eyebrow">把约定放好，让家人一起回应</text>
+    <text class="eyebrow">我的家庭</text>
     <text class="page-title">{{familyName}}</text>
-    <text class="page-subtitle">看看近期安排，以及现在等你回应的事。</text>
+    <text class="page-subtitle">家人、邀请和家庭设置，都放在这里。</text>
     <view class="member-pill">{{memberCountText}}</view>
-    <button class="family-list-link" bindtap="onOpenFamilyList">切换或创建家庭 ›</button>
+    <button class="family-list-link" bindtap="onOpenFamilyList">管理家庭切换 ›</button>
   </view>
-
-  <view class="section today-section">
-    <text class="section-title">等我处理</text>
-    <text class="helper-text" wx:if="{{refreshing && todos.length === 0}}">正在查看待办…</text>
-    <text class="helper-text" wx:if="{{dashboardError}}">{{dashboardError}}</text>
-    <text class="empty-text" wx:if="{{!refreshing && !dashboardError && todos.length === 0}}">暂时没有待办。可以发起一次家庭活动，邀请家人一起回应。</text>
-    <view class="feature-row" wx:for="{{todos}}" wx:key="id" data-id="{{item.id}}" data-activity-id="{{item.activityId}}" data-page="{{item.page}}" bindtap="onOpenTodo">
-      <view class="feature-copy"><text class="feature-title">{{item.title}}</text><text class="feature-desc">{{item.label}} · {{item.timeText}}</text></view><text>›</text>
-    </view>
-    <button class="text-button" bindtap="onRefreshDashboard">刷新待办和加入申请</button>
-  </view>
-  <view class="section" wx:if="{{upcoming.length > 0}}">
-    <text class="section-title">接下来的活动</text>
-    <view class="feature-row" wx:for="{{upcoming}}" wx:key="id" data-id="{{item.id}}" data-page="activities" bindtap="onOpenTodo"><view class="feature-copy"><text class="feature-title">{{item.title}}</text><text class="feature-desc">{{item.timeText}}</text></view><text>›</text></view>
-  </view>
-  <button class="primary-action" bindtap="onOpenActivities">查看或发起家庭活动</button>
 
   <view class="panel invite-panel" wx:if="{{isCurrentMemberAdmin && joinRequests.length > 0}}">
     <text class="section-title">家人的加入申请</text>
@@ -36,7 +20,7 @@
   </view>
 
   <view class="panel invite-panel" wx:if="{{isCurrentMemberAdmin && !inviteCode}}">
-    <text class="section-title">下一步：邀请家人</text>
+    <text class="section-title">邀请家人</text>
     <picker range="{{invitationModeOptions}}" value="{{invitationModeIndex}}" bindchange="onInvitationModeChange"><view class="picker-value">{{invitationModeOptions[invitationModeIndex]}}</view></picker>
     <view class="switch-row" wx:if="{{invitationModeIndex === 1}}"><text class="label">加入前由管理员确认</text><switch checked="{{approvalRequired}}" bindchange="onApprovalChange" /></view>
     <text class="section-note">{{invitationModeIndex === 1 ? (approvalRequired ? '同一张卡片可供多位家人申请加入。' : '持有卡片的人可直接加入，请只发送到可信的家庭群。') : '这份邀请只供一位新家人加入。'}}</text>
@@ -160,4 +144,5 @@
     <button class="secondary-action" disabled="{{busy}}" bindtap="onLeaveFamily">退出这个家庭</button>
     <button wx:if="{{isCurrentMemberAdmin}}" class="text-button danger" disabled="{{busy}}" bindtap="onArchiveFamily">归档整个家庭</button>
   </view>
+  <family-nav active="family" />
 </view>

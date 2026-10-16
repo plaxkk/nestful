@@ -93,9 +93,17 @@ Page({
     lastLoadedAt: 0
   },
 
+  loadEpoch: 0,
+  currentFamilyId: "",
   onShow() {
+    const family = session.getFamily();
+    if (!family || family.id !== this.currentFamilyId) {
+      this.setData({ members: [], memberOptions: [], items: [], visibleItems: [], lastLoadedAt: 0, refreshing: false });
+      this.currentFamilyId = family ? family.id : "";
+    }
     void this.loadPage();
   },
+  onHide() { this.loadEpoch++; this.setData({ refreshing: false, loading: false }); },
   onCopyLink(e:WechatMiniprogram.TouchEvent){const url=e.currentTarget.dataset.url as string;if(url)wx.setClipboardData({data:url});},
 
   onKindChange(event: WechatMiniprogram.PickerChange) {
@@ -177,6 +185,7 @@ Page({
       return;
     }
 
+    const epoch = ++this.loadEpoch;
     const cachedMembers = session.getMembers(family.id);
 
     if (cachedMembers.length > 0 && this.data.members.length === 0) {
@@ -198,6 +207,7 @@ Page({
         api.listMembers(family.id),
         api.listDigitalSpaceItems(family.id)
       ]);
+      if (epoch !== this.loadEpoch || !session.isFamily(family.id)) return;
       const members = membersResponse.data;
       const items = itemsResponse.data.map((item) => withItemText(item, members));
       const filterKind = filterKinds[this.data.filterIndex]?.value ?? "all";
@@ -213,6 +223,7 @@ Page({
         lastLoadedAt: Date.now()
       });
     } catch (error) {
+      if (epoch !== this.loadEpoch || !session.isFamily(family.id)) return;
       this.setData({ loading: false, refreshing: false });
       wx.showToast({
         title: "数字空间加载失败，请检查网络后重试",
