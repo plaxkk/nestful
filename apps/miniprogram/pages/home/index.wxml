@@ -9,10 +9,10 @@
     </view>
     <view class="intro"><text class="date">{{dateLabel}}</text><text class="greeting">日子，一起好好过。</text></view>
     <view class="home-shortcuts" aria-label="常用功能">
-      <button bindtap="onOpenBirthdayReminders" data-qa="onOpenBirthdayReminders"><view class="shortcut-mark sand">生</view><text>生日提醒</text></button>
-      <button bindtap="onOpenHealthReminders" data-qa="onOpenHealthReminders"><view class="shortcut-mark">健</view><text>健康提醒</text></button>
-      <button bindtap="onCreateActivity" data-qa="onCreateActivity"><view class="shortcut-mark">约</view><text>发起活动</text></button>
-      <button bindtap="onOpenLedger" data-qa="onOpenLedger"><view class="shortcut-mark sand">账</view><text>家庭账本</text></button>
+      <button bindtap="onOpenBirthdayReminders" data-qa="onOpenBirthdayReminders" aria-label="生日提醒"><view class="shortcut-mark sand"><image class="shortcut-icon" src="/assets/icons/birthday.png" mode="aspectFit" aria-hidden="true" /></view><text>生日提醒</text></button>
+      <button bindtap="onOpenHealthReminders" data-qa="onOpenHealthReminders" aria-label="健康提醒"><view class="shortcut-mark"><image class="shortcut-icon" src="/assets/icons/health.png" mode="aspectFit" aria-hidden="true" /></view><text>健康提醒</text></button>
+      <button bindtap="onCreateActivity" data-qa="onCreateActivity" aria-label="发起活动"><view class="shortcut-mark"><image class="shortcut-icon" src="/assets/icons/activity.png" mode="aspectFit" aria-hidden="true" /></view><text>发起活动</text></button>
+      <button bindtap="onOpenLedger" data-qa="onOpenLedger" aria-label="家庭账本"><view class="shortcut-mark sand"><image class="shortcut-icon" src="/assets/icons/ledger.png" mode="aspectFit" aria-hidden="true" /></view><text>家庭账本</text></button>
     </view>
     <view class="status-line" wx:if="{{familyListError}}"><text>{{familyListError}}</text><button bindtap="onRetry">重试</button></view>
     <view class="load-state" wx:if="{{error}}"><text>{{error}}</text><button class="quiet-button" bindtap="onRetry">重新加载</button></view>

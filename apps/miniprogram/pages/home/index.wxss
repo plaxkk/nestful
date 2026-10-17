@@ -89,8 +89,9 @@ page { background: #faf7f1; color: #26392e; }
 .greeting { font-size: 46rpx; }
 .home-shortcuts { display: flex; gap: 12rpx; padding: 8rpx 0 12rpx; }
 .home .home-shortcuts button { flex: 1; min-width: 0; min-height: 142rpx; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14rpx; font-size: 25rpx; color: #365b44; }
-.shortcut-mark { width: 70rpx; height: 70rpx; border-radius: 22rpx; display: flex; align-items: center; justify-content: center; background: #ecf0e7; font-size: 29rpx; font-weight: 500; }
+.shortcut-mark { width: 70rpx; height: 70rpx; border-radius: 22rpx; display: flex; align-items: center; justify-content: center; background: #ecf0e7; }
 .shortcut-mark.sand { background: #f1e6d3; color: #925938; }
+.shortcut-icon { display: block; width: 44rpx; height: 44rpx; }
 .calm-panel { padding: 28rpx; background: #ecf0e7; border-radius: 28rpx; }
 .calm-title { display: block; font-size: 31rpx; font-weight: 500; margin-bottom: 10rpx; }
 .calm-panel .calm-note { padding: 0; }
