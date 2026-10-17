@@ -121,7 +121,7 @@ Page({
         todayDate: formatDateInput(new Date()), busy: false, familyName: "", error: "", dateInput: defaultDueAtInput().slice(0, 10), timeInput: "08:00",
         editingPlan: null,
         editTitleInput: '', editDateInput: '', editTimeInput: '08:00', editBirthdayInput: '', editFrequencyIndex: 0,
-        formVisible: false,
+        focusedReminderId: "", filter: "all", visibleReminders: [], formVisible: false,
         reminderTypes,
         frequencyOptions,
         targetScopeOptions,
@@ -143,6 +143,26 @@ Page({
         lastLoadedAt: 0
     },
     currentFamilyId: "", loadEpoch: 0, loadedRevision: -1,
+    focusRequested: false,
+    onLoad(query) { this.focusRequested = Boolean(query.focus); this.setData({ focusedReminderId: query.focus ?? "" }); this.setFilter(query.filter ?? "all"); },
+    setFilter(filter) {
+        if (!["all", "birthday", "health"].includes(filter))
+            filter = "all";
+        this.setData({ filter });
+        if (filter === "birthday")
+            this.onTypeChange({ detail: { value: "0" } });
+        else if (filter === "health" && this.data.typeIndex === 0)
+            this.onTypeChange({ detail: { value: "1" } });
+        this.applyReminderFilter();
+    },
+    onFilterChange(e) { this.focusRequested = false; this.setData({ focusedReminderId: "" }); this.setFilter(String(e.currentTarget.dataset.filter)); },
+    applyReminderFilter() {
+        const visibleReminders = this.data.reminders.filter(r => this.data.filter === "all" || this.data.filter === "birthday" && r.type === "birthday" || this.data.filter === "health" && ["medicine", "exercise"].includes(r.type));
+        this.setData({ visibleReminders }, () => { if (this.focusRequested && visibleReminders.some(r => r.id === this.data.focusedReminderId)) {
+            this.focusRequested = false;
+            wx.pageScrollTo({ selector: `#reminder-${this.data.focusedReminderId}`, duration: 200 });
+        } });
+    },
     onShow() {
         const family = session_1.session.getFamily();
         if (!family) {
@@ -151,7 +171,7 @@ Page({
         }
         if (this.currentFamilyId !== family.id) {
             this.loadEpoch++;
-            this.setData({ members: [], memberOptions: [], reminders: [], lastLoadedAt: 0, refreshing: false, formVisible: false, editingPlan: null });
+            this.setData({ members: [], memberOptions: [], reminders: [], visibleReminders: [], lastLoadedAt: 0, refreshing: false, formVisible: false, editingPlan: null });
             this.currentFamilyId = family.id;
         }
         this.setData({ familyName: family.name });
@@ -369,6 +389,7 @@ Page({
                     .map((reminder) => withReminderText(reminder, Boolean(reminder.planId && reminder.completedAt && pendingPlanIds.has(reminder.planId)))),
                 loading: false
             });
+            this.applyReminderFilter();
         }
         catch (error) {
             if (epoch !== this.loadEpoch || !session_1.session.isFamily(family.id))
@@ -457,7 +478,7 @@ Page({
             wx.hideLoading();
             this.setData({
                 titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
-                formVisible: false, dueAtInput: defaultDueAtInput(), dateInput: defaultDueAtInput().slice(0, 10), timeInput: "08:00"
+                ...(this.data.filter !== "all" ? { filter: this.data.typeIndex === 0 ? "birthday" : "health" } : {}), formVisible: false, dueAtInput: defaultDueAtInput(), dateInput: defaultDueAtInput().slice(0, 10), timeInput: "08:00"
             });
             void this.loadPage({ force: true, showLoading: false });
             wx.showToast({

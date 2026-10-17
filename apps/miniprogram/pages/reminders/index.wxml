@@ -1,6 +1,11 @@
 <view class="page reminders-page">
-  <view class="header"><text class="family-context">{{familyName}}</text><text class="eyebrow">把关心放进日常</text><text class="page-title">家里的提醒</text><text class="page-subtitle">记住生日，也照顾好每天的小事。</text></view>
-  <button class="primary-action" wx:if="{{!formVisible && !editingPlan}}" bindtap="onToggleForm" data-qa="onToggleForm">＋ 新增提醒</button>
+  <view class="header"><text class="family-context">{{familyName}}</text><text class="eyebrow">把关心放进日常</text><text class="page-title">{{formVisible ? '新增提醒' : editingPlan ? '修改提醒' : filter === 'birthday' ? '生日提醒' : filter === 'health' ? '健康提醒' : '家里的提醒'}}</text><text class="page-subtitle">记住生日，也照顾好每天的小事。</text></view>
+  <view class="choice-row" wx:if="{{!formVisible && !editingPlan}}">
+    <button class="choice-button {{filter === 'all' ? 'selected' : ''}}" data-filter="all" bindtap="onFilterChange">全部</button>
+    <button class="choice-button {{filter === 'birthday' ? 'selected' : ''}}" data-filter="birthday" bindtap="onFilterChange">生日</button>
+    <button class="choice-button {{filter === 'health' ? 'selected' : ''}}" data-filter="health" bindtap="onFilterChange">健康</button>
+  </view>
+  <button class="primary-action" wx:if="{{!formVisible && !editingPlan}}" bindtap="onToggleForm" data-qa="onToggleForm">{{filter === 'birthday' ? '＋ 添加生日提醒' : '＋ 新增提醒'}}</button>
   <view class="error-state" wx:if="{{error}}"><text>{{error}}</text><button class="text-button" bindtap="onRetry" data-qa="onRetry">重新加载</button></view>
   <text class="loading-state" wx:if="{{loading}}">正在整理提醒…</text>
 
@@ -79,9 +84,9 @@
 
   <view class="section" wx:if="{{!formVisible && !editingPlan}}">
     <text class="section-title">提醒清单</text>
-    <text class="empty-text" wx:if="{{!loading && !error && reminders.length === 0}}">还没有提醒。先新增一个生日、吃药或运动提醒。</text>
+    <text class="empty-text" wx:if="{{!loading && !error && visibleReminders.length === 0}}">{{filter === 'birthday' ? '还没有生日提醒，点上方添加家人的生日。' : filter === 'health' ? '还没有健康提醒，可以添加吃药或运动提醒。' : '还没有提醒。先新增一个生日、吃药或运动提醒。'}}</text>
     <view class="reminder-list">
-      <view class="reminder-row {{item.isCompleted ? 'completed' : ''}}" wx:for="{{reminders}}" wx:key="id">
+      <view id="reminder-{{item.id}}" class="reminder-row {{focusedReminderId === item.id ? 'focused' : ''}} {{item.isCompleted ? 'completed' : ''}}" wx:for="{{visibleReminders}}" wx:key="id">
         <view class="reminder-main">
           <text class="reminder-title">{{item.title}}</text>
           <text class="reminder-meta">{{item.completionText}}</text>
@@ -100,4 +105,5 @@
     </view>
   </view>
   <text class="helper-text">未确认不代表家人发生异常。请勿将提醒作为唯一的用药或紧急照护方式。</text>
+  <family-nav id="family-nav" active="reminders" wx:if="{{members.length > 0}}" />
 </view>

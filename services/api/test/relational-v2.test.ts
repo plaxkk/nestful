@@ -471,3 +471,20 @@ test('home bootstrap excludes archived families and Vercel exposes non-sensitive
   assert.equal(status,200);assert.equal(body.data.currentFamilyId,family.family.id);assert.match(headers['server-timing'],/^app;dur=\d+(\.\d+)?$/);
   assert.equal(headers['cache-control'],'private, no-store');
 });
+
+
+test('home reserves today and future reminder slots even with an unconfirmed backlog',async()=>{
+  const f=await familyRepository.create(a.userId,{name:'Reminder priorities',ownerDisplayName:'A'});
+  const midnight=(await owner.query("select date_trunc('day',now() at time zone 'Asia/Shanghai') at time zone 'Asia/Shanghai' as start")).rows[0].start as Date;
+  const start=new Date(midnight).getTime();
+  const create=(title:string,due:number)=>remindersRepository.create(f.family.id,a.userId,{type:'exercise',title,dueAt:new Date(due).toISOString(),frequency:'once',targetMemberIds:[f.ownerMember.id]});
+  for(let i=0;i<14;i++)await create(`Earlier ${i}`,start-3600000-i*60000);
+  const today=await create('Today matters',start+12*3600000);
+  const future=await create('Prepare tomorrow',start+36*3600000);
+  const d=await dashboardRepository.get(f.family.id,a.userId);
+  assert.equal(d.reminders[0].id,today.id);
+  assert.ok(d.reminders.some(r=>r.id===future.id));
+  assert.equal(d.reminders.length,12); // ten earlier + today + tomorrow
+  assert.equal(new Set(d.reminders.map(r=>r.id)).size,12);
+  await assert.rejects(dashboardRepository.get(f.family.id,b.userId),e=>e instanceof DomainError&&e.status===403);
+});

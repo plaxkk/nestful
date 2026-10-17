@@ -17,7 +17,7 @@ const a = { id: 'family-a', name: '向阳一家' }, b = { id: 'family-b', name: 
 const ma = { id: 'member-a', userId: 'user', familyId: a.id, displayName: '我', role: 'admin' };
 const mb = { ...ma, id: 'member-b', familyId: b.id };
 const memberships = [{family:a,member:ma,members:[ma]}, {family:b,member:mb,members:[mb]}];
-const at = '2027-10-17T10:30:00.000Z';
+const today=new Date();today.setHours(12,30,0,0);const at=today.toISOString();
 const dashboard = id => ({ activities: [{id:`activity-${id}`,title:`${id}家庭晚餐`,at}], tasks:[{id:`task-${id}`,activityId:`activity-${id}`,title:`${id}订餐`,at}], reminders:[{id:`reminder-${id}`,title:`${id}生日`,at}], upcoming:[{id:`activity-${id}`,title:`${id}家庭晚餐`,at}] });
 const activity = id => ({ id:`activity-${id}`,familyId:id,title:`${id}家庭晚餐`,startsAt:at,status:'scheduled',location:'在家',participants:[{memberId:id===a.id?ma.id:mb.id,rsvp:'pending'}],tasks:[{id:`task-${id}`,version:9,status:'open'}] });
 function page(name='home') { let definition; global.Page = d => definition = d; const path = require.resolve(`../apps/miniprogram/pages/${name}/index.js`); delete require.cache[path]; require(path); const p={...definition,data:structuredClone(definition.data)}; p.setData = (v,cb) => {Object.assign(p.data,v);cb?.();}; return p; }
@@ -40,7 +40,7 @@ function reset() {
 }
 reset(); session.setFamily(b);session.setMember(mb);
 let p=page();p.onLoad({});await p.restoreFamilySession();
-assert.equal(session.getFamily().id,a.id);assert.equal(p.data.familyName,a.name);assert.equal(p.data.pendingCount,3);assert.equal(p.data.todos[0].activityId,`activity-${a.id}`);assert.equal(p.data.reminders[0].title,`${a.id}生日`);
+assert.equal(session.getFamily().id,a.id);assert.equal(p.data.familyName,a.name);assert.equal(p.data.pendingCount,3);assert.equal(p.data.todos.find(r=>r.kind==='task').activityId,`activity-${a.id}`);assert.equal(p.data.reminders[0].title,`${a.id}生日`);
 console.log('PASS cold home enters the primary family and renders actual family-specific dashboard data');
 await p.onSelectFamily(event({id:b.id}));assert.equal(p.data.familyName,b.name);assert.equal(session.getPrimaryFamilyId(),a.id);
 let fresh=page();fresh.onLoad({});await fresh.restoreFamilySession();assert.equal(fresh.data.currentFamilyId,a.id);
@@ -53,11 +53,11 @@ console.log('PASS removed primary families fall back to valid memberships; empty
 
 reset();p=page();p.syncHomeState();p.data.families=memberships.map(m=>({...m,id:m.family.id}));
 const slow=deferred();api.getDashboard=async id=>id===a.id?slow.promise:{data:dashboard(b.id)};
-const oldRead=p.loadDashboard();await p.onSelectFamily(event({id:b.id}));slow.resolve({data:dashboard(a.id)});await oldRead;assert.equal(p.data.hero.id,`activity-${b.id}`);assert.equal(p.data.todos[0].title,`${b.id}订餐`);
+const oldRead=p.loadDashboard();await p.onSelectFamily(event({id:b.id}));slow.resolve({data:dashboard(a.id)});await oldRead;assert.equal(p.data.hero.id,`activity-${b.id}`);assert.equal(p.data.todos.find(r=>r.kind==='task').title,`${b.id}订餐`);
 console.log('PASS slow responses from the previous family cannot overwrite the newly selected family');
 
 reset();p=page();p.syncHomeState();const older=deferred();let reads=0;api.getDashboard=()=>++reads===1?older.promise:Promise.resolve({data:{...dashboard(a.id),tasks:[]}});
-const first=p.loadDashboard();await p.loadDashboard();older.resolve({data:dashboard(a.id)});await first;assert.equal(p.data.todos.length,0);
+const first=p.loadDashboard();await p.loadDashboard();older.resolve({data:dashboard(a.id)});await first;assert.equal(p.data.todos.some(r=>r.kind==='task'),false);
 console.log('PASS an older dashboard refresh cannot resurrect already refreshed tasks');
 
 reset();p=page();p.syncHomeState();await p.loadDashboard();const choice=deferred();let responses=0;wx.showActionSheet=()=>choice.promise;
@@ -73,7 +73,7 @@ console.log('PASS leaving or switching context while the response sheet is open 
 reset();p=page();p.syncHomeState();await p.loadDashboard();const finish=deferred();let completions=0;
 api.updateActivityTask=async(f,id,task,body)=>{completions++;assert.equal(body.version,9);assert.equal(body.actorMemberId,ma.id);assert.equal(body.status,'done');return finish.promise;};
 const completion=p.onCompleteTask(event({key:`task:task-${a.id}`}));await Promise.resolve();await p.onCompleteTask(event({key:`task:task-${a.id}`}));assert.equal(completions,1);
-api.getDashboard=async()=>({data:{...dashboard(a.id),tasks:[]}});finish.resolve({data:activity(a.id)});await completion;assert.equal(p.data.todos.length,0);assert.equal(p.data.busyTaskId,'');
+api.getDashboard=async()=>({data:{...dashboard(a.id),tasks:[]}});finish.resolve({data:activity(a.id)});await completion;assert.equal(p.data.todos.some(r=>r.kind==='task'),false);assert.equal(p.data.busyTaskId,'');
 console.log('PASS task completion uses the current server version, prevents duplicate writes, and refreshes the count');
 
 reset();p=page();p.syncHomeState();await p.loadDashboard();api.getDashboard=async()=>{throw new ApiRequestError(403,{error:'forbidden'});};await p.loadDashboard();assert.equal(p.data.hero,null);assert.equal(p.data.hasFamily,false);assert.deepEqual(p.data.families,[]);
@@ -98,4 +98,14 @@ console.log('PASS navigation reuses list pages, preserves activity detail links,
 
 reset();session.setPrimaryFamilyId(a.id);session.setUser({id:'another-user'});assert.equal(session.getPrimaryFamilyId(),'');session.clear();assert.equal(storage.has('nestful.primaryFamily'),false);
 console.log('PASS primary-family preferences are account-scoped and cleared by explicit logout');
+reset();p=page();const yesterday=new Date(today);yesterday.setDate(today.getDate()-1);const tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);const far=new Date(today);far.setDate(today.getDate()+9);
+p.renderDashboard({activities:[{id:'respond',title:'未来活动待回应',at:tomorrow.toISOString()}],tasks:[],reminders:[{id:'old',title:'较早提醒',at:yesterday.toISOString()},{id:'today',title:'今天提醒',at},{id:'future',title:'未来提醒',at:tomorrow.toISOString()}],upcoming:[{id:'respond',title:'未来活动待回应',at:tomorrow.toISOString()},{id:'joined',title:'已确认活动',at:tomorrow.toISOString()},{id:'far',title:'很远的活动',at:far.toISOString()}]});
+assert.equal(p.data.todos[0].id,'today');assert.equal(p.data.pendingCount,3);assert.equal(p.data.todos.some(r=>r.id==='future'),false);assert.deepEqual(p.data.upcomingItems.map(r=>r.id),['future','joined']);
+console.log('PASS today is prioritized, future reminders are not due work, upcoming excludes duplicate or distant activities');
+p.onOpenBirthdayReminders();assert.deepEqual(navigation.pop(),['navigateTo','/pages/reminders/index?filter=birthday']);p.onOpenHealthReminders();assert.deepEqual(navigation.pop(),['navigateTo','/pages/reminders/index?filter=health']);
+let reminders=page('reminders');reminders.onLoad({filter:'birthday'});assert.equal(reminders.data.filter,'birthday');assert.equal(reminders.data.typeIndex,0);reminders.setData({reminders:[{id:'birth',type:'birthday'},{id:'med',type:'medicine'},{id:'bill',type:'bill'}]});reminders.applyReminderFilter();assert.deepEqual(reminders.data.visibleReminders.map(r=>r.id),['birth']);reminders.setFilter('health');assert.deepEqual(reminders.data.visibleReminders.map(r=>r.id),['med']);reminders.setFilter('all');assert.equal(reminders.data.visibleReminders.length,3);
+stack=[{route:'pages/reminders/index',options:{}},{route:'pages/family/index',options:{}}];openFamilyPage('reminders');assert.deepEqual(navigation.pop(),['back',1]);stack=[{route:'pages/reminders/index',options:{filter:'birthday'}}];openFamilyPage('reminders');assert.deepEqual(navigation.pop(),['navigateTo','/pages/reminders/index']);
+console.log('PASS birthday and health shortcuts reach the correct filter; reminders is a reusable fifth navigation destination');
+p=page();p.onOpenTodo(event({page:'reminders',id:'specific-reminder'}));assert.deepEqual(navigation.pop(),['navigateTo','/pages/reminders/index?focus=specific-reminder']);let scrollTarget='';wx.pageScrollTo=o=>scrollTarget=o.selector;reminders=page('reminders');reminders.onLoad({focus:'specific-reminder'});reminders.setData({reminders:[{id:'specific-reminder',type:'medicine'}]});reminders.applyReminderFilter();assert.equal(scrollTarget,'#reminder-specific-reminder');assert.equal(reminders.data.focusedReminderId,'specific-reminder');reminders.onFilterChange(event({filter:'birthday'}));assert.equal(reminders.data.focusedReminderId,'');
+console.log('PASS a home reminder opens and scrolls to its exact row; category changes clear the focus');
 delete global.Page;delete global.wx;delete global.getCurrentPages;

@@ -1,6 +1,7 @@
 <view class="nav-space"></view>
 <view class="family-nav">
   <button class="nav-item {{active === 'home' ? 'selected' : ''}}" data-page="home" bindtap="onNavigate" aria-label="首页"><view class="nav-icon house"><view></view></view><text>首页</text></button>
+  <button class="nav-item {{active === 'reminders' ? 'selected' : ''}}" data-page="reminders" bindtap="onNavigate" aria-label="生日与健康提醒"><view class="nav-icon bell"><view></view></view><text>提醒</text></button>
   <button class="nav-item {{active === 'activities' ? 'selected' : ''}}" data-page="activities" bindtap="onNavigate" aria-label="家庭活动"><view class="nav-icon calendar"><view></view></view><text>活动</text></button>
   <button class="nav-item {{active === 'records' ? 'selected' : ''}}" data-page="records" bindtap="onNavigate" aria-label="家庭记录"><view class="nav-icon book"><view></view></view><text>记录</text></button>
   <button class="nav-item {{active === 'family' ? 'selected' : ''}}" data-page="family" bindtap="onNavigate" aria-label="家庭管理{{badge > 0 ? '，有新的加入申请' : ''}}"><view class="nav-icon people"><view></view></view><text>家庭</text><text class="nav-badge" wx:if="{{badge > 0}}">{{badge > 99 ? '99+' : badge}}</text></button>

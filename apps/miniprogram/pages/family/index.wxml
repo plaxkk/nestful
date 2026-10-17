@@ -91,19 +91,6 @@
     <button wx:if="{{canRemoveSelected}}" class="danger-action" bindtap="onRemoveSelectedMember" data-qa="onRemoveSelectedMember">移除这位家人</button>
     <text wx:if="{{canEditSelectedRole}}" class="helper-text">转交管理：先将这位家人设为管理员并保存，再退出家庭。家庭至少需要一位管理员。</text>
   </view>
-  <view class="section today-section">
-    <text class="section-title">家庭工具</text>
-    <view class="feature-list">
-      <view class="feature-row" wx:for="{{nextActions}}" wx:key="page" data-page="{{item.page}}" bindtap="onOpenFeature" data-qa="onOpenFeature">
-        <view class="feature-copy">
-          <text class="feature-title">{{item.title}}</text>
-          <text class="feature-desc">{{item.desc}}</text>
-        </view>
-        <text class="feature-arrow">›</text>
-      </view>
-    </view>
-  </view>
-
 <button class="text-button" wx:if="{{isCurrentMemberAdmin && invitations.length > 0}}" bindtap="onToggleHistory" data-qa="onToggleHistory">{{invitationHistoryVisible ? '收起邀请记录' : '查看邀请记录'}}</button>
   <view class="panel invite-panel invite-form" wx:if="{{isCurrentMemberAdmin && inviteFormVisible && !inviteCode}}">
     <text class="section-title">邀请家人</text>
@@ -151,5 +138,5 @@
     </block>
   </view>
   <button class="text-button" bindtap="onOpenHelp" data-qa="onOpenHelp">隐私与帮助 · 意见反馈</button>
-  <family-nav active="family" />
+  <family-nav id="family-nav" active="family" />
 </view>

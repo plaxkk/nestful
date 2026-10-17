@@ -17,7 +17,7 @@ const dateText = (value: string) => {
 type HomeItem = DashboardItem & { key: string; label: string; timeText: string; page: string; kind: string };
 type HomeFamily = FamilyMembership & { id: string; initial: string };
 type Hero = DashboardItem & { timeText: string; location: string; responseText: string; actionText: string; needsResponse: boolean };
-const emptyContent = () => ({ hero: null as Hero | null, todos: [] as HomeItem[], reminders: [] as HomeItem[], pendingCount: 0, moreTodoCount: 0, joinRequestCount: 0 });
+const emptyContent = () => ({ hero: null as Hero | null, todos: [] as HomeItem[], reminders: [] as HomeItem[], pendingCount: 0, moreTodoCount: 0, joinRequestCount: 0, upcomingItems: [] as HomeItem[], pendingReminderCount: 0, pendingActivityCount: 0 });
 
 Page({
   data: {
@@ -156,16 +156,25 @@ Page({
   },
   renderDashboard(d: FamilyDashboard) {
     const item = (r: DashboardItem, label: string, page: string, kind: string): HomeItem => ({ ...r, key: `${kind}:${r.id}`, label, page, kind, timeText: dateText(r.at) });
+    const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+    const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1).getTime();
+    const weekEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate()+7).getTime();
+    const currentReminders=d.reminders.filter(r=>Date.parse(r.at)<end);
+    const pending=[...currentReminders.map(r=>item(r,Date.parse(r.at)<start?"较早提醒 · 待确认":"今天的提醒","reminders","reminder")),
+      ...d.activities.map(r=>item(r,"待我回应","activities","activity")),...d.tasks.map(r=>item(r,"我负责","activities","task"))];
+    const bucket=(r:HomeItem)=>{const at=Date.parse(r.at);return at>=start&&at<end?0:at<start?1:2;};
+    const kindOrder:Record<string,number>={reminder:0,task:1,activity:2};
+    pending.sort((a,b)=>bucket(a)-bucket(b)||Date.parse(a.at)-Date.parse(b.at)||(kindOrder[a.kind]??3)-(kindOrder[b.kind]??3)||a.key.localeCompare(b.key));
+    const pendingActivityIds=new Set(d.activities.map(r=>r.id));
+    const upcoming=[...d.reminders.filter(r=>Date.parse(r.at)>=end).map(r=>item(r,"提醒","reminders","reminder")),
+      ...d.upcoming.filter(r=>!pendingActivityIds.has(r.id)).map(r=>item(r,"家庭活动","activities","activity"))]
+      .filter(r=>Date.parse(r.at)>=now.getTime()&&Date.parse(r.at)<weekEnd).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
     const next = d.upcoming[0] ?? d.activities[0];
-    const todos = [
-      ...d.activities.filter(r => r.id !== next?.id).map(r => item(r, "待我回应", "activities", "activity")),
-      ...d.tasks.map(r => item(r, "我负责", "activities", "task"))
-    ];
     this.setData({
-      hero: next ? { ...next, timeText: dateText(next.at), location: "", responseText: "", needsResponse: d.activities.some(r => r.id === next.id), actionText: d.activities.some(r => r.id === next.id) ? "回应邀请" : "查看安排" } : null,
-      todos: todos.slice(0, 3), moreTodoCount: Math.max(0, todos.length - 3),
-      reminders: d.reminders.slice(0, 3).map(r => item(r, "与我有关", "reminders", "reminder")),
-      pendingCount: d.activities.length + d.tasks.length + d.reminders.length, loading: false
+      hero:next?{...next,timeText:dateText(next.at),location:"",responseText:"",needsResponse:d.activities.some(r=>r.id===next.id),actionText:d.activities.some(r=>r.id===next.id)?"回应邀请":"查看安排"}:null,
+      todos:pending.slice(0,3),moreTodoCount:Math.max(0,pending.length-3),
+      reminders:d.reminders.slice(0,3).map(r=>item(r,"与我有关","reminders","reminder")),upcomingItems:upcoming.slice(0,4),
+      pendingCount:pending.length,pendingReminderCount:currentReminders.length,pendingActivityCount:d.activities.length+d.tasks.length,loading:false
     });
   },
   applyHeroDetails(a: Activity) {
@@ -209,16 +218,20 @@ Page({
     wx.showToast({ title: "已设为主家庭", icon: "success" });
   },
   async onHeroAction() {
-    const family = session.getFamily(), member = session.getMember(), hero = this.data.hero;
-    if (!family || !member || !hero || this.data.busy) return;
-    if (!hero.needsResponse) { this.openActivity(hero.id); return; }
+    const hero=this.data.hero;if(!hero)return;
+    if(!hero.needsResponse){this.openActivity(hero.id);return;}
+    await this.respondToActivity(hero.id);
+  },
+  async onRespondActivity(event:WechatMiniprogram.TouchEvent){await this.respondToActivity(String(event.currentTarget.dataset.id));},
+  async respondToActivity(activityId:string) {
+    const family=session.getFamily(),member=session.getMember();if(!family||!member||this.data.busy)return;
     const epoch = this.restoreEpoch;
     this.setData({ busy: true });
     try {
       const choice = await wx.showActionSheet({ itemList: ["确认参加", "暂时待定", "无法参加"] });
       if (epoch !== this.restoreEpoch || !session.isFamily(family.id)) return;
       const rsvp: RsvpStatus = (["accepted", "tentative", "declined"] as const)[choice.tapIndex];
-      await api.updateActivityRsvp(family.id, hero.id, { actorMemberId: member.id, memberId: member.id, rsvp });
+      await api.updateActivityRsvp(family.id, activityId, { actorMemberId: member.id, memberId: member.id, rsvp });
       if (epoch !== this.restoreEpoch || !session.isFamily(family.id)) return;
       wx.showToast({ title: "已告诉家人", icon: "success" });
       await this.loadDashboard();
@@ -248,12 +261,14 @@ Page({
     if (family) wx.navigateTo({ url: `/pages/activities/index?familyId=${encodeURIComponent(family.id)}&activityId=${encodeURIComponent(id)}` });
   },
   onOpenTodo(event: WechatMiniprogram.TouchEvent) {
-    if (event.currentTarget.dataset.page === "reminders") { this.onOpenReminders(); return; }
+    if (event.currentTarget.dataset.page === "reminders") { const id=event.currentTarget.dataset.id; if(id)wx.navigateTo({url:`/pages/reminders/index?focus=${encodeURIComponent(String(id))}`});else this.onOpenReminders();return; }
     this.openActivity(String(event.currentTarget.dataset.activityId || event.currentTarget.dataset.id));
   },
   onOpenActivities() { openFamilyPage("activities"); },
   onCreateActivity() { wx.navigateTo({ url: "/pages/activities/index?create=1" }); },
-  onOpenReminders() { wx.navigateTo({ url: "/pages/reminders/index" }); },
+  onOpenReminders() { openFamilyPage("reminders"); },
+  onOpenBirthdayReminders(){wx.navigateTo({url:"/pages/reminders/index?filter=birthday"});},
+  onOpenHealthReminders(){wx.navigateTo({url:"/pages/reminders/index?filter=health"});},
   onOpenLedger() { wx.navigateTo({ url: "/pages/ledger/index" }); },
   onOpenFamily() { openFamilyPage("family"); },
   onRetry() { this.skipInitialRestore = false; void this.restoreFamilySession(true); },

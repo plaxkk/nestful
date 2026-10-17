@@ -1,6 +1,6 @@
 .nav-space { height: calc(132rpx + env(safe-area-inset-bottom)); }
 .family-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; padding: 16rpx 20rpx calc(12rpx + env(safe-area-inset-bottom)); background: #fffefa; border-top: 1rpx solid #e6e7dd; }
-.nav-item { position: relative; display: flex; flex: 1; flex-direction: column; gap: 8rpx; align-items: center; justify-content: center; margin: 0; padding: 10rpx 4rpx; min-height: 94rpx; border: 0; border-radius: 0; background: transparent; color: #737b70; font-size: 24rpx; line-height: 1.4; }
+.nav-item { position: relative; display: flex; flex: 1; flex-direction: column; gap: 8rpx; align-items: center; justify-content: center; margin: 0; padding: 10rpx 4rpx; min-height: 94rpx; border: 0; border-radius: 0; background: transparent; color: #737b70; font-size: 23rpx; line-height: 1.4; }
 .nav-badge { position: absolute; top: 0; right: 25rpx; min-width: 30rpx; height: 30rpx; padding: 0 5rpx; box-sizing: border-box; border-radius: 20rpx; background: #925938; color: #fffefa; font-size: 22rpx; line-height: 30rpx; text-align: center; }
 .nav-item::after { border: 0; }
 .selected { color: #365b44; font-weight: 600; }
@@ -19,3 +19,7 @@
 .people::before { left: 3rpx; } .people::after { right: 0; top: 5rpx; width: 9rpx; height: 9rpx; }
 .people>view { position: absolute; width: 24rpx; height: 17rpx; border: 2rpx solid currentColor; border-bottom: 0; border-radius: 16rpx 16rpx 0 0; left: 0; bottom: 0; }
 .people>view::after { content: ''; position: absolute; width: 13rpx; height: 14rpx; border: 2rpx solid currentColor; border-left: 0; border-bottom: 0; border-radius: 0 14rpx 0 0; left: 21rpx; top: 1rpx; }
+
+.bell { width: 28rpx; height: 28rpx; top: 2rpx; border: 2rpx solid currentColor; border-radius: 16rpx 16rpx 5rpx 5rpx; }
+.bell::before { content: ''; position: absolute; top: -6rpx; left: 10rpx; height: 5rpx; border-left: 2rpx solid currentColor; }
+.bell::after { content: ''; position: absolute; left: 8rpx; bottom: -7rpx; width: 8rpx; border-bottom: 2rpx solid currentColor; border-radius: 4rpx; }
