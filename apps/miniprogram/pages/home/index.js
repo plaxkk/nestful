@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
+const discovery_1 = require("../../utils/discovery");
 const wechat_1 = require("../../utils/wechat");
 const navigation_1 = require("../../utils/navigation");
 const refreshIntervalMs = 30000;
@@ -344,5 +345,6 @@ Page({
     else
         this.onCreateFamily(); },
     onJoinFamily() { this.setData({ switcherVisible: false }); wx.navigateTo({ url: "/pages/join/index" }); },
+    onShareAppMessage() { return (0, discovery_1.publicProductShare)(); },
     onOpenHelp() { wx.navigateTo({ url: "/pages/help/index" }); }
 });

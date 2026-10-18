@@ -1,6 +1,7 @@
 <view class="page help-page">
   <text class="page-title">隐私与帮助</text>
   <text class="helper-text">更新于 2026 年 10 月 16 日 · Nestful 家庭试用版</text>
+  <navigator class="text-button" url="/pages/about/index">了解 Nestful小窝 · 介绍给朋友 ›</navigator>
   <view class="panel help-section">
     <text class="section-title">我们会保存什么</text>
     <text class="page-subtitle">为识别同一个微信用户、登录和验证家庭成员身份，我们保存小程序内的微信身份标识、登录凭证的摘要，以及你主动填写的称呼和家庭内容。加入不要求手机号、通讯录或完整个人资料。</text>

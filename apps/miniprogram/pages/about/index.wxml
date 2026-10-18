@@ -1,0 +1,38 @@
+<view class="page about-page">
+  <view class="header">
+    <text class="eyebrow">{{productName}} · 家庭日常助手</text>
+    <text class="page-title">一家人的小事，<text class="title-line">一起放在心上。</text></text>
+    <text class="page-subtitle">记住家人生日，约好下一次相聚，记录共同开支。把家庭群里容易翻过去的安排，放回顺手能找到的地方。</text>
+  </view>
+  <navigator class="primary-action" url="/pages/home/index" open-type="reLaunch">打开我的小窝</navigator>
+  <text class="helper-text entry-note">先了解功能；开始使用时，再创建家庭或通过邀请加入。</text>
+  <view class="section">
+    <text class="section-title">小窝能帮你做什么</text>
+    <view class="feature-row">
+      <view class="feature-icon sand"><image src="/assets/icons/birthday.png" mode="aspectFit" aria-hidden="true" /></view>
+      <view class="feature-copy"><text class="feature-title">家人生日提醒</text><text class="page-subtitle">记录公历或农历生日，设置提前提醒，给祝福和准备留一点时间。</text></view>
+    </view>
+    <view class="feature-row">
+      <view class="feature-icon"><image src="/assets/icons/health.png" mode="aspectFit" aria-hidden="true" /></view>
+      <view class="feature-copy"><text class="feature-title">吃药与运动提醒</text><text class="page-subtitle">安排日常提醒，由家人确认是否完成。微信通知需要接收人订阅授权。</text></view>
+    </view>
+    <view class="feature-row">
+      <view class="feature-icon"><image src="/assets/icons/activity.png" mode="aspectFit" aria-hidden="true" /></view>
+      <view class="feature-copy"><text class="feature-title">家庭活动与分工</text><text class="page-subtitle">约聚餐、散步或一次出游，转发活动到微信群，确认谁参加、谁来准备。</text></view>
+    </view>
+    <view class="feature-row">
+      <view class="feature-icon sand"><image src="/assets/icons/ledger.png" mode="aspectFit" aria-hidden="true" /></view>
+      <view class="feature-copy"><text class="feature-title">家庭记账与记录</text><text class="page-subtitle">一起记收入和支出，整理家里的资料链接，也留下相聚的文字记忆。</text></view>
+    </view>
+  </view>
+  <view class="panel privacy-note">
+    <text class="section-title">每个家庭，有自己的空间</text>
+    <text class="page-subtitle">这页只介绍产品。搜索或转发这页不会让别人加入你的家庭；查看家庭内容仍需成员身份。邀请家人请使用家庭页的专属邀请。</text>
+    <navigator class="text-button" url="/pages/help/index">隐私与使用帮助 ›</navigator>
+  </view>
+  <text class="helper-text">提醒是日常辅助，不能替代专业医疗建议或紧急照护。未确认不代表家人发生异常。</text>
+  <view class="about-actions">
+    <navigator class="secondary-action" url="/pages/create-family/index">创建我的家庭</navigator>
+    <button class="text-button" open-type="share">把小窝介绍给朋友</button>
+  </view>
+</view>

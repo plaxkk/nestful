@@ -1,7 +1,12 @@
 {
+  "desc": "历史兼容配置，实际小程序配置在 apps/miniprogram/sitemap.json。微信当前文档已标记 sitemap.json 下线；不保证收录。",
   "rules": [
     {
       "action": "allow",
+      "page": "pages/about/index"
+    },
+    {
+      "action": "disallow",
       "page": "*"
     }
   ]

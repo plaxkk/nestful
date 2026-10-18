@@ -8,10 +8,11 @@
     "pages/digital-space/index",
     "pages/activities/index",
     "pages/join/index",
-    "pages/help/index"
+    "pages/help/index",
+    "pages/about/index"
   ],
   "window": {
-    "navigationBarTitleText": "Nestful",
+    "navigationBarTitleText": "Nestful小窝",
     "navigationBarBackgroundColor": "#faf7f1",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#faf7f1"

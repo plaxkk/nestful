@@ -1,0 +1,14 @@
+.about-page { gap: 34rpx; }
+.about-page .header { gap: 22rpx; padding-top: 24rpx; }
+.title-line { display: block; }
+.about-page .primary-action,.about-page .secondary-action { text-decoration: none; }
+.entry-note { margin-top: -18rpx; text-align: center; }
+.feature-row { display: flex; align-items: flex-start; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid var(--line); }
+.feature-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 78rpx; height: 78rpx; border-radius: 24rpx; background: var(--soft-green); }
+.feature-icon.sand { background: var(--sand); }
+.feature-icon image { width: 46rpx; height: 46rpx; }
+.feature-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10rpx; }
+.feature-title { font-size: 31rpx; font-weight: 500; }
+.privacy-note { display: flex; flex-direction: column; gap: 16rpx; }
+.privacy-note .text-button { align-self: flex-start; padding-left: 0; }
+.about-actions { display: flex; flex-direction: column; gap: 16rpx; }

@@ -42,6 +42,7 @@
     <text class="welcome-brand">nestful</text><text class="welcome-title">一家人的小事，<text>一起放在心上。</text></text><text class="welcome-note">把生日、健康提醒和家里的约定，一起放在心上。</text>
     <text class="welcome-note" wx:if="{{restoring}}">正在找回你的家庭…</text>
     <block wx:else><text class="welcome-error" wx:if="{{familyListError}}">{{familyListError}}</text><button class="welcome-primary" bindtap="onPrimaryAction">创建我的家庭</button><button class="welcome-secondary" bindtap="onJoinFamily">通过邀请加入家庭</button><button class="more-link" wx:if="{{familyListError}}" bindtap="onRetry">重新加载我的家庭</button></block>
+    <navigator class="welcome-learn" url="/pages/about/index">先了解 Nestful小窝 ›</navigator>
     <button class="welcome-help" bindtap="onOpenHelp">隐私与帮助</button>
   </view>
   <view class="switcher-backdrop" wx:if="{{switcherVisible}}" bindtap="onCloseSwitcher" catchtouchmove="onStopPropagation">

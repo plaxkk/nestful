@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="400" viewBox="0 0 500 400">
+  <rect width="500" height="400" fill="#faf7f1"/>
+  <g font-family="PingFang SC, sans-serif" fill="#26392e">
+    <text x="38" y="56" font-size="19" fill="#365b44">Nestful小窝</text>
+    <text x="38" y="115" font-size="32" font-weight="600">一家人的小事，</text>
+    <text x="38" y="163" font-size="32" font-weight="600">一起放在心上。</text>
+    <g fill="#ecf0e7"><rect x="38" y="202" width="88" height="88" rx="25"/><rect x="150" y="202" width="88" height="88" rx="25"/><rect x="262" y="202" width="88" height="88" rx="25"/><rect x="374" y="202" width="88" height="88" rx="25"/></g>
+    <g fill="none" stroke="#365b44" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <g transform="translate(59 224) scale(1.85)"><path d="M12 8V6m0-4c-1.5 1.5-1.5 2.5 0 3 1.5-.5 1.5-1.5 0-3Z"/><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 13c1.5 2 2.5 2 4 0 1.5 2 2.5 2 4 0 1.5 2 2.5 2 4 0 1.5 2 2.5 2 4 0M2.5 20h19"/></g>
+      <g transform="translate(171 224) scale(1.85)"><path d="M20.5 11.5c3-5.5-3.5-10-8.5-4.5-5-5.5-11.5-1-8.5 4.5C5 14.5 9 18 12 20c2-1.4 4.5-3.4 6.3-5.5M2 12h5l2-3 3 6 2-3h8"/></g>
+      <g transform="translate(283 224) scale(1.85)"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 10h16m-8 3v5m-2.5-2.5h5"/></g>
+      <g transform="translate(395 224) scale(1.85)"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 3v18m3.5-13h5m-5 4h5m-5 4h3"/></g>
+    </g>
+    <g text-anchor="middle" font-size="17" fill="#365b44"><text x="82" y="318">生日提醒</text><text x="194" y="318">日常关心</text><text x="306" y="318">家庭活动</text><text x="418" y="318">共同记账</text></g>
+    <text x="38" y="370" font-size="16" fill="#6c746b">给家人的安排，留一个顺手的地方。</text>
+  </g>
+</svg>

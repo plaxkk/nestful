@@ -15,4 +15,13 @@ reset();p=page('digital-space');let recordLoads=0;api.listMembers=async()=>({dat
 reset();p=page('join');let finishInvite;api.getInvitation=()=>new Promise(r=>finishInvite=r);p.onCodeInput({detail:{value:'old'}});const checking=p.loadInvitation('old');p.onCodeInput({detail:{value:'new'}});finishInvite({data:{familyName:'旧家庭',status:'active'}});await checking;assert.equal(p.data.familyName,'');assert.equal(p.data.valid,false);console.log('PASS changing an invite discards the previous validation response');
 reset();p=page('family');assert.equal(p.data.inviteFormVisible,false);assert.equal(p.data.settingsVisible,false);p.onToggleSettings();assert.equal(p.data.settingsVisible,true);p.onToggleInvite();assert.equal(p.data.inviteFormVisible,true);console.log('PASS family settings and invitations open deliberately');
 reset();let copied='';wx.setClipboardData=o=>{copied=o.data;o.success?.();};p=page('family');p.setData({inviteCode:'local-invite-code'});p.onCopyInviteCode();assert.equal(copied,'local-invite-code');p=page('digital-space');p.onCopyLink({currentTarget:{dataset:{url:'https://example.com/family'}}});assert.equal(copied,'https://example.com/family');p=page('help');p.onShow();p.onCopyReference();assert.match(copied,/用户：user/);assert.match(copied,/家庭：家 A/);console.log('PASS copy actions supply the invite, link and correct feedback context without touching the system clipboard');
+// Public discovery must work without a session and never put private context in a card.
+const savedWx=global.wx;global.wx=new Proxy({}, {get(){throw new Error('Public product page attempted to access a WeChat/session API');}});
+p=page('about');p.onLoad?.({code:'not-an-invitation',familyId:'not-a-family'});p.onShow?.();
+assert.equal(p.data.productName,'Nestful小窝');const publicCard=p.onShareAppMessage();assert.equal(publicCard.path,'/pages/about/index');assert.equal(p.onShareTimeline().query,'');
+assert.equal(JSON.stringify(publicCard).includes('not-a-family'),false);assert.equal(JSON.stringify(publicCard).includes('not-an-invitation'),false);
+global.wx=savedWx;console.log('PASS public product page opens and shares without login, storage or network APIs');
+reset();p=page('home');p.setData({familyName:'私密家庭名',currentFamilyId:'private-family',hero:{id:'private-activity',title:'私密活动'}});
+assert.deepEqual(p.onShareAppMessage(),publicCard);assert.equal(/private-|私密/.test(JSON.stringify(p.onShareAppMessage())),false);
+console.log('PASS home discovery cards always share the public product instead of family or activity data');
 delete global.Page;delete global.wx;

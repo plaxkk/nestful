@@ -1,5 +1,6 @@
 import { api, ApiRequestError, errorMessage, type Activity, type DashboardItem, type FamilyMembership, type FamilyDashboard, type RsvpStatus } from "../../utils/api";
 import { session } from "../../utils/session";
+import { publicProductShare } from "../../utils/discovery";
 import { getWechatIdentity } from "../../utils/wechat";
 import { openFamilyPage } from "../../utils/navigation";
 
@@ -275,5 +276,6 @@ Page({
   onCreateFamily() { this.setData({ switcherVisible: false }); wx.navigateTo({ url: "/pages/create-family/index" }); },
   onPrimaryAction() { this.skipInitialRestore = false; if (this.data.hasFamily) this.onOpenFamily(); else this.onCreateFamily(); },
   onJoinFamily() { this.setData({ switcherVisible: false }); wx.navigateTo({ url: "/pages/join/index" }); },
+  onShareAppMessage() { return publicProductShare(); },
   onOpenHelp() { wx.navigateTo({ url: "/pages/help/index" }); }
 });

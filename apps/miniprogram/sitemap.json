@@ -1,7 +1,12 @@
 {
+  "desc": "历史兼容配置，仅声明公开产品介绍页。微信当前文档已标记 sitemap.json 下线；此文件不保证收录，也不代替家庭鉴权。",
   "rules": [
     {
       "action": "allow",
+      "page": "pages/about/index"
+    },
+    {
+      "action": "disallow",
       "page": "*"
     }
   ]
