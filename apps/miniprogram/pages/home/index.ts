@@ -71,10 +71,17 @@ Page({
       primaryText: hasFamily ? "打开我的家庭" : "创建我的家庭"
     });
   },
-  async restoreFamilySession(force = false) {
+  async restoreFamilySession(force = false, allowSignIn = false) {
     if (this.data.restoring) return;
     const cached = session.getFamily();
     const user = session.getUser();
+    // Ordinary visitors and search crawlers see the same public welcome page.
+    // A new visitor only signs in after choosing a family action explicitly.
+    if (!user && !session.getToken() && !allowSignIn) {
+      session.clearFamily();
+      this.setData({ ...emptyContent(), hasFamily: false, families: [], currentFamilyId: "", familyName: "", memberCount: 0, loading: false, restoring: false, error: "", familyListError: "" });
+      return;
+    }
     if (!force && !this.preferPrimary && user && user.id === this.loadedUserId && session.hasValidToken()
       && this.data.hasFamily && cached && cached.id === this.data.currentFamilyId
       && this.data.lastRestoredAt && Date.now() - this.data.lastRestoredAt < refreshIntervalMs
@@ -273,6 +280,7 @@ Page({
   onOpenLedger() { wx.navigateTo({ url: "/pages/ledger/index" }); },
   onOpenFamily() { openFamilyPage("family"); },
   onRetry() { this.skipInitialRestore = false; void this.restoreFamilySession(true); },
+  onRestoreExistingFamily() { this.skipInitialRestore = false; return this.restoreFamilySession(true, true); },
   onCreateFamily() { this.setData({ switcherVisible: false }); wx.navigateTo({ url: "/pages/create-family/index" }); },
   onPrimaryAction() { this.skipInitialRestore = false; if (this.data.hasFamily) this.onOpenFamily(); else this.onCreateFamily(); },
   onJoinFamily() { this.setData({ switcherVisible: false }); wx.navigateTo({ url: "/pages/join/index" }); },

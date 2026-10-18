@@ -43,4 +43,20 @@ wx.request=o=>o.success({statusCode:500,data:{error:'test failure'}});
 await assert.rejects(api.updateActivityRsvp('a','activity-a',{actorMemberId:member.id,memberId:member.id,rsvp:'accepted'}));
 assert.equal(session.getHomeRevision(),before+1);
 console.log('PASS actual successful writes invalidate Home, while failed writes do not report a change');
+
+session.clear();let anonymousLoginCalls=0,anonymousApiCalls=0;wx.stopPullDownRefresh=()=>{};
+wx.login=()=>{anonymousLoginCalls++;throw Error('Anonymous browsing must not log in');};
+wx.request=()=>{anonymousApiCalls++;throw Error('Anonymous browsing must not request private data');};
+api.getHome=async()=>{anonymousApiCalls++;throw Error('Anonymous browsing must not bootstrap a family');};
+const anonymous={...definition,data:structuredClone(definition.data)};anonymous.setData=v=>Object.assign(anonymous.data,v);anonymous.onLoad({});anonymous.onShow();await anonymous.onPullDownRefresh();
+assert.equal(anonymousLoginCalls,0);assert.equal(anonymousApiCalls,0);assert.equal(anonymous.data.hasFamily,false);assert.equal(anonymous.data.restoring,false);assert.equal(anonymous.data.familyListError,'');
+console.log('PASS fresh visitors can view and refresh the public home without login or network requests');
+session.setFamily(family);session.setMember(member);anonymous.onShow();assert.equal(anonymous.data.hasFamily,false);assert.equal(session.getFamily(),'');
+console.log('PASS orphaned family cache without an identity cannot become public home content');
+
+wx.login=o=>{anonymousLoginCalls++;o.success({code:'explicit-restore'});};
+wx.request=o=>{anonymousApiCalls++;assert.match(o.url,/\/v1\/wechat\/session$/);o.success({statusCode:200,data:{data:{userId:'restored-user',token:'restored-token',expiresAt:'2030-01-01T00:00:00Z',user:{id:'restored-user',nickname:'家人'}}}});};
+api.getHome=async()=>({data:{families:[{family,member,members:[member]}],currentFamilyId:family.id,dashboard,activity:null,joinRequestCount:0}});
+await anonymous.onRestoreExistingFamily();assert.equal(anonymousLoginCalls,1);assert.equal(anonymousApiCalls,1);assert.equal(anonymous.data.hasFamily,true);
+console.log('PASS an explicit restore action signs in once and opens the existing family');
 delete global.Page;delete global.wx;

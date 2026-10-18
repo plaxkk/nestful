@@ -65,7 +65,9 @@ page { background: #faf7f1; color: #26392e; }
 .welcome-title text { display: block; }
 .welcome-note { text-align: center; font-size: 30rpx; line-height: 1.8; color: #6c746b; margin-bottom: 44rpx; }
 .home .welcome-primary { width: 100%; min-height: 108rpx; font-size: 33rpx; margin-top: 26rpx; }
+.home navigator.welcome-primary { box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 20rpx 28rpx; border-radius: 24rpx; background: #365b44; color: #fffefa; font-weight: 500; line-height: 1.5; text-align: center; }
 .home .welcome-secondary { width: 100%; min-height: 108rpx; font-size: 31rpx; color: #365b44; display: flex; align-items: center; justify-content: center; }
+.home .welcome-restore { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 88rpx; font-size: 27rpx; color: #6c746b; text-align: center; }
 .home .welcome-help { font-size: 26rpx; color: #6c746b; min-height: 88rpx; margin-top: auto; padding-top: 30rpx; }
 .welcome-learn { display: flex; align-items: center; justify-content: center; min-height: 88rpx; color: #365b44; font-size: 27rpx; }
 .welcome-error { color: #795332; font-size: 27rpx; line-height: 1.7; }

@@ -39,10 +39,10 @@
   </block>
   <view class="welcome" wx:else>
     <view class="welcome-symbol"><view class="welcome-roof"></view><view class="welcome-house"></view></view>
-    <text class="welcome-brand">nestful</text><text class="welcome-title">一家人的小事，<text>一起放在心上。</text></text><text class="welcome-note">把生日、健康提醒和家里的约定，一起放在心上。</text>
+    <text class="welcome-brand">Nestful小窝</text><text class="welcome-title">一家人的小事，<text>一起放在心上。</text></text><text class="welcome-note">家人生日提醒、家庭活动与共同记账，让家庭群里的安排更好找。</text>
+    <navigator class="welcome-learn" url="/pages/about/index">了解生日提醒、活动与账本 ›</navigator>
     <text class="welcome-note" wx:if="{{restoring}}">正在找回你的家庭…</text>
-    <block wx:else><text class="welcome-error" wx:if="{{familyListError}}">{{familyListError}}</text><button class="welcome-primary" bindtap="onPrimaryAction">创建我的家庭</button><button class="welcome-secondary" bindtap="onJoinFamily">通过邀请加入家庭</button><button class="more-link" wx:if="{{familyListError}}" bindtap="onRetry">重新加载我的家庭</button></block>
-    <navigator class="welcome-learn" url="/pages/about/index">先了解 Nestful小窝 ›</navigator>
+    <block wx:else><text class="welcome-error" wx:if="{{familyListError}}">{{familyListError}}</text><navigator class="welcome-primary" url="/pages/create-family/index">创建我的家庭</navigator><navigator class="welcome-secondary" url="/pages/join/index">通过邀请加入家庭</navigator><button class="welcome-restore" bindtap="onRestoreExistingFamily" data-qa="onRestoreExistingFamily">已有家庭，登录后进入</button></block>
     <button class="welcome-help" bindtap="onOpenHelp">隐私与帮助</button>
   </view>
   <view class="switcher-backdrop" wx:if="{{switcherVisible}}" bindtap="onCloseSwitcher" catchtouchmove="onStopPropagation">
