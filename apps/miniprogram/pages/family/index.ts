@@ -1,5 +1,6 @@
 import { api, ApiRequestError, errorMessage, type FamilyInvitation, type FamilyMember, type DashboardItem, type JoinRequest } from "../../utils/api";
 import { session } from "../../utils/session";
+import { birthdayLabel, validBirthday, type BirthdayChangeDetail } from "../../utils/birthday";
 
 const roleOptions: Array<{ label: string; value: FamilyMember["role"] }> = [
   { label: "管理员", value: "admin" },
@@ -7,7 +8,7 @@ const roleOptions: Array<{ label: string; value: FamilyMember["role"] }> = [
 ];
 
 const birthdayCalendarOptions: Array<{ label: string; value: "solar" | "lunar" }> = [
-  { label: "阳历", value: "solar" },
+  { label: "公历（阳历）", value: "solar" },
   { label: "农历", value: "lunar" }
 ];
 const identityTagOptions = [
@@ -76,7 +77,7 @@ const withAvatarText = (member: FamilyMember) => ({
   displayName: displayNameFor(member),
   avatarText: displayNameFor(member).slice(0, 1),
   roleLabel: roleLabel(member.role),
-  detailText: [member.birthday, member.location].filter(Boolean).join(" · ") || "点开补充资料"
+  detailText: [birthdayLabel(member.birthday??"",member.birthdayCalendar??"solar",member.birthdayLeapMonth), member.location].filter(Boolean).join(" · ") || "点开补充资料"
 });
 
 const withInvitationText = (invitation: FamilyInvitation) => ({
@@ -155,7 +156,8 @@ Page({
   onToggleInvite(){this.setData({inviteFormVisible:!this.data.inviteFormVisible},()=>{if(this.data.inviteFormVisible)wx.pageScrollTo({selector:this.data.inviteCode?".invite-card":".invite-form",duration:200});});},
   onToggleHistory(){this.setData({invitationHistoryVisible:!this.data.invitationHistoryVisible});},
   onToggleSettings(){this.setData({settingsVisible:!this.data.settingsVisible});},
-  onClearBirthday(){this.setData({editBirthdayInput:""});},
+  onClearBirthday(){this.setData({editBirthdayInput:"",editBirthdayLeapMonth:false});},
+  onBirthdayChange(e:WechatMiniprogram.CustomEvent<BirthdayChangeDetail>){this.setData({editBirthdayInput:e.detail.value,editBirthdayCalendarIndex:e.detail.calendar==='lunar'?1:0,editBirthdayLeapMonth:e.detail.calendar==='lunar'&&e.detail.leapMonth});},
   onEditBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({editBirthdayInput:String(e.detail.value)});},
   onOpenFamilyList() {
     wx.reLaunch({ url: "/pages/home/index?switch=1" });
@@ -464,6 +466,7 @@ Page({
       return;
     }
 
+    if(this.data.editBirthdayInput&&!validBirthday(this.data.editBirthdayInput,this.data.editBirthdayCalendarIndex===1?'lunar':'solar')){wx.showToast({title:'请重新选择生日日期',icon:'none'});return;}
     wx.showLoading({ title: "保存中" });
 
     try {

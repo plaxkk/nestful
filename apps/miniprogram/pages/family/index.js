@@ -2,12 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
+const birthday_1 = require("../../utils/birthday");
 const roleOptions = [
     { label: "管理员", value: "admin" },
     { label: "家人", value: "member" }
 ];
 const birthdayCalendarOptions = [
-    { label: "阳历", value: "solar" },
+    { label: "公历（阳历）", value: "solar" },
     { label: "农历", value: "lunar" }
 ];
 const identityTagOptions = [
@@ -55,7 +56,7 @@ const withAvatarText = (member) => ({
     displayName: displayNameFor(member),
     avatarText: displayNameFor(member).slice(0, 1),
     roleLabel: roleLabel(member.role),
-    detailText: [member.birthday, member.location].filter(Boolean).join(" · ") || "点开补充资料"
+    detailText: [(0, birthday_1.birthdayLabel)(member.birthday ?? "", member.birthdayCalendar ?? "solar", member.birthdayLeapMonth), member.location].filter(Boolean).join(" · ") || "点开补充资料"
 });
 const withInvitationText = (invitation) => ({
     ...invitation,
@@ -126,7 +127,8 @@ Page({
         wx.pageScrollTo({ selector: this.data.inviteCode ? ".invite-card" : ".invite-form", duration: 200 }); }); },
     onToggleHistory() { this.setData({ invitationHistoryVisible: !this.data.invitationHistoryVisible }); },
     onToggleSettings() { this.setData({ settingsVisible: !this.data.settingsVisible }); },
-    onClearBirthday() { this.setData({ editBirthdayInput: "" }); },
+    onClearBirthday() { this.setData({ editBirthdayInput: "", editBirthdayLeapMonth: false }); },
+    onBirthdayChange(e) { this.setData({ editBirthdayInput: e.detail.value, editBirthdayCalendarIndex: e.detail.calendar === 'lunar' ? 1 : 0, editBirthdayLeapMonth: e.detail.calendar === 'lunar' && e.detail.leapMonth }); },
     onEditBirthdayDateChange(e) { this.setData({ editBirthdayInput: String(e.detail.value) }); },
     onOpenFamilyList() {
         wx.reLaunch({ url: "/pages/home/index?switch=1" });
@@ -398,6 +400,10 @@ Page({
                 title: "请填写称呼",
                 icon: "none"
             });
+            return;
+        }
+        if (this.data.editBirthdayInput && !(0, birthday_1.validBirthday)(this.data.editBirthdayInput, this.data.editBirthdayCalendarIndex === 1 ? 'lunar' : 'solar')) {
+            wx.showToast({ title: '请重新选择生日日期', icon: 'none' });
             return;
         }
         wx.showLoading({ title: "保存中" });

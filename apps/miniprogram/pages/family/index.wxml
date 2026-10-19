@@ -56,7 +56,7 @@
 
     <view class="field">
       <text class="label">生日</text>
-      <picker mode="date" start="1900-01-01" end="{{todayDate}}" disabled="{{!canEditSelectedProfile}}" value="{{editBirthdayInput}}" bindchange="onEditBirthdayDateChange" data-qa="onEditBirthdayDateChange"><view class="picker-value">{{editBirthdayInput || '未填写'}}</view></picker><button wx:if="{{canEditSelectedProfile && editBirthdayInput}}" class="text-button" bindtap="onClearBirthday" data-qa="onClearBirthday">清除生日</button>
+      <birthday-input id="member-birthday-input" value="{{editBirthdayInput}}" calendar="{{birthdayCalendarOptions[editBirthdayCalendarIndex].value}}" leap-month="{{editBirthdayLeapMonth}}" disabled="{{!canEditSelectedProfile}}" bindchange="onBirthdayChange" /><button wx:if="{{canEditSelectedProfile && editBirthdayInput}}" class="text-button" bindtap="onClearBirthday" data-qa="onClearBirthday">清除生日</button>
     </view>
     <view class="field">
       <text class="label">身份标签</text>
@@ -65,20 +65,10 @@
       </picker>
     </view>
 
-    <view class="field">
-      <text class="label">生日历法</text>
-      <picker disabled="{{!canEditSelectedProfile}}" mode="selector" range="{{birthdayCalendarOptions}}" range-key="label" value="{{editBirthdayCalendarIndex}}" bindchange="onEditBirthdayCalendarChange" data-qa="onEditBirthdayCalendarChange">
-        <view class="picker-value">{{birthdayCalendarOptions[editBirthdayCalendarIndex].label}}</view>
-      </picker>
-    </view>
 
     <view class="field">
       <text class="label">常住地</text>
       <input class="input" disabled="{{!canEditSelectedProfile}}" value="{{editLocationInput}}" bindinput="onEditLocationInput" data-qa="onEditLocationInput" placeholder="例如：上海" />
-    </view>
-    <view class="switch-row" wx:if="{{editBirthdayCalendarIndex === 1}}">
-      <text class="label">农历闰月</text>
-      <switch disabled="{{!canEditSelectedProfile}}" checked="{{editBirthdayLeapMonth}}" bindchange="onEditBirthdayLeapMonthChange" data-qa="onEditBirthdayLeapMonthChange" />
     </view>
 
     <view class="field" wx:if="{{canEditSelectedProfile}}">

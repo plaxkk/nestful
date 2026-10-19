@@ -54,7 +54,9 @@ for(const page of app.pages){
  for(const [,handler] of template.matchAll(/(?:bind|catch)(?:tap|input|change|confirm)="([a-zA-Z][a-zA-Z0-9_]*)"/g))assert.equal(typeof definition[handler],'function',`${page}: missing handler ${handler}`);
 }
 delete global.Page;delete global.wx;
-for(const component of Object.values(app.usingComponents ?? {})){
+const components=new Set(Object.values(app.usingComponents??{}));
+for(const page of app.pages)for(const component of Object.values(JSON.parse(readFileSync(`apps/miniprogram/${page}.json`,'utf8')).usingComponents??{}))components.add(component);
+for(const component of components){
  let definition;global.Component=d=>{definition=d;};
  const path=`apps/miniprogram${component}`;
  for(const ext of ['js','wxml','wxss','json'])assert.ok(existsSync(`${path}.${ext}`),`${path}.${ext} missing`);

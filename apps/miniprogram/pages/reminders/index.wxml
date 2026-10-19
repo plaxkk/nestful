@@ -14,7 +14,7 @@
     <view class="field"><text class="label">名称</text><input class="input" value="{{editTitleInput}}" bindinput="onEditTitleInput" data-qa="onEditTitleInput" /></view>
     <view class="field"><text class="label">{{editingPlan.type === 'birthday' ? '本轮生日计算起点' : '第一次提醒日期'}}</text><picker mode="date" value="{{editDateInput}}" bindchange="onEditDateChange" data-qa="onEditDateChange"><view class="picker-value">{{editDateInput}}</view></picker></view>
     <view class="field"><text class="label">时间</text><picker mode="time" value="{{editTimeInput}}" bindchange="onEditTimeChange" data-qa="onEditTimeChange"><view class="picker-value">{{editTimeInput}}</view></picker></view>
-    <view class="field" wx:if="{{editingPlan.type === 'birthday'}}"><text class="label">出生日期（保留原阳历/农历设置）</text><picker mode="date" start="1900-01-01" end="{{todayDate}}" value="{{editBirthdayInput}}" bindchange="onEditBirthdayDateChange" data-qa="onEditBirthdayDateChange"><view class="picker-value">{{editBirthdayInput || '选择出生日期'}}</view></picker></view>
+    <birthday-input id="edit-birthday-input" wx:if="{{editingPlan.type === 'birthday'}}" value="{{editBirthdayInput}}" calendar="{{editBirthdayCalendar}}" leap-month="{{editBirthdayLeapMonth}}" bindchange="onEditBirthdayChange" />
     <view class="field" wx:else><text class="label">频次</text><picker range="{{frequencyOptions}}" range-key="label" value="{{editFrequencyIndex}}" bindchange="onEditFrequencyChange" data-qa="onEditFrequencyChange"><view class="picker-value">{{frequencyOptions[editFrequencyIndex].label}}</view></picker></view>
     <text class="helper-text">保留原来的提醒对象。修改后，未发生的提醒重新安排，每位接收人需重新授权本次通知。</text>
     <button class="primary-action" disabled="{{busy}}" loading="{{busy}}" bindtap="onSavePlan" data-qa="onSavePlan">保存修改</button>
@@ -61,8 +61,7 @@
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
-      <text class="label">出生日期</text>
-      <picker mode="date" start="1900-01-01" end="{{todayDate}}" value="{{birthdayDateInput}}" bindchange="onBirthdayDateChange" data-qa="onBirthdayDateChange"><view class="picker-value">{{birthdayDateInput || '选择出生日期'}}</view></picker>
+      <birthday-input id="new-birthday-input" value="{{birthdayDateInput}}" calendar="{{birthdayCalendar}}" leap-month="{{birthdayLeapMonth}}" bindchange="onBirthdayChange" />
     </view>
 
     <view class="field" wx:if="{{reminderTypes[typeIndex].value === 'birthday'}}">
@@ -91,6 +90,7 @@
           <text class="reminder-title">{{item.title}}</text>
           <text class="reminder-meta">{{item.completionText}}</text>
           <text class="reminder-meta">{{item.typeLabel}} · {{item.dueAtText}}</text>
+          <text class="helper-text" wx:if="{{item.birthdayText}}">{{item.birthdayText}} · {{item.schedule.birthdayLeapMonth ? '仅在对应闰月安排' : '按此历法每年安排'}}</text>
           <text class="helper-text" wx:if="{{item.schedule.targetLabel || item.schedule.frequencyLabel}}">{{item.schedule.targetLabel}} {{item.schedule.frequencyLabel}}</text><text class="status-pill">{{item.stateLabel}}</text><text class="helper-text">{{item.notificationText}}</text>
         </view>
         <view class="action-row">

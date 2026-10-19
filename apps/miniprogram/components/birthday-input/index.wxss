@@ -1,0 +1,11 @@
+.birthday-input { display: flex; flex-direction: column; gap: 16rpx; color: #26392e; font-family: inherit; }
+.birthday-label { font-size: 28rpx; font-weight: 500; }
+.calendar-choices { display: flex; gap: 14rpx; margin-bottom: 6rpx; }
+.calendar-choice { flex: 1; min-width: 0; min-height: 88rpx; margin: 0; padding: 18rpx 8rpx; border: 1rpx solid #e6e7dd; border-radius: 16rpx; background: #fffefa; color: #6c746b; font-size: 27rpx; line-height: 1.6; }
+.calendar-choice::after { border: 0; }
+.calendar-choice.selected { border-color: #365b44; background: #ecf0e7; color: #365b44; font-weight: 500; }
+.calendar-choice[disabled] { opacity: .55; }
+.birthday-picker { position: relative; min-height: 96rpx; box-sizing: border-box; display: flex; align-items: center; padding: 18rpx 54rpx 18rpx 22rpx; border: 2rpx solid #cbd4c7; border-radius: 16rpx; background: #fffefa; font-size: 30rpx; }
+.birthday-picker::after { content: ''; position: absolute; right: 24rpx; top: 38rpx; width: 12rpx; height: 12rpx; border-right: 2rpx solid #6c746b; border-bottom: 2rpx solid #6c746b; transform: rotate(45deg); }
+.leap-row { min-height: 88rpx; display: flex; align-items: center; justify-content: space-between; gap: 24rpx; font-size: 28rpx; }
+.birthday-hint { display: block; color: #6c746b; font-size: 25rpx; line-height: 1.8; }

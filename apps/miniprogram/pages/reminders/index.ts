@@ -10,6 +10,7 @@ import {
 } from "../../utils/api";
 import { session } from "../../utils/session";
 import { requestReminderSubscription } from "../../utils/wechat";
+import { birthdayLabel, validBirthday, type BirthdayCalendar, type BirthdayChangeDetail } from "../../utils/birthday";
 
 const reminderTypes: Array<{ label: string; value: ReminderType }> = [
   { label: "生日", value: "birthday" },
@@ -67,28 +68,12 @@ const normalizeDueAt = (value: string) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
-const nextBirthdayDueAt = (birthdayDate: string, advanceDays: number) => {
-  const [monthText, dayText] = birthdayDate.split("-").slice(1);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  if (!month || !day) {
-    return undefined;
-  }
-
-  const now = new Date();
-  let birthday = new Date(now.getFullYear(), month - 1, day, 8, 0, 0, 0);
-  let dueAt = new Date(birthday);
-  dueAt.setDate(dueAt.getDate() - advanceDays);
-
-  if (dueAt.getTime() <= now.getTime()) {
-    birthday = new Date(now.getFullYear() + 1, month - 1, day, 8, 0, 0, 0);
-    dueAt = new Date(birthday);
-    dueAt.setDate(dueAt.getDate() - advanceDays);
-  }
-
-  return dueAt.toISOString();
-};
+const memberBirthdayFields = (member?: FamilyMember) => ({
+  birthdayDateInput: member?.birthday ?? "",
+  birthdayCalendar: member?.birthdayCalendar ?? "solar" as BirthdayCalendar,
+  birthdayLeapMonth: Boolean(member?.birthdayCalendar === "lunar" && member.birthdayLeapMonth),
+  birthdayInputDirty: false
+});
 
 const memberName = (member: FamilyMember | undefined) => {
   const displayName = member?.displayName.trim();
@@ -123,7 +108,7 @@ const reminderMeta = (reminder: Reminder) => {
   const scheduleParts = [
     reminder.schedule?.targetLabel,
     reminder.schedule?.frequencyLabel,
-    reminder.schedule?.birthdayDate ? `生日 ${reminder.schedule.birthdayDate}` : undefined
+    reminder.schedule?.birthdayDate ? birthdayLabel(reminder.schedule.birthdayDate, reminder.schedule.birthdayCalendar ?? "solar", reminder.schedule.birthdayLeapMonth) : undefined
   ].filter(Boolean);
 
   return scheduleParts.length > 0 ? ` · ${scheduleParts.join(" · ")}` : "";
@@ -135,6 +120,7 @@ const withReminderText = (reminder: Reminder, hasNextOccurrence: boolean) => ({
   stateLabel:!reminder.enabled?"已停止":reminder.completedAt?"已完成":Date.parse(reminder.dueAt)<Date.now()?"已到期":"待提醒",
   notificationText:notificationLabel(reminder).replace(/^ · /,""),
   dueAtText: formatInputTime(new Date(reminder.dueAt)),
+  birthdayText: reminder.type === "birthday" ? birthdayLabel(reminder.schedule?.birthdayDate ?? "", reminder.schedule?.birthdayCalendar ?? "solar", reminder.schedule?.birthdayLeapMonth) : "",
   statusLabel: `${!reminder.enabled?'已取消':reminder.completedAt ? "已完成" : Date.parse(reminder.dueAt)<Date.now()?'已到期，待确认':"待提醒"}${hasNextOccurrence ? " · 下次已安排" : ""}${notificationLabel(reminder)}${reminderMeta(reminder)}`,
   isCompleted: Boolean(reminder.completedAt),
   canComplete: Boolean(reminder.enabled&&reminder.participants?.some(participant => participant.memberId === (session.getMember() || { id: "" }).id)),
@@ -173,7 +159,7 @@ Page({
   data: {
     todayDate:formatDateInput(new Date()),busy:false, familyName:"", error:"", dateInput:defaultDueAtInput().slice(0,10),timeInput:"08:00",
     editingPlan:null as ReminderPlan|null,
-    editTitleInput:'',editDateInput:'',editTimeInput:'08:00',editBirthdayInput:'',editFrequencyIndex:0,
+    editTitleInput:'',editDateInput:'',editTimeInput:'08:00',editBirthdayInput:'',editBirthdayCalendar:'solar' as BirthdayCalendar,editBirthdayLeapMonth:false,editFrequencyIndex:0,
     focusedReminderId:"",filter:"all",visibleReminders:[] as Array<ReturnType<typeof withReminderText>>,formVisible:false,
     reminderTypes,
     frequencyOptions,
@@ -186,7 +172,7 @@ Page({
     advanceDayIndex: 3,
     titleInput: "提醒吃药",
     dueAtInput: defaultDueAtInput(),
-    birthdayDateInput: "",
+    ...memberBirthdayFields(),
     notifyOnBirthday: true,
     members: [] as FamilyMember[],
     memberOptions: [] as string[],
@@ -213,34 +199,37 @@ Page({
   },
   onShow(){
     const family=session.getFamily();if(!family){wx.redirectTo({url:'/pages/home/index'});return;}
-    if(this.currentFamilyId!==family.id){this.loadEpoch++;this.setData({members:[],memberOptions:[],reminders:[],visibleReminders:[],lastLoadedAt:0,refreshing:false,formVisible:false,editingPlan:null});this.currentFamilyId=family.id;}
+    if(this.currentFamilyId!==family.id){this.loadEpoch++;this.setData({members:[],memberOptions:[],reminders:[],visibleReminders:[],lastLoadedAt:0,refreshing:false,formVisible:false,editingPlan:null,memberIndex:0,...memberBirthdayFields()});this.currentFamilyId=family.id;}
     this.setData({familyName:family.name});void this.loadPage();
   },
   onHide(){this.loadEpoch++;this.setData({refreshing:false,loading:false});},
   onDueDateChange(e:WechatMiniprogram.PickerChange){const date=String(e.detail.value);this.setData({dateInput:date,dueAtInput:`${date} ${this.data.timeInput}`});},
   onDueTimeChange(e:WechatMiniprogram.PickerChange){const time=String(e.detail.value);this.setData({timeInput:time,dueAtInput:`${this.data.dateInput} ${time}`});},
   onBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({birthdayDateInput:String(e.detail.value)});},
+  onBirthdayChange(e:WechatMiniprogram.CustomEvent<BirthdayChangeDetail>){this.setData({birthdayDateInput:e.detail.value,birthdayCalendar:e.detail.calendar,birthdayLeapMonth:e.detail.calendar==='lunar'&&e.detail.leapMonth,birthdayInputDirty:true});},
   onRetry(){void this.loadPage({force:true,showLoading:true});},
   onToggleForm(){if(this.data.busy)return;this.setData({formVisible:!this.data.formVisible,editingPlan:null});wx.pageScrollTo({scrollTop:0,duration:200});},
   onEditTitleInput(e:WechatMiniprogram.Input){this.setData({editTitleInput:e.detail.value});},
   onEditDateChange(e:WechatMiniprogram.PickerChange){this.setData({editDateInput:String(e.detail.value)});},
   onEditTimeChange(e:WechatMiniprogram.PickerChange){this.setData({editTimeInput:String(e.detail.value)});},
   onEditBirthdayDateChange(e:WechatMiniprogram.PickerChange){this.setData({editBirthdayInput:String(e.detail.value)});},
+  onEditBirthdayChange(e:WechatMiniprogram.CustomEvent<BirthdayChangeDetail>){this.setData({editBirthdayInput:e.detail.value,editBirthdayCalendar:e.detail.calendar,editBirthdayLeapMonth:e.detail.calendar==='lunar'&&e.detail.leapMonth});},
   onEditBirthdayInput(e:WechatMiniprogram.Input){this.setData({editBirthdayInput:e.detail.value});},
   onEditFrequencyChange(e:WechatMiniprogram.PickerChange){this.setData({editFrequencyIndex:Number(e.detail.value)});},
   onCancelPlanEdit(){this.setData({editingPlan:null});},
   async onEditPlan(e:WechatMiniprogram.TouchEvent){
     const family=session.getFamily();if(!family||this.data.busy)return;this.setData({busy:true});
     try{const p=(await api.getReminderPlan(family.id,String(e.currentTarget.dataset.planId))).data;const date=formatInputTime(new Date(p.dueAt));
-      this.setData({formVisible:false,editingPlan:p,editTitleInput:p.title,editDateInput:date.slice(0,10),editTimeInput:date.slice(11),editBirthdayInput:p.schedule.birthdayDate??'',editFrequencyIndex:Math.max(0,frequencyOptions.findIndex(f=>f.value===p.frequency))});wx.pageScrollTo({scrollTop:0,duration:200});
+      this.setData({formVisible:false,editingPlan:p,editTitleInput:p.title,editDateInput:date.slice(0,10),editTimeInput:date.slice(11),editBirthdayInput:p.schedule.birthdayDate??'',editBirthdayCalendar:p.schedule.birthdayCalendar??'solar',editBirthdayLeapMonth:Boolean(p.schedule.birthdayCalendar==='lunar'&&p.schedule.birthdayLeapMonth),editFrequencyIndex:Math.max(0,frequencyOptions.findIndex(f=>f.value===p.frequency))});wx.pageScrollTo({scrollTop:0,duration:200});
     }catch(error){wx.showToast({title:errorMessage(error),icon:'none'});}finally{this.setData({busy:false});}
   },
   async onSavePlan(){
     const family=session.getFamily(),p=this.data.editingPlan;if(!family||!p||this.data.busy)return;
     const dueAt=normalizeDueAt(`${this.data.editDateInput} ${this.data.editTimeInput}`),title=this.data.editTitleInput.trim();
     if(!dueAt||!title){wx.showToast({title:'请补全名称和时间',icon:'none'});return;}
+    if(p.type==='birthday'&&!validBirthday(this.data.editBirthdayInput,this.data.editBirthdayCalendar)){wx.showToast({title:'请重新选择生日日期',icon:'none'});return;}
     const frequency=frequencyOptions[this.data.editFrequencyIndex]??frequencyOptions[0];
-    const schedule={...p.schedule,...(p.type==='birthday'?{birthdayDate:this.data.editBirthdayInput}:{frequencyLabel:frequency.label,timesOfDay:frequency.value==='daily_once'?[this.data.editTimeInput]:frequency.timesOfDay})};
+    const schedule={...p.schedule,...(p.type==='birthday'?{birthdayDate:this.data.editBirthdayInput,birthdayCalendar:this.data.editBirthdayCalendar,birthdayLeapMonth:this.data.editBirthdayCalendar==='lunar'&&this.data.editBirthdayLeapMonth,frequencyLabel:this.data.editBirthdayCalendar==='lunar'&&this.data.editBirthdayLeapMonth?'对应闰月':'每年'}:{frequencyLabel:frequency.label,timesOfDay:frequency.value==='daily_once'?[this.data.editTimeInput]:frequency.timesOfDay})};
     this.setData({busy:true});
     try{await api.updateReminderPlan(family.id,p.id,{...p,title,dueAt,frequency:p.type==='birthday'?'yearly':frequency.value,schedule});this.setData({editingPlan:null});await this.loadPage({force:true,showLoading:false});wx.showToast({title:'已修改，请重新授权本次通知',icon:'none'});}
     catch(error){wx.showToast({title:errorMessage(error),icon:'none'});}finally{this.setData({busy:false});}
@@ -271,7 +260,7 @@ Page({
 
     this.setData({
       memberIndex,
-      birthdayDateInput: member?.birthday ?? ""
+      ...memberBirthdayFields(member)
     });
   },
 
@@ -357,7 +346,7 @@ Page({
       this.setData({
         members: cachedMembers,
         memberOptions: cachedMembers.map(memberName),
-        birthdayDateInput: cachedMembers[this.data.memberIndex]?.birthday ?? ""
+        ...(this.data.birthdayInputDirty ? {} : memberBirthdayFields(cachedMembers[this.data.memberIndex]))
       });
     }
 
@@ -370,7 +359,7 @@ Page({
       this.setData({
         members,
         memberOptions: members.map(memberName),
-        birthdayDateInput: members[this.data.memberIndex]?.birthday ?? ""
+        ...(this.data.birthdayInputDirty ? {} : memberBirthdayFields(members[this.data.memberIndex]))
       });
     } catch {
       if(epoch!==this.loadEpoch||!session.isFamily(family.id))return;
@@ -429,11 +418,12 @@ Page({
     const dueAt = normalizeDueAt(this.data.dueAtInput.trim());
     if (!type || !title || !dueAt) return [];
     if (type === "birthday") {
+      if(!validBirthday(this.data.birthdayDateInput.trim(),this.data.birthdayCalendar))return [];
       return [{ type, title, dueAt, createdByMemberId: creatorId, assigneeMemberId: member.id,
         targetScope: "member", targetMemberIds: [creatorId], frequency: "yearly",
-        schedule: { birthdayDate: this.data.birthdayDateInput.trim(), birthdayCalendar: member.birthdayCalendar ?? "solar",
-          birthdayLeapMonth: member.birthdayLeapMonth, advanceDays: advanceDayOptions[this.data.advanceDayIndex]?.value ?? 0,
-          notifyOnDay: this.data.notifyOnBirthday, targetLabel: memberName(member), frequencyLabel: "每年" } }];
+        schedule: { birthdayDate: this.data.birthdayDateInput.trim(), birthdayCalendar: this.data.birthdayCalendar,
+          birthdayLeapMonth: this.data.birthdayCalendar==='lunar'&&this.data.birthdayLeapMonth, advanceDays: advanceDayOptions[this.data.advanceDayIndex]?.value ?? 0,
+          notifyOnDay: this.data.notifyOnBirthday, targetLabel: memberName(member), frequencyLabel: this.data.birthdayCalendar==='lunar'&&this.data.birthdayLeapMonth?'对应闰月':'每年' } }];
     }
     const targetScope = type === "exercise" ? targetScopeOptions[this.data.targetScopeIndex]?.value ?? "member" : "member";
     return [{ type, title, dueAt, createdByMemberId: creatorId, assigneeMemberId: member.id,
@@ -509,7 +499,7 @@ Page({
       wx.hideLoading();
       this.setData({
         titleInput: reminderTypes[this.data.typeIndex]?.value === "birthday" ? "家人生日" : reminderTypes[this.data.typeIndex]?.value === "exercise" ? "提醒运动" : "提醒吃药",
-        ...(this.data.filter!=="all"?{filter:this.data.typeIndex===0?"birthday":"health"}:{}),formVisible:false, dueAtInput: defaultDueAtInput(), dateInput:defaultDueAtInput().slice(0,10),timeInput:"08:00"
+        ...(this.data.filter!=="all"?{filter:this.data.typeIndex===0?"birthday":"health"}:{}),formVisible:false,birthdayInputDirty:false, dueAtInput: defaultDueAtInput(), dateInput:defaultDueAtInput().slice(0,10),timeInput:"08:00"
       });
       void this.loadPage({ force: true, showLoading: false });
       wx.showToast({

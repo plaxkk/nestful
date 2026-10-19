@@ -1,0 +1,16 @@
+<view class="birthday-input">
+  <text class="birthday-label">生日历法</text>
+  <view class="calendar-choices">
+    <button class="calendar-choice {{calendar !== 'lunar' ? 'selected' : ''}}" disabled="{{disabled}}" data-calendar="solar" bindtap="onCalendarChange">公历（阳历）</button>
+    <button class="calendar-choice {{calendar === 'lunar' ? 'selected' : ''}}" disabled="{{disabled}}" data-calendar="lunar" bindtap="onCalendarChange">农历（阴历）</button>
+  </view>
+  <text class="birthday-label">{{calendar === 'lunar' ? '农历生日（月、日）' : '公历出生日期'}}</text>
+  <picker wx:if="{{calendar === 'lunar'}}" mode="multiSelector" range="{{lunarRange}}" value="{{lunarValue}}" disabled="{{disabled}}" bindchange="onLunarChange">
+    <view class="birthday-picker">{{dateLabel || '选择农历月、日'}}</view>
+  </picker>
+  <picker wx:else mode="date" start="1900-01-01" end="{{today}}" value="{{solarValue}}" disabled="{{disabled}}" bindchange="onSolarChange">
+    <view class="birthday-picker">{{dateLabel || '选择公历出生日期'}}</view>
+  </picker>
+  <view class="leap-row" wx:if="{{calendar === 'lunar'}}"><text>闰月生日</text><switch checked="{{leapMonth}}" disabled="{{disabled}}" color="#365b44" bindchange="onLeapChange" /></view>
+  <text class="birthday-hint">{{calendar === 'lunar' ? '直接按农历月日填写，无需换算公历。仅当生日在闰月时开启闰月；对应闰月未出现的年份不提醒。' : '按公历出生日期填写，提醒按每年的公历月日计算。'}}切换历法后需重新选择日期。</text>
+</view>

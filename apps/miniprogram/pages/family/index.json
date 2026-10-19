@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "我的家庭",
   "navigationBarBackgroundColor": "#faf7f1",
-  "backgroundColor": "#faf7f1"
+  "backgroundColor": "#faf7f1",
+  "usingComponents": { "birthday-input": "/components/birthday-input/index" }
 }

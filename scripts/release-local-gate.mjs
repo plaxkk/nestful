@@ -16,6 +16,7 @@ const checks = [
   ["mini-program MVP flows", npmBin, ["run", "miniprogram:flows"]],
   ["mini-program home flows", npmBin, ["run", "miniprogram:home-flows"]],
   ["mini-program design flows", npmBin, ["run", "miniprogram:design-flows"]],
+  ["mini-program birthday flows", npmBin, ["run", "miniprogram:birthday-flows"]],
   ["mini-program startup regression", npmBin, ["run", "miniprogram:startup"]],
   ["experience preflight", npmBin, ["run", "experience:preflight"]],
   ["experience record template check", npmBin, ["run", "experience:record-check"]],
