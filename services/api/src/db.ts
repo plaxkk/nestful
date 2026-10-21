@@ -15,6 +15,7 @@ const getPool = () => {
     connectionString: url,
     ssl: local ? false : { rejectUnauthorized: false },
     max: 4, connectionTimeoutMillis: 10000, idleTimeoutMillis: 10000,
+    application_name: "nestful-api",
   });
   return pool;
 };

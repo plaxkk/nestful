@@ -473,6 +473,54 @@ test('home bootstrap excludes archived families and Vercel exposes non-sensitive
 });
 
 
+test('bootstrap endpoint signs in once and returns the selected family in the same response',async()=>{
+  const bootstrapUser=await identityStore.createSession({appId:'test-app',openid:'bootstrap-owner'});
+  const f=await familyRepository.create(bootstrapUser.userId,{name:'Bootstrap endpoint',ownerDisplayName:'Owner'});
+  const activity=await activitiesRepository.create(f.family.id,bootstrapUser.userId,{title:'Bootstrap dinner',startsAt:new Date(Date.now()+86400000).toISOString()});
+  await familyRepository.updateMember(f.family.id,f.ownerMember.id,bootstrapUser.userId,{version:1,emergencyContact:'private-contact',privateNotes:'private-notes'});
+  const app=Fastify();await registerRoutes(app,{exchangeCode:async code=>{
+    if(code==='bad-code')throw new Error('wechat_code_session_failed');
+    return {appId:'test-app',openid:code};
+  }});await app.ready();
+  try{
+    const noAuth=await app.inject({method:'POST',url:'/v1/me/bootstrap'});
+    assert.equal(noAuth.statusCode,401);assert.equal(noAuth.json().error,'session_required');
+    const invalid=await app.inject({method:'POST',url:'/v1/me/bootstrap',payload:{code:'bad-code'}});
+    assert.equal(invalid.statusCode,502);assert.equal(invalid.json().error,'wechat_session_failed');
+    const sessionsBefore=(await owner.query('select count(*)::int n from nestful.user_sessions where user_id=$1',[bootstrapUser.userId])).rows[0].n;
+    const cold=await app.inject({method:'POST',url:`/v1/me/bootstrap?familyId=${f.family.id}`,payload:{code:'bootstrap-owner'}});
+    assert.equal(cold.statusCode,200);assert.equal(cold.headers['cache-control'],'private, no-store');
+    const coldData=cold.json().data;
+    assert.equal(coldData.user.id,bootstrapUser.userId);assert.ok(coldData.token);assert.ok(coldData.expiresAt);
+    assert.equal(coldData.home.currentFamilyId,f.family.id);assert.equal(coldData.home.activity.id,activity.id);
+    const serialized=JSON.stringify(coldData);
+    assert.equal(serialized.includes('private-contact'),false);assert.equal(serialized.includes('private-notes'),false);
+    const sessionsAfter=(await owner.query('select count(*)::int n from nestful.user_sessions where user_id=$1',[bootstrapUser.userId])).rows[0].n;
+    assert.equal(sessionsAfter,sessionsBefore+1);
+    const warm=await app.inject({method:'POST',url:`/v1/me/bootstrap?familyId=${f.family.id}`,headers:{authorization:`Bearer ${coldData.token}`}});
+    assert.equal(warm.statusCode,200);const warmData=warm.json().data;
+    assert.equal(warmData.token,undefined);assert.equal(warmData.expiresAt,undefined);assert.equal(warmData.user.id,bootstrapUser.userId);
+    const sessionsWarm=(await owner.query('select count(*)::int n from nestful.user_sessions where user_id=$1',[bootstrapUser.userId])).rows[0].n;
+    assert.equal(sessionsWarm,sessionsAfter);
+    const recovered=await app.inject({method:'POST',url:'/v1/me/bootstrap',headers:{authorization:'Bearer invalid-token'},payload:{code:'bootstrap-fresh-user'}});
+    assert.equal(recovered.statusCode,200);assert.ok(recovered.json().data.token);assert.notEqual(recovered.json().data.user.id,bootstrapUser.userId);
+  }finally{await app.close();}
+});
+
+test('bootstrap endpoint never selects archived or unjoined families',async()=>{
+  const user=await identityStore.createSession({appId:'test-app',openid:'bootstrap-archived'});
+  const archived=await familyRepository.create(user.userId,{name:'Bootstrap archived',ownerDisplayName:'Owner'});
+  await familyRepository.archive(archived.family.id,user.userId,archived.family.version);
+  const app=Fastify();await registerRoutes(app);await app.ready();
+  try{
+    const response=await app.inject({method:'POST',url:`/v1/me/bootstrap?familyId=${archived.family.id}&fallbackFamilyId=${otherFamily.family.id}`,headers:{authorization:`Bearer ${user.token}`}});
+    assert.equal(response.statusCode,200);
+    const data=response.json().data;
+    assert.equal(data.home.currentFamilyId,'');assert.deepEqual(data.home.families,[]);
+    assert.equal(JSON.stringify(data).includes(otherFamily.family.name),false);
+  }finally{await app.close();}
+});
+
 test('home reserves today and future reminder slots even with an unconfirmed backlog',async()=>{
   const f=await familyRepository.create(a.userId,{name:'Reminder priorities',ownerDisplayName:'A'});
   const midnight=(await owner.query("select date_trunc('day',now() at time zone 'Asia/Shanghai') at time zone 'Asia/Shanghai' as start")).rows[0].start as Date;

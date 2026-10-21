@@ -275,6 +275,12 @@ export interface HomeBootstrap {
   activity: Activity | null;
   joinRequestCount: number | null;
 }
+export interface BootstrapHome {
+  user: AppUser;
+  home: HomeBootstrap;
+  token?: string;
+  expiresAt?: string;
+}
 export interface JoinRequest { id: string; displayName: string; status: string; createdAt?: string; available: boolean }
 export interface ReminderPlan {
   id: string; version: number; type: ReminderType; title: string; dueAt: string;
@@ -407,6 +413,38 @@ const request = async <T>(options: WechatMiniprogram.RequestOption): Promise<T> 
   return response;
 };
 
+const applyBootstrapSession = (data: BootstrapHome) => {
+  if (data.token) session.setToken(data.token, data.expiresAt);
+  session.setUser(data.user);
+};
+
+const bootstrapHomeRequest = async (options: { familyId?: string; fallbackFamilyId?: string }) => {
+  const params: string[] = [];
+  if (options.familyId) params.push(`familyId=${encodeURIComponent(options.familyId)}`);
+  if (options.fallbackFamilyId) params.push(`fallbackFamilyId=${encodeURIComponent(options.fallbackFamilyId)}`);
+  const url = `/v1/me/bootstrap${params.length ? `?${params.join("&")}` : ""}`;
+  // Use sendRequest directly: request() would call /v1/wechat/session and
+  // recreate the extra serial round trip this endpoint exists to remove.
+  const send = (code?: string) => sendRequest<ApiResponse<BootstrapHome>>({
+    method: "POST",
+    url,
+    data: code ? { code } : undefined,
+  });
+  let code: string | undefined;
+  if (!session.hasValidToken()) code = await loginCode();
+  let response: ApiResponse<BootstrapHome>;
+  try {
+    response = await send(code);
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.statusCode !== 401) throw error;
+    code = await loginCode();
+    if (!code) throw error;
+    response = await send(code);
+  }
+  applyBootstrapSession(response.data);
+  return response;
+};
+
 const listAll = async <T>(url: string): Promise<ApiResponse<T[]>> => {
   const data: T[] = [], seen = new Set<string>();
   let cursor: string | undefined;
@@ -421,6 +459,9 @@ const listAll = async <T>(url: string): Promise<ApiResponse<T[]>> => {
 };
 
 export const api = {
+  bootstrapHome(options: { familyId?: string; fallbackFamilyId?: string } = {}) {
+    return bootstrapHomeRequest(options);
+  },
   getHome(familyId?: string, fallbackFamilyId?: string) {
     const params: string[] = [];
     if (familyId) params.push(`familyId=${encodeURIComponent(familyId)}`);

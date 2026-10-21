@@ -44,3 +44,43 @@ All responses were 200 with `storage: relational-v2`. Warm median improved about
 phone create-family duration or a guarantee about cold starts and WeChat login.
 The existing mini-program preview uses the updated backend without recompiling
 or generating a replacement QR code. The user still needs to retry phone flows.
+
+## 2026-10-21 first-open QA follow-up
+
+The user reported that the live mini-program still takes several seconds before
+“家庭安排” appears on a first online open. Production measurements from this
+machine (proxy/VPN path, so indicative rather than authoritative) showed:
+
+- `x-vercel-id: sfo1::pdx1`: the edge PoP is `sfo1`; the function runs in
+  `pdx1`.
+- `/health` `server-timing: app;dur=8.5–28.6ms` when warm. Fresh TLS setup was
+  0.67–1.09s, TTFB 1.17–1.52s; a keep-alive request was 0.26–0.38s.
+- `/v1/me/home` without a bearer returned 401 in 0.28–0.85s.
+- `POST /v1/wechat/session` with an invalid code took 0.52–1.03s warm and 2.58s
+  on the first request after idle.
+- The Supabase pooler host resolves in AWS `us-west-2` (Oregon).
+
+The server-side `/v1/me/home` work is 5 transactions / about 14 SQL statements
+for an admin, roughly 30–70ms when the API and database are co-located. The
+first-open delay is therefore dominated by network distance and serial request
+setup, not SQL execution.
+
+Cold Home previously issued three serial requests when the cached bearer was
+stale: `wx.login` → `POST /v1/wechat/session` → `/v1/me/home` → 401 →
+session refresh → `/v1/me/home`. The new `POST /v1/me/bootstrap` accepts either
+a valid bearer or a fresh `wx.login` code and returns the user plus the complete
+selected-family view in one response. The mini-program Home page now uses it;
+the legacy endpoints remain for already-released clients.
+
+Local verification on 2026-10-21 passed: typecheck, 37 Postgres/Fastify tests
+(including the new bootstrap endpoint group), mini-program JS generation and
+smoke, Home startup and flow harnesses, the MVP/design/birthday flow harnesses,
+and `release:local-gate`. No infrastructure has been changed yet: `vercel.json`
+is still `["pdx1"]` and the production database is still in Oregon.
+
+Before changing the region, measure the real-device `x-vercel-id` with the phone
+VPN/proxy off. An Asia edge supports the Singapore function + Singapore database
+cutover; a US edge means the client enters Vercel in the US and a `sin1`
+function adds a Pacific hop, so the persistent Asia host (Stage 2) is required
+instead. Deploy the bootstrap endpoint to `pdx1` first, then update
+`DATABASE_URL` and `regions` together in one deployment.

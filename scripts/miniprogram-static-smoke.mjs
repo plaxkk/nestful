@@ -46,6 +46,35 @@ await api.updateLedgerEntry('family','entry',{title:'买菜',recurrence:null,cre
 const {getWechatIdentity}=require('../apps/miniprogram/utils/wechat.js');
 global.wx.login=o=>o.fail({errMsg:'login failed'});
 await assert.rejects(getWechatIdentity({forceRefresh:true}),/微信登录失败/);
+// Combined bootstrap: a cold client signs in and loads Home in one request.
+for(const key of ['appSessionToken','appSessionTokenExpiresAt','currentUser','currentFamily','currentMember','familyMembers'])storage.delete(key);
+requests.length=0;let bootstrapLogins=0;
+global.wx.login=o=>{bootstrapLogins++;o.success({code:'bootstrap-code'});};
+global.wx.request=o=>{
+ requests.push(o);const url=new URL(o.url);
+ assert.equal(url.pathname,'/v1/me/bootstrap');assert.equal(o.method,'POST');
+ assert.equal(url.searchParams.get('familyId'),'family-1');assert.equal(url.searchParams.get('fallbackFamilyId'),'family-0');
+ assert.equal(o.data.code,'bootstrap-code');
+ o.success({statusCode:200,data:{data:{user:{id:'bootstrap-user',nickname:'新家人'},home:{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0},token:'bootstrap-token',expiresAt:'2030-01-01T00:00:00Z'}}});
+};
+const cold=await api.bootstrapHome({familyId:'family-1',fallbackFamilyId:'family-0'});
+assert.equal(cold.data.home.currentFamilyId,'');assert.equal(requests.length,1);assert.equal(bootstrapLogins,1);
+assert.equal(storage.get('appSessionToken'),'bootstrap-token');assert.equal(storage.get('currentUser').id,'bootstrap-user');
+// A stale bearer gets one fresh wx.login code and one retry, not a legacy session request.
+storage.set('appSessionToken','stale-bootstrap-token');storage.set('appSessionTokenExpiresAt','2030-01-01T00:00:00Z');storage.set('currentUser',{id:'stale-user'});
+requests.length=0;bootstrapLogins=0;let bootstrapCalls=0;
+global.wx.login=o=>{bootstrapLogins++;o.success({code:'retry-code'});};
+global.wx.request=o=>{
+ requests.push(o);const url=new URL(o.url);
+ assert.equal(url.pathname,'/v1/me/bootstrap');bootstrapCalls++;
+ if(bootstrapCalls===1){assert.equal(o.header.authorization,'Bearer stale-bootstrap-token');assert.equal(o.data.code,undefined);return o.success({statusCode:401,data:{error:'session_required'}});}
+ assert.equal(o.header.authorization,'Bearer stale-bootstrap-token');assert.equal(o.data.code,'retry-code');
+ o.success({statusCode:200,data:{data:{user:{id:'retry-user',nickname:'家人'},home:{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0},token:'retry-token',expiresAt:'2030-01-01T00:00:00Z'}}});
+};
+const stale=await api.bootstrapHome();
+assert.equal(stale.data.home.currentFamilyId,'');assert.equal(bootstrapCalls,2);assert.equal(bootstrapLogins,1);assert.equal(requests.length,2);
+assert.equal(storage.get('appSessionToken'),'retry-token');assert.equal(storage.get('currentUser').id,'retry-user');
+console.log('PASS bootstrap signs in once, retries a stale bearer once, and never calls the legacy session route');
 // Check real emitted page handlers against the templates, rather than source fragments.
 for(const page of app.pages){
  let definition;global.Page=d=>{definition=d;};require(`../apps/miniprogram/${page}.js`);

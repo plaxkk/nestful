@@ -77,6 +77,30 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
     const q=(r.query??{}) as Record<string,string>;
     return {data:await homeRepository.get((await user(r)).id,q.familyId,q.fallbackFamilyId)};
   });
+  // One round trip for cold starts: reuse a valid bearer or exchange a fresh
+  // wx.login code, then return the user and selected-family view together.
+  server.post('/v1/me/bootstrap',async(r,reply)=>{
+    reply.header('cache-control','private, no-store');
+    const q=(r.query??{}) as Record<string,string>;
+    const b=(r.body&&typeof r.body==='object'&&!Array.isArray(r.body))?(r.body as Record<string,any>):{};
+    const code=text(b,'code',false);
+    const existing=await identityStore.getUserSession(bearer(r));
+    let appUser=existing?.user;
+    let issued:{token:string;expiresAt:string}|undefined;
+    if(!appUser){
+      if(!code)throw new DomainError(401,'session_required');
+      try{
+        const identity=await (deps.exchangeCode??exchangeWechatCode)(code);
+        const created=await identityStore.createSession(identity);
+        appUser=created.user;
+        issued={token:created.token,expiresAt:created.expiresAt};
+      }catch(error){
+        if(error instanceof DomainError)throw error;
+        throw new DomainError(502,'wechat_session_failed');
+      }
+    }
+    return {data:{user:appUser,home:await homeRepository.get(appUser.id,q.familyId,q.fallbackFamilyId),...(issued??{})}};
+  });
   server.post('/v1/families',async(r,reply)=>{
     const u=await user(r),b=body(r);forbiddenIdentity(b);
     return reply.code(201).send({data:await familyRepository.create(u.id,{name:text(b,'name',true)!,ownerDisplayName:text(b,'ownerDisplayName',true)!})});

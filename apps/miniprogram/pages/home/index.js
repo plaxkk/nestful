@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
 const discovery_1 = require("../../utils/discovery");
-const wechat_1 = require("../../utils/wechat");
 const navigation_1 = require("../../utils/navigation");
 const refreshIntervalMs = 30000;
 const dateText = (value) => {
@@ -95,15 +94,13 @@ Page({
         const epoch = this.restoreEpoch, contentEpoch = ++this.contentEpoch, revision = session_1.session.getHomeRevision();
         this.setData({ restoring: true, familyListError: "", error: "" });
         try {
-            await (0, wechat_1.getWechatIdentity)();
-            if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch)
-                return;
             const current = session_1.session.getFamily(), primaryId = session_1.session.getPrimaryFamilyId();
             const preferredId = this.preferPrimary ? primaryId || (current && current.id) : (current && current.id) || primaryId;
-            const response = await api_1.api.getHome(preferredId || undefined, current ? current.id : undefined);
+            // One request signs in when needed and returns the selected family view.
+            const response = await api_1.api.bootstrapHome({ familyId: preferredId || undefined, fallbackFamilyId: current ? current.id : undefined });
             if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch)
                 return;
-            const boot = response.data;
+            const boot = response.data.home;
             const membership = boot.families.find(item => item.family.id === boot.currentFamilyId);
             this.preferPrimary = false;
             if (!membership || !boot.dashboard) {

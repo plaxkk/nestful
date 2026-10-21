@@ -1,7 +1,6 @@
 import { api, ApiRequestError, errorMessage, type Activity, type DashboardItem, type FamilyMembership, type FamilyDashboard, type RsvpStatus } from "../../utils/api";
 import { session } from "../../utils/session";
 import { publicProductShare } from "../../utils/discovery";
-import { getWechatIdentity } from "../../utils/wechat";
 import { openFamilyPage } from "../../utils/navigation";
 
 const refreshIntervalMs = 30_000;
@@ -89,13 +88,12 @@ Page({
     const epoch = this.restoreEpoch, contentEpoch = ++this.contentEpoch, revision = session.getHomeRevision();
     this.setData({ restoring: true, familyListError: "", error: "" });
     try {
-      await getWechatIdentity();
-      if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
       const current = session.getFamily(), primaryId = session.getPrimaryFamilyId();
       const preferredId = this.preferPrimary ? primaryId || (current && current.id) : (current && current.id) || primaryId;
-      const response = await api.getHome(preferredId || undefined, current ? current.id : undefined);
+      // One request signs in when needed and returns the selected family view.
+      const response = await api.bootstrapHome({ familyId: preferredId || undefined, fallbackFamilyId: current ? current.id : undefined });
       if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
-      const boot = response.data;
+      const boot = response.data.home;
       const membership = boot.families.find(item => item.family.id === boot.currentFamilyId);
       this.preferPrimary = false;
       if (!membership || !boot.dashboard) {

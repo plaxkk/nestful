@@ -4,6 +4,7 @@ const require=createRequire(import.meta.url),storage=new Map([['nestful.modelVer
 global.wx={getStorageSync:k=>storage.get(k)||'',setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),getAccountInfoSync:()=>({miniProgram:{envVersion:'develop'}})};
 const {session}=require('../apps/miniprogram/utils/session.js');
 const {api}=require('../apps/miniprogram/utils/api.js');
+const realBootstrapHome=api.bootstrapHome;
 const family={id:'a',name:'A'},member={id:'member-a',familyId:'a',userId:'user',role:'admin'};
 session.setUser({id:'user'});session.setToken('valid','2030-01-01');session.setFamily(family);session.setMember(member);session.setPrimaryFamilyId('a');
 let definition;global.Page=d=>definition=d;require('../apps/miniprogram/pages/home/index.js');
@@ -11,7 +12,7 @@ const p={...definition,data:structuredClone(definition.data)};p.setData=v=>Objec
 const item={id:'activity-a',title:'Dinner',at:'2027-10-17T10:30:00Z'};
 const dashboard={activities:[item],tasks:[],reminders:[],upcoming:[item]};
 let homeCalls=0,legacyCalls=0,finish;
-api.getHome=async()=>{homeCalls++;return {data:{families:[{family,member,members:[member]}],currentFamilyId:'a',dashboard,activity:{...item,familyId:'a',startsAt:item.at,status:'scheduled',location:'at home',participants:[{memberId:member.id,rsvp:'pending'}]},joinRequestCount:2}};};
+api.bootstrapHome=async()=>{homeCalls++;return {data:{user:{id:'user'},home:{families:[{family,member,members:[member]}],currentFamilyId:'a',dashboard,activity:{...item,familyId:'a',startsAt:item.at,status:'scheduled',location:'at home',participants:[{memberId:member.id,rsvp:'pending'}]},joinRequestCount:2}}};};
 for(const method of ['listMyFamilies','getDashboard','getActivity','listJoinRequests'])api[method]=async()=>{legacyCalls++;throw Error('Separate startup request');};
 p.onLoad({});p.syncHomeState();await p.restoreFamilySession();
 assert.equal(homeCalls,1,'Cold Home must use one authenticated bootstrap request');
@@ -22,16 +23,16 @@ console.log('PASS cold Home renders family, dashboard, activity details and badg
 await p.restoreFamilySession();assert.equal(homeCalls,1,'A clean immediate return must not refetch the same home');
 console.log('PASS immediate clean returns reuse the visible page instead of refetching');
 
-const original=api.getHome;api.getHome=()=>{homeCalls++;return new Promise(r=>finish=r);};
+const original=api.bootstrapHome;api.bootstrapHome=()=>{homeCalls++;return new Promise(r=>finish=r);};
 const refreshing=p.restoreFamilySession(true);await Promise.resolve();assert.equal(p.data.hero.title,'Dinner','Background refresh must retain visible content');
-finish({data:{families:[{family,member,members:[member]}],currentFamilyId:'a',dashboard,activity:null,joinRequestCount:0}});await refreshing;
-api.getHome=original;
+finish({data:{user:{id:'user'},home:{families:[{family,member,members:[member]}],currentFamilyId:'a',dashboard,activity:null,joinRequestCount:0}}});await refreshing;
+api.bootstrapHome=original;
 session.markHomeChanged();await p.restoreFamilySession();assert.equal(homeCalls,3,'Successful mutations must invalidate the short reuse window');
 console.log('PASS forced refresh retains the screen; a mutation invalidates clean-page reuse');
 
 let staleSession=0;session.clear();session.setUser({id:'user'});session.setToken('valid','2030-01-01');
 p.data.lastRestoredAt=Date.now();p.loadedRevision=session.getHomeRevision();p.syncHomeState();
-api.getHome=async()=>{staleSession++;return {data:{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0}};};
+api.bootstrapHome=async()=>{staleSession++;return {data:{user:{id:'user'},home:{families:[],currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0}}};};
 await p.restoreFamilySession();assert.equal(staleSession,1,'A cleared family/session cannot reuse old protected content');assert.equal(p.data.hero,null);
 console.log('PASS cleared or changed family context cannot bypass the server through the reuse window');
 
@@ -47,7 +48,7 @@ console.log('PASS actual successful writes invalidate Home, while failed writes 
 session.clear();let anonymousLoginCalls=0,anonymousApiCalls=0;wx.stopPullDownRefresh=()=>{};
 wx.login=()=>{anonymousLoginCalls++;throw Error('Anonymous browsing must not log in');};
 wx.request=()=>{anonymousApiCalls++;throw Error('Anonymous browsing must not request private data');};
-api.getHome=async()=>{anonymousApiCalls++;throw Error('Anonymous browsing must not bootstrap a family');};
+api.bootstrapHome=async()=>{anonymousApiCalls++;throw Error('Anonymous browsing must not bootstrap a family');};
 const anonymous={...definition,data:structuredClone(definition.data)};anonymous.setData=v=>Object.assign(anonymous.data,v);anonymous.onLoad({});anonymous.onShow();await anonymous.onPullDownRefresh();
 assert.equal(anonymousLoginCalls,0);assert.equal(anonymousApiCalls,0);assert.equal(anonymous.data.hasFamily,false);assert.equal(anonymous.data.restoring,false);assert.equal(anonymous.data.familyListError,'');
 console.log('PASS fresh visitors can view and refresh the public home without login or network requests');
@@ -55,8 +56,8 @@ session.setFamily(family);session.setMember(member);anonymous.onShow();assert.eq
 console.log('PASS orphaned family cache without an identity cannot become public home content');
 
 wx.login=o=>{anonymousLoginCalls++;o.success({code:'explicit-restore'});};
-wx.request=o=>{anonymousApiCalls++;assert.match(o.url,/\/v1\/wechat\/session$/);o.success({statusCode:200,data:{data:{userId:'restored-user',token:'restored-token',expiresAt:'2030-01-01T00:00:00Z',user:{id:'restored-user',nickname:'家人'}}}});};
-api.getHome=async()=>({data:{families:[{family,member,members:[member]}],currentFamilyId:family.id,dashboard,activity:null,joinRequestCount:0}});
-await anonymous.onRestoreExistingFamily();assert.equal(anonymousLoginCalls,1);assert.equal(anonymousApiCalls,1);assert.equal(anonymous.data.hasFamily,true);
+wx.request=o=>{anonymousApiCalls++;assert.match(o.url,/\/v1\/me\/bootstrap$/);assert.equal(o.data.code,'explicit-restore');o.success({statusCode:200,data:{data:{user:{id:'restored-user',nickname:'家人'},home:{families:[{family,member,members:[member]}],currentFamilyId:family.id,dashboard,activity:null,joinRequestCount:0},token:'restored-token',expiresAt:'2030-01-01T00:00:00Z'}}});};
+api.bootstrapHome=realBootstrapHome;
+await anonymous.onRestoreExistingFamily();assert.equal(anonymousLoginCalls,1);assert.equal(anonymousApiCalls,1);assert.equal(session.getToken(),'restored-token');assert.equal(anonymous.data.hasFamily,true);
 console.log('PASS an explicit restore action signs in once and opens the existing family');
 delete global.Page;delete global.wx;

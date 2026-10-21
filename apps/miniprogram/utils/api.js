@@ -126,6 +126,43 @@ const request = async (options) => {
         session_1.session.markHomeChanged();
     return response;
 };
+const applyBootstrapSession = (data) => {
+    if (data.token)
+        session_1.session.setToken(data.token, data.expiresAt);
+    session_1.session.setUser(data.user);
+};
+const bootstrapHomeRequest = async (options) => {
+    const params = [];
+    if (options.familyId)
+        params.push(`familyId=${encodeURIComponent(options.familyId)}`);
+    if (options.fallbackFamilyId)
+        params.push(`fallbackFamilyId=${encodeURIComponent(options.fallbackFamilyId)}`);
+    const url = `/v1/me/bootstrap${params.length ? `?${params.join("&")}` : ""}`;
+    // Use sendRequest directly: request() would call /v1/wechat/session and
+    // recreate the extra serial round trip this endpoint exists to remove.
+    const send = (code) => sendRequest({
+        method: "POST",
+        url,
+        data: code ? { code } : undefined,
+    });
+    let code;
+    if (!session_1.session.hasValidToken())
+        code = await loginCode();
+    let response;
+    try {
+        response = await send(code);
+    }
+    catch (error) {
+        if (!(error instanceof ApiRequestError) || error.statusCode !== 401)
+            throw error;
+        code = await loginCode();
+        if (!code)
+            throw error;
+        response = await send(code);
+    }
+    applyBootstrapSession(response.data);
+    return response;
+};
 const listAll = async (url) => {
     const data = [], seen = new Set();
     let cursor;
@@ -141,6 +178,9 @@ const listAll = async (url) => {
     return { data };
 };
 exports.api = {
+    bootstrapHome(options = {}) {
+        return bootstrapHomeRequest(options);
+    },
     getHome(familyId, fallbackFamilyId) {
         const params = [];
         if (familyId)

@@ -29,12 +29,12 @@ function reset() {
   navigation.length=0;toasts.length=0;stack=[];
   api.listMyFamilies = async () => ({data:memberships}); api.getDashboard = async id => ({data:dashboard(id)}); api.getActivity = async id => ({data:activity(id)});
   api.listJoinRequests = async () => ({data:[]});
-  api.getHome = async (preferred,fallback) => {
+  api.bootstrapHome = async ({familyId:preferred,fallbackFamilyId:fallback}={}) => {
     const families=(await api.listMyFamilies()).data;
     const selected=families.find(m=>m.family.id===preferred)??families.find(m=>m.family.id===fallback)??families[0];
-    if(!selected)return {data:{families,currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0}};
+    if(!selected)return {data:{user:{id:'user'},home:{families,currentFamilyId:'',dashboard:null,activity:null,joinRequestCount:0}}};
     const id=selected.family.id,d=(await api.getDashboard(id)).data;
-    return {data:{families,currentFamilyId:id,dashboard:d,activity:(await api.getActivity(id)).data,joinRequestCount:selected.member.role==='admin'?(await api.listJoinRequests(id)).data.length:0}};
+    return {data:{user:{id:'user'},home:{families,currentFamilyId:id,dashboard:d,activity:(await api.getActivity(id)).data,joinRequestCount:selected.member.role==='admin'?(await api.listJoinRequests(id)).data.length:0}}};
   };
   wx.showActionSheet = async () => ({tapIndex:0});
 }
