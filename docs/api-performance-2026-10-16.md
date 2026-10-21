@@ -89,3 +89,8 @@ cutover; a US edge means the client enters Vercel in the US and a `sin1`
 function adds a Pacific hop, so the persistent Asia host (Stage 2) is required
 instead. The bootstrap endpoint is already deployed to `pdx1`; next, update
 `DATABASE_URL` and `regions` together in one deployment.
+
+The PostgreSQL 17 client needed to dump the live 17.11 server is built and ready
+at `~/.local/pgsql17/bin` (17.11; Homebrew has no bottle for this machine). The
+database baseline, rehearsal, cutover, verification, and rollback commands are in
+`docs/supabase-singapore-cutover.md`.
