@@ -75,12 +75,17 @@ the legacy endpoints remain for already-released clients.
 Local verification on 2026-10-21 passed: typecheck, 37 Postgres/Fastify tests
 (including the new bootstrap endpoint group), mini-program JS generation and
 smoke, Home startup and flow harnesses, the MVP/design/birthday flow harnesses,
-and `release:local-gate`. No infrastructure has been changed yet: `vercel.json`
-is still `["pdx1"]` and the production database is still in Oregon.
+`release:runtime-smoke`, and `release:local-gate`. The endpoint was then
+deployed to production on the existing `pdx1` function and verified:
+`POST /v1/me/bootstrap` without credentials returns 401 `session_required`,
+`/v1/me/home` still returns 401 `unauthorized`, and `/health` returns 200 with
+`x-vercel-id: sfo1::pdx1`. No infrastructure has been changed yet:
+`vercel.json` is still `["pdx1"]` and the production database is still in
+Oregon.
 
 Before changing the region, measure the real-device `x-vercel-id` with the phone
 VPN/proxy off. An Asia edge supports the Singapore function + Singapore database
 cutover; a US edge means the client enters Vercel in the US and a `sin1`
 function adds a Pacific hop, so the persistent Asia host (Stage 2) is required
-instead. Deploy the bootstrap endpoint to `pdx1` first, then update
+instead. The bootstrap endpoint is already deployed to `pdx1`; next, update
 `DATABASE_URL` and `regions` together in one deployment.
