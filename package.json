@@ -1,7 +1,7 @@
 {
   "name": "nestful",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.4.8",
   "type": "module",
   "description": "WeChat-first family management MVP.",
   "packageManager": "pnpm@9.0.0",

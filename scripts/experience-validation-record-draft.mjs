@@ -22,8 +22,7 @@ const git = (...gitArgs) =>
 
 const shortSha = git("rev-parse", "--short", "HEAD");
 const status = git("status", "--short");
-const today = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-const uploadedVersionLabel = optionValue("--version-label") ?? `${packageJson.version}-${today}-${shortSha}`;
+const uploadedVersionLabel = optionValue("--version-label") ?? packageJson.version;
 const uploadedVersionDescription =
   optionValue("--version-description") ?? `Nestful experience validation build ${uploadedVersionLabel}`;
 const apiBaseUrl =

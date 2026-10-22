@@ -103,6 +103,10 @@ Actual phone/WeChat acceptance is separate from local integration testing.
 
 WeChat DevTools preview/upload creates external WeChat artifacts and should only be run after an explicit release approval.
 
+The root `package.json` defines the mini-program release version; keep workspace
+package versions in sync. Upload plans and validation records use that version by
+default. Git commit traceability is recorded separately.
+
 Before an approved experience-version upload, generate the command plan and prefill the external validation record:
 
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "@nestful/miniprogram",
-  "version": "0.1.0",
+  "version": "0.4.8",
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",

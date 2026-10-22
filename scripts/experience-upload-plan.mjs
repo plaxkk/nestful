@@ -24,8 +24,7 @@ const shellQuote = (value) => `'${String(value).replaceAll("'", "'\\''")}'`;
 
 const shortSha = git("rev-parse", "--short", "HEAD");
 const status = git("status", "--short");
-const today = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-const versionLabel = optionValue("--version-label") ?? `${packageJson.version}-${today}-${shortSha}`;
+const versionLabel = optionValue("--version-label") ?? packageJson.version;
 const versionDescription =
   optionValue("--version-description") ?? `Nestful experience validation build ${versionLabel}`;
 const recordPath =
