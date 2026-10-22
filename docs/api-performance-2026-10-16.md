@@ -110,3 +110,23 @@ The PostgreSQL 17 client needed to dump the live 17.11 server is built and ready
 at `~/.local/pgsql17/bin` (17.11; Homebrew has no bottle for this machine). The
 database baseline, rehearsal, cutover, verification, and rollback commands are in
 `docs/supabase-singapore-cutover.md`.
+
+### Preview instrumentation — 2026-10-22
+
+Development builds (`envVersion: "develop"`, which includes preview QR codes)
+render a small badge on Home with the first-screen time and the bootstrap request
+time: `首屏 X.Xs · 请求 YYYms`. It is gated on `develop`, so trial and release
+builds never show it. The badge measures `onLoad` to the `setData` callback that
+first paints the family dashboard.
+
+Simulator measurements after the Singapore cutover, taken through WeChat DevTools
+automation on this Mac (US VPN egress, so every request crosses the Pacific twice
+and these are upper bounds, not the phone's numbers):
+
+| Case | Bootstrap request | First screen |
+| --- | --- | --- |
+| Cold, no stored session (`wx.login` + bootstrap) | 2170 ms | 2.6 s |
+| Warm, cached bearer, three runs | 698 / 712 / 459 ms | 0.7 / 0.7 / 0.8 s |
+
+The Shanghai-on-cellular number still has to come from the phone; the preview
+install has its own storage, so scanning it reproduces a true first open.

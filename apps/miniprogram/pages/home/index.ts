@@ -24,7 +24,7 @@ Page({
     ...emptyContent(), hasFamily: false, primaryText: "创建我的家庭", familyName: "", memberCount: 0,
     families: [] as HomeFamily[], currentFamilyId: "", primaryFamilyId: "", restoring: false,
     lastRestoredAt: 0, loading: false, error: "", familyListError: "", switcherVisible: false,
-    busy: false, busyTaskId: "", dateLabel: ""
+    busy: false, busyTaskId: "", dateLabel: "", perfText: ""
   },
   restoreEpoch: 0,
   contentEpoch: 0,
@@ -33,7 +33,15 @@ Page({
   skipInitialRestore: false,
   preferPrimary: true,
   openSwitcherOnRestore: false,
+  startupAt: 0,
+  requestMs: 0,
+  showPerf: false,
+  perfReported: false,
   onLoad(query: Record<string, string | undefined>) {
+    // Develop builds (including previews) show one startup badge so a phone can
+    // report first-screen time without attaching a debugger.
+    this.startupAt = Date.now();
+    try { this.showPerf = wx.getAccountInfoSync().miniProgram.envVersion === "develop"; } catch { this.showPerf = false; }
     this.skipInitialRestore = query.loggedOut === "1";
     this.openSwitcherOnRestore = query.switch === "1";
     // Explicit switching from management preserves the family being viewed.
@@ -91,7 +99,9 @@ Page({
       const current = session.getFamily(), primaryId = session.getPrimaryFamilyId();
       const preferredId = this.preferPrimary ? primaryId || (current && current.id) : (current && current.id) || primaryId;
       // One request signs in when needed and returns the selected family view.
+      const requestAt = Date.now();
       const response = await api.bootstrapHome({ familyId: preferredId || undefined, fallbackFamilyId: current ? current.id : undefined });
+      this.requestMs = Date.now() - requestAt;
       if (epoch !== this.restoreEpoch || contentEpoch !== this.contentEpoch) return;
       const boot = response.data.home;
       const membership = boot.families.find(item => item.family.id === boot.currentFamilyId);
@@ -112,6 +122,11 @@ Page({
         families: boot.families.map(item => ({ ...item, id: item.family.id, initial: item.family.name.slice(0, 1) })),
         joinRequestCount: boot.joinRequestCount ?? 0, restoring: false, loading: false,
         lastRestoredAt: Date.now(), switcherVisible: this.openSwitcherOnRestore
+      }, () => {
+        if (!this.showPerf || this.perfReported) return;
+        this.perfReported = true;
+        const totalMs = Date.now() - this.startupAt;
+        this.setData({ perfText: `首屏 ${(totalMs / 1000).toFixed(1)}s · 请求 ${Math.round(this.requestMs)}ms` });
       });
       this.openSwitcherOnRestore = false;
     } catch (error) {
