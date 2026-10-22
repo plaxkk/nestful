@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
+const discovery_1 = require("../../utils/discovery");
 const entryTypes = [
     { label: "支出", value: "expense" },
     { label: "收入", value: "income" }
@@ -169,6 +170,7 @@ Page({
     onOccurredDateChange(e) { this.setData({ occurredAtInput: String(e.detail.value) }); },
     onGoalDateChange(e) { this.setData({ goalDueAtInput: String(e.detail.value) }); },
     onRetry() { void this.loadLedgerData({ force: true, showLoading: true }); },
+    onShareAppMessage() { return (0, discovery_1.publicProductShare)(); },
     onEditEntry(e) {
         const entry = this.data.ledgerEntries.find(r => r.id === e.currentTarget.dataset.id);
         if (!entry)

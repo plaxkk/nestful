@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 const require=createRequire(import.meta.url),storage=new Map([['nestful.modelVersion',2]]),toasts=[];
 global.wx={getStorageSync:k=>storage.get(k)??'',setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),navigateTo:()=>{},redirectTo:()=>{},reLaunch:()=>{},showToast:o=>toasts.push(o.title),pageScrollTo:()=>{},showLoading:()=>{},hideLoading:()=>{},getAccountInfoSync:()=>({miniProgram:{envVersion:'develop'}})};
 const {api}=require('../apps/miniprogram/utils/api.js'),{session}=require('../apps/miniprogram/utils/session.js');
@@ -21,7 +22,7 @@ p=page('about');p.onLoad?.({code:'not-an-invitation',familyId:'not-a-family'});p
 assert.equal(p.data.productName,'Nestful小窝');const publicCard=p.onShareAppMessage();assert.equal(publicCard.path,'/pages/about/index');assert.equal(p.onShareTimeline().query,'');
 assert.equal(JSON.stringify(publicCard).includes('not-a-family'),false);assert.equal(JSON.stringify(publicCard).includes('not-an-invitation'),false);
 global.wx=savedWx;console.log('PASS public product page opens and shares without login, storage or network APIs');
-for(const name of ['home','reminders','digital-space']){
+for(const name of ['home','reminders','digital-space','ledger']){
  reset();p=page(name);p.setData({familyName:'私密家庭名',currentFamilyId:'private-family',hero:{id:'private-activity',title:'私密活动'},reminders:[{id:'private-reminder',title:'私密用药'}],items:[{id:'private-record',title:'私密记录'}]});
  assert.equal(typeof p.onShareAppMessage,'function',`${name} must register a page share handler`);
  // Menu sharing must work independently of login, storage and network access.
@@ -32,4 +33,19 @@ for(const name of ['home','reminders','digital-space']){
  }finally{global.wx=savedWx;}
  console.log(`PASS ${name} registers menu sharing and returns only the public product card without session APIs`);
 }
+const tabPages={home:'home',reminders:'reminders',activities:'activities',records:'digital-space',family:'family'};
+const navTemplate=readFileSync('apps/miniprogram/components/family-nav/index.wxml','utf8');
+for(const [,tab] of navTemplate.matchAll(/data-page="([a-z-]+)"/g)){
+ assert.ok(tabPages[tab],`Unknown tab destination ${tab}`);
+ p=page(tabPages[tab]);assert.equal(typeof p.onShareAppMessage,'function',`${tab} tab must support menu sharing`);
+}
+reset();p=page('activities');
+assert.equal(p.onShareAppMessage({from:'menu'}).path,'/pages/home/index');
+p.setData({focused:true,activities:[{id:'selected-activity',title:'家庭聚餐'}],shareReadyId:'selected-activity',sharePath:'/pages/activities/index?activityId=selected-activity&code=prepared-invite',shareTitle:'已准备的活动卡片'});
+assert.equal(p.onShareAppMessage({from:'menu'}).path,'/pages/activities/index?familyId=a&activityId=selected-activity');
+assert.equal(p.onShareAppMessage({from:'button'}).path,p.data.sharePath);
+reset();p=page('family');assert.equal(p.onShareAppMessage({from:'menu'}).path,'/pages/home/index');
+p.setData({familyName:'家 A',joinPath:'/pages/join/index?code=prepared-family-invite'});
+assert.equal(p.onShareAppMessage({from:'button'}).path,p.data.joinPath);
+console.log('PASS all five tab destinations register sharing; activity menu/button and family invitations retain their destinations');
 delete global.Page;delete global.wx;

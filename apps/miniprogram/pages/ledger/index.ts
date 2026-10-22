@@ -9,6 +9,7 @@ import {
   type LedgerRecurrence
 } from "../../utils/api";
 import { session } from "../../utils/session";
+import { publicProductShare } from "../../utils/discovery";
 
 const entryTypes: Array<{ label: string; value: LedgerEntryType }> = [
   { label: "支出", value: "expense" },
@@ -228,6 +229,7 @@ Page({
   onOccurredDateChange(e:WechatMiniprogram.PickerChange){this.setData({occurredAtInput:String(e.detail.value)});},
   onGoalDateChange(e:WechatMiniprogram.PickerChange){this.setData({goalDueAtInput:String(e.detail.value)});},
   onRetry(){void this.loadLedgerData({force:true,showLoading:true});},
+  onShareAppMessage() { return publicProductShare(); },
   onEditEntry(e:WechatMiniprogram.TouchEvent){
     const entry=this.data.ledgerEntries.find(r=>r.id===e.currentTarget.dataset.id);if(!entry)return;
     this.setData({formVisible:false,goalFormVisible:false,editingEntry:entry,editTitleInput:entry.title,editAmountInput:(entry.amountCents/100).toFixed(2),editDateInput:formatDate(new Date(entry.occurredAt)),editCategoryIndex:Math.max(0,categories.findIndex(c=>c.value===entry.category))});wx.pageScrollTo({scrollTop:0,duration:200});
