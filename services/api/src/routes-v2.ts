@@ -12,6 +12,19 @@ import { pageWindow,pageResult } from './repositories/pagination.js';
 import { exchangeWechatCode,getReminderSubscriptionConfig,sendReminderSubscriptionMessage } from './wechat.js';
 
 const bearer=(r:FastifyRequest)=>r.headers.authorization?.startsWith('Bearer ')?r.headers.authorization.slice(7):undefined;
+const headerText=(value:string|string[]|undefined)=>Array.isArray(value)?value[0]:value;
+// Vercel attaches geolocation headers to every request. Echoing them on /health
+// lets a real device report which country and edge PoP it entered from without
+// needing a debugging proxy.
+const clientEdge=(headers:Record<string,string|string[]|undefined>)=>{
+  const decode=(value?:string)=>{if(!value)return undefined;try{return decodeURIComponent(value);}catch{return value;}};
+  const vercelId=headerText(headers['x-vercel-id']);
+  const country=headerText(headers['x-vercel-ip-country']);
+  const region=headerText(headers['x-vercel-ip-country-region']);
+  const city=decode(headerText(headers['x-vercel-ip-city']));
+  if(!vercelId&&!country&&!region&&!city)return undefined;
+  return {...(vercelId?{vercelId}:{}),...(country?{country}:{}),...(region?{region}:{}),...(city?{city}:{})};
+};
 const body=(r:FastifyRequest):Record<string,any>=>{
   if(!r.body||typeof r.body!=='object'||Array.isArray(r.body))throw new DomainError(400,'body_required');return r.body as Record<string,any>;
 };
@@ -59,8 +72,10 @@ export async function registerRoutes(server:FastifyInstance,deps:Dependencies={}
     request.log.error({code:pgCode??'internal'},'API request failed');
     return reply.code(500).send({error:'internal_error'});
   });
-  server.get('/health',async(_r,reply)=>{
-    try{await query('select id from nestful.users limit 0');return {ok:true,service:'nestful-api',storage:'relational-v2'};}
+  server.get('/health',async(r,reply)=>{
+    reply.header('cache-control','no-store');
+    const client=clientEdge(r.headers);
+    try{await query('select id from nestful.users limit 0');return {ok:true,service:'nestful-api',storage:'relational-v2',...(client?{client}:{})};}
     catch{return reply.code(503).send({ok:false,service:'nestful-api',error:'database_unavailable'});}
   });
   server.post('/v1/wechat/session',async r=>{
