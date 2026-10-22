@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
+const discovery_1 = require("../../utils/discovery");
 const wechat_1 = require("../../utils/wechat");
 const birthday_1 = require("../../utils/birthday");
 const reminderTypes = [
@@ -530,6 +531,7 @@ Page({
             this.setData({ busy: false });
         }
     },
+    onShareAppMessage() { return (0, discovery_1.publicProductShare)(); },
     async onCompleteReminder(event) {
         if (this.data.busy)
             return;

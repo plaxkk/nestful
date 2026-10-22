@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_1 = require("../../utils/api");
 const session_1 = require("../../utils/session");
+const discovery_1 = require("../../utils/discovery");
 const pageRefreshIntervalMs = 30 * 1000;
 const itemKinds = [
     { label: "资料", value: "document" },
@@ -84,6 +85,7 @@ Page({
     onToggleDetails() { this.setData({ detailsVisible: !this.data.detailsVisible }); },
     onOccurredDateChange(e) { this.setData({ occurredAtInput: String(e.detail.value) }); },
     onRetry() { void this.loadPage({ force: true, showLoading: true }); },
+    onShareAppMessage() { return (0, discovery_1.publicProductShare)(); },
     onCopyLink(e) { const url = e.currentTarget.dataset.url; if (url)
         wx.setClipboardData({ data: url }); },
     onKindChange(event) {

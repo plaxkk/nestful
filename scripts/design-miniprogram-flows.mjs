@@ -21,7 +21,15 @@ p=page('about');p.onLoad?.({code:'not-an-invitation',familyId:'not-a-family'});p
 assert.equal(p.data.productName,'Nestful小窝');const publicCard=p.onShareAppMessage();assert.equal(publicCard.path,'/pages/about/index');assert.equal(p.onShareTimeline().query,'');
 assert.equal(JSON.stringify(publicCard).includes('not-a-family'),false);assert.equal(JSON.stringify(publicCard).includes('not-an-invitation'),false);
 global.wx=savedWx;console.log('PASS public product page opens and shares without login, storage or network APIs');
-reset();p=page('home');p.setData({familyName:'私密家庭名',currentFamilyId:'private-family',hero:{id:'private-activity',title:'私密活动'}});
-assert.deepEqual(p.onShareAppMessage(),publicCard);assert.equal(/private-|私密/.test(JSON.stringify(p.onShareAppMessage())),false);
-console.log('PASS home discovery cards always share the public product instead of family or activity data');
+for(const name of ['home','reminders','digital-space']){
+ reset();p=page(name);p.setData({familyName:'私密家庭名',currentFamilyId:'private-family',hero:{id:'private-activity',title:'私密活动'},reminders:[{id:'private-reminder',title:'私密用药'}],items:[{id:'private-record',title:'私密记录'}]});
+ assert.equal(typeof p.onShareAppMessage,'function',`${name} must register a page share handler`);
+ // Menu sharing must work independently of login, storage and network access.
+ global.wx=new Proxy({}, {get(){throw new Error(`${name} share attempted to access a WeChat/session API`);}});
+ try{
+  const shared=p.onShareAppMessage({from:'menu'});
+  assert.deepEqual(shared,publicCard);assert.equal(/private-|私密/.test(JSON.stringify(shared)),false);
+ }finally{global.wx=savedWx;}
+ console.log(`PASS ${name} registers menu sharing and returns only the public product card without session APIs`);
+}
 delete global.Page;delete global.wx;

@@ -6,6 +6,7 @@ import {
   type FamilyMember
 } from "../../utils/api";
 import { session } from "../../utils/session";
+import { publicProductShare } from "../../utils/discovery";
 
 const pageRefreshIntervalMs = 30 * 1000;
 
@@ -110,6 +111,7 @@ Page({
   onToggleDetails(){this.setData({detailsVisible:!this.data.detailsVisible});},
   onOccurredDateChange(e:WechatMiniprogram.PickerChange){this.setData({occurredAtInput:String(e.detail.value)});},
   onRetry(){void this.loadPage({force:true,showLoading:true});},
+  onShareAppMessage() { return publicProductShare(); },
   onCopyLink(e:WechatMiniprogram.TouchEvent){const url=e.currentTarget.dataset.url as string;if(url)wx.setClipboardData({data:url});},
 
   onKindChange(event: WechatMiniprogram.PickerChange) {

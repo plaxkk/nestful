@@ -9,6 +9,7 @@ import {
   type ReminderType
 } from "../../utils/api";
 import { session } from "../../utils/session";
+import { publicProductShare } from "../../utils/discovery";
 import { requestReminderSubscription } from "../../utils/wechat";
 import { birthdayLabel, validBirthday, type BirthdayCalendar, type BirthdayChangeDetail } from "../../utils/birthday";
 
@@ -541,6 +542,8 @@ Page({
     } catch { wx.showToast({ title: "授权未更新，请检查是否有待发送通知", icon: "none" }); }
     finally{this.setData({busy:false});}
   },
+
+  onShareAppMessage() { return publicProductShare(); },
 
   async onCompleteReminder(event: WechatMiniprogram.TouchEvent) {
     if(this.data.busy)return;
