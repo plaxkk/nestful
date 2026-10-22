@@ -5,13 +5,15 @@ is already deployed: `POST /v1/me/bootstrap` is live on `pdx1` and the legacy
 `/v1/wechat/session` and `/v1/me/home` routes are unchanged. Nothing in this
 document has been executed against production yet.
 
-The cutover stays blocked until two things happen:
+Status: **Step 0 passed on 2026-10-22.** A Shanghai handset on cellular data with
+VPN off reported `x-vercel-id: sin1::...`, `country: CN`, so the edge is already
+Singapore and Stage 1 applies. The only remaining blocker is the new Supabase
+project.
 
-1. **Step 0 measurement.** The real-device `x-vercel-id` must show an Asia edge
-   PoP with the phone VPN/proxy/TUN off. A US edge means a `sin1` function adds a
-   Pacific hop, so Stage 2 (persistent Asia host) applies instead.
+1. **Step 0 measurement — done.** See `docs/api-performance-2026-10-16.md`.
 2. **New Supabase project.** Create it in `ap-southeast-1` (Singapore) in the
-   dashboard; the connected MCP binding cannot create projects.
+   dashboard; neither the connected MCP binding nor a local CLI can create
+   projects.
 
 ## Baseline snapshot (2026-10-21)
 

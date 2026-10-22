@@ -83,12 +83,28 @@ deployed to production on the existing `pdx1` function and verified:
 `vercel.json` is still `["pdx1"]` and the production database is still in
 Oregon.
 
-Before changing the region, measure the real-device `x-vercel-id` with the phone
-VPN/proxy off. An Asia edge supports the Singapore function + Singapore database
-cutover; a US edge means the client enters Vercel in the US and a `sin1`
-function adds a Pacific hop, so the persistent Asia host (Stage 2) is required
-instead. The bootstrap endpoint is already deployed to `pdx1`; next, update
-`DATABASE_URL` and `regions` together in one deployment.
+### Step 0 result — 2026-10-22
+
+`/health` now echoes the Vercel geolocation headers (`client` field) so a phone
+can report its entry PoP without a debugging proxy. A Shanghai handset on
+cellular data with VPN off returned:
+
+```json
+{"client":{"vercelId":"sin1::vw4d9-...","country":"CN","region":"SH","city":"Shanghai"}}
+```
+
+The edge is already `sin1` (Singapore), so the China → Singapore leg is as short
+as Vercel can make it. The remaining distance is entirely inside the request
+path: the function runs in `pdx1` and the database in Oregon. Moving both to
+Singapore removes those hops and keeps every leg of the request in one region.
+
+For contrast, the same endpoint from this Mac returned
+`{"vercelId":"sfo1::...","country":"US",...}` because its egress is a US VPN
+exit; that measurement is not representative of the phone and was not used for
+the decision.
+
+Stage 1 is confirmed. The next step is the Singapore Supabase project; then
+update `DATABASE_URL` and `regions` together in one deployment.
 
 The PostgreSQL 17 client needed to dump the live 17.11 server is built and ready
 at `~/.local/pgsql17/bin` (17.11; Homebrew has no bottle for this machine). The
